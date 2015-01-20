@@ -1,6 +1,8 @@
 # dead_code_analyzer
 Dead-code analyzer for OCaml
 
+## Overview
+
 This tool reports values exported by .mli files but never used in
 any other module.  It assumes that .mli files are compiled with
 -keep-locs and .ml files with -bin-annot.
@@ -14,3 +16,12 @@ The tool also analyses calls to functions with optional arguments.
 If, for a given function and one of its optional argument, all call
 sites (resp. none of them) provide a value for the argument, then this
 argument is reported.
+
+
+## Contact
+
+This project was initiated by LexiFi (http://www.lexifi.com) and is part
+of the SecurOCaml project.
+
+Contact: alain.frisch@lexifi.com
+
