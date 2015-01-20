@@ -1,5 +1,5 @@
-let f ?(a = 0) b = a + b
+let f ?(a = 0) ?(b = 0) () = a + b
 
-let x = f 30
+let x = f ~b:30 ()
 
-let y = f 40
+let y = f ~b:40 ()
