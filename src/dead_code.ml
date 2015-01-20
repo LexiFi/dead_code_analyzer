@@ -1,16 +1,6 @@
 (***************************************************************************)
-(*  Copyright (C) 2000-2014 LexiFi SAS. All rights reserved.               *)
-(*                                                                         *)
-(*  No part of this document may be reproduced or transmitted in any       *)
-(*  form or for any purpose without the express permission of LexiFi SAS.  *)
+(*  Copyright (C) 2014-2015 LexiFi SAS. All rights reserved.               *)
 (***************************************************************************)
-
-(* $Id: unused_exported_values.ml 71920 2014-07-08 10:02:56Z ebaruk $ *)
-
-(* This tool reports values exported by .mli files but never used in
-   any other module.  It assumes that .mfi/.mli files are compiled with
-   -keep-locs and .mf/.ml files with -bin-annot. *)
-
 
 open Types
 open Typedtree
