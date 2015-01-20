@@ -65,7 +65,7 @@ let rec collect_export path u = function
       (* a .cmi file can contain locations from other files.
          For instance:
              module M : Set.S with type elt = int
-         will create value definitions whole location is in set.mli
+         will create value definitions whose location is in set.mli
       *)
       if u = unit val_loc.Location.loc_start.Lexing.pos_fname then
         vds := (id :: path, val_loc) :: !vds
