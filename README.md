@@ -18,6 +18,16 @@ sites (resp. none of them) provide a value for the argument, then this
 argument is reported.
 
 
+## Status
+
+This project has just been started.  Nothing is ready yet.
+
+
+## Limitations
+
+...
+
+
 ## Contact
 
 This project was initiated by LexiFi (http://www.lexifi.com) and is part
