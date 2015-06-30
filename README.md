@@ -3,24 +3,34 @@ Dead-code analyzer for OCaml
 
 ## Overview
 
-This tool reports values exported by .mli files but never used in
-any other module.  It assumes that .mli files are compiled with
--keep-locs and .ml files with -bin-annot.
+This tool scan a compiled OCaml project and report various warnings
+about suspicious code:
 
-Exported values are collected by reading .cmi files (obtained from
-explicit .mli interfaces).  References to such values are collected by
-reading typed trees from .cmt files (obtained by compiling .ml
-implementations with -bin-annot).
+ - Values exported by .mli files but never used in any other module.
+   (The declaration can be dropped from the interface, and then from
+   the implementation if there is no internal use -- which will be reportef
+   by standard OCaml warnings).
 
-The tool also analyses calls to functions with optional arguments.
-If, for a given function and one of its optional argument, all call
-sites (resp. none of them) provide a value for the argument, then this
-argument is reported.
+ - Optional arguments for which either all call sites or none of them
+   provide a value. (The argument can be made mandatory or dropped.)
 
+ - Other stylistic issues:  patterns matching a value of type `unit`
+   which are not `()` (typically, `_` or a variable);  let-binding
+   `let () = ... in ...` (it's usually better to use sequencing);
+   let-binding of the form `let x = ... in x` (the binding is useless).
+
+
+The tool assumes that .mli files are compiled with -keep-locs and .ml
+files with -bin-annot.  Exported values are collected by reading .cmi
+files (obtained from explicit .mli interfaces).  References to such
+values are collected by reading typed trees from .cmt files (obtained
+by compiling .ml implementations with -bin-annot).
 
 ## Status
 
-This project has just been started.  Nothing is ready yet.
+The project is used internally at LexiFi.
+
+There have been no official release yet.
 
 
 ## Limitations
