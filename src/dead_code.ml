@@ -11,7 +11,34 @@ let bad_files = ref []
 let vds = ref []  (* all exported value declarations *)
 let references = Hashtbl.create 256  (* all value references *)
 
+let style = ref [] (* patterns of type unit which are not () *)
+let last_loc = ref Location.none
+    (* helper to diagnose occurrences of Location.none in the typedtree *)
+let current_src = ref ""
+
+
 let unit fn = Filename.chop_extension (Filename.basename fn)
+
+let section s =
+  Printf.printf "%s:\n%s\n" s (String.make (String.length s + 1) '=')
+
+let separator () =
+  Printf.printf "%s\n\n\n" (String.make 80 '-')
+
+let prloc ?fn (loc : Location.t) =
+  begin match fn with
+  | Some s when Filename.chop_extension (loc.loc_start.pos_fname) = Filename.chop_extension (Filename.basename s) ->
+      print_string (Filename.dirname s ^ "/" ^ loc.loc_start.pos_fname)
+  | _ ->
+      begin match Hashtbl.find abspath loc.loc_start.pos_fname with
+      | s -> print_string s
+      | exception Not_found -> print_string (Printf.sprintf "!!UNKNOWN<%s%s>!!" loc.loc_start.pos_fname (match fn with None -> "" | Some s -> " // " ^ s))
+      end
+  end;
+  print_char ':';
+  print_int loc.loc_start.pos_lnum;
+  print_string ": "
+
 
 
 type vd_node =
@@ -68,12 +95,25 @@ let rec collect_export path u = function
          will create value definitions whose location is in set.mli
       *)
       if u = unit val_loc.Location.loc_start.Lexing.pos_fname then
-        vds := (id :: path, val_loc) :: !vds
+        vds := (!current_src, id :: path, val_loc) :: !vds
   | Sig_module (id, {Types.md_type = t; _}, _) -> List.iter (collect_export (id :: path) u) (sign t)
   | _ -> ()
 
+let is_unit t =
+  match (Ctype.repr t).desc with
+  | Tconstr (p, [], _) -> Path.same p Predef.path_unit
+  | _ -> false
+
 let collect_references =
   let super = Tast_mapper.default in
+  let wrap f loc self x =
+    let l = !last_loc in
+    let ll = loc x in
+    if ll <> Location.none then last_loc := ll;
+    let r = f self x in
+    last_loc := l;
+    r
+  in
   let structure_item self i =
     begin match i.str_desc with
       | Tstr_value (_, [
@@ -89,11 +129,26 @@ let collect_references =
     end;
     super.structure_item self i
   in
+  let pat self p =
+    let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
+    begin if is_unit p.pat_type then match p.pat_desc with
+    | Tpat_construct _ -> ()
+    | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
+    | Tpat_var (_, {txt; loc = _}) -> u txt
+    | Tpat_any -> u "_"
+    | _ -> u ""
+    end;
+    super.pat self p
+  in
   let expr self e =
     begin match e.exp_desc with
     | Texp_ident (_, _, {Types.val_loc; _})
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc e.exp_loc
+    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type ->
+        style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style
+    | Texp_let (Nonrecursive, [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}], {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 ->
+        style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args)
       when not val_loc.Location.loc_ghost ->
         let loc = vd_node val_loc in
@@ -116,7 +171,11 @@ let collect_references =
     end;
     super.expr self e
   in
-  {super with structure_item; expr}
+
+  let expr = wrap expr (fun x -> x.exp_loc) in
+  let pat = wrap pat (fun x -> x.pat_loc) in
+  let structure_item = wrap structure_item (fun x -> x.str_loc) in
+  {super with structure_item; expr; pat}
 
 let kind fn =
   if Filename.check_suffix fn ".cmi" then
@@ -134,7 +193,10 @@ let kind fn =
   else `Ignore
 
 
+(* Map a local filename to an absolute path.  This currently assumes that there are never
+   two files with the same basename. *)
 let regabs fn =
+  current_src := fn;
   Hashtbl.add abspath (Filename.basename fn) fn
 
 let exclude_dir, is_excluded_dir =
@@ -168,6 +230,7 @@ let rec load_file fn =
   | `Iface src ->
       (* only consider module with an explicit interface *)
       let open Cmi_format in
+      last_loc := Location.none;
       begin try
         regabs src;
         let u = unit fn in
@@ -179,6 +242,7 @@ let rec load_file fn =
 
   | `Implem src ->
       let open Cmt_format in
+      last_loc := Location.none;
       regabs src;
       let cmt =
         try Some (read_cmt fn)
@@ -206,31 +270,6 @@ let rec load_file fn =
   | `Ignore ->
       ()
 
-let prloc (loc : Location.t) =
-  print_string (Hashtbl.find abspath loc.loc_start.pos_fname);
-  print_char ':';
-  print_int loc.loc_start.pos_lnum;
-  print_string ": "
-
-let report_unused (path, loc) =
-  if not (Hashtbl.mem references loc) then begin
-    prloc loc;
-    print_string (String.concat "." (List.rev_map Ident.name path));
-    print_char ' ';
-    print_endline "unused"
-  end
-
-let report_opt_arg (loc, lab, slot) =
-  match slot with
-  | {with_val = []; without_val = _} ->
-      prloc loc;
-      Printf.printf "%s NEVER used\n" lab
-  | {with_val = _; without_val = []} ->
-      prloc loc;
-      Printf.printf "%s always used\n" lab
-  | _ ->
-      ()
-
 let analyse_opt_args () =
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
@@ -249,7 +288,40 @@ let analyse_opt_args () =
        else slot.without_val <- callsite :: slot.without_val
     )
     !opt_args;
-  List.iter report_opt_arg (List.sort compare !all)
+  List.sort compare !all
+
+let report_opt_args l =
+  let l = List.filter (fun (_, _, slot) -> slot.with_val = [] || slot.without_val = []) l in
+  if l <> [] then begin
+    section "OPTIONAL ARGUMENTS";
+    List.iter
+      (fun (loc, lab, slot) ->
+         prloc loc;
+         Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS")
+      )
+      l;
+    separator ();
+  end
+
+let report_style () =
+  if !style <> [] then begin
+    section "CODING STYLE";
+    List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s) !style;
+    separator ();
+  end
+
+let report_unused () =
+  let l = List.filter (fun (_, _, loc) -> not (Hashtbl.mem references loc)) !vds in
+  if l <> [] then begin
+    section "UNUSED EXPORTED VALUES";
+    List.iter
+      (fun (fn, path, loc) ->
+         prloc ~fn loc;
+         print_endline (String.concat "." (List.rev_map Ident.name path));
+      ) l;
+    separator ();
+  end
+
 
 let () =
   try
@@ -258,11 +330,10 @@ let () =
       ["--exclude-directory", Arg.String exclude_dir, "Exclude given directory from research."]
       load_file "unused_exported_values";
     Printf.eprintf " [DONE]\n%!";
-    List.iter report_unused !vds;
 
-    Printf.eprintf "Analyze optional arguments...%!";
-    analyse_opt_args ();
-    Printf.eprintf " [DONE]\n%!";
+    report_unused ();
+    report_opt_args (analyse_opt_args ());
+    report_style ();
 
     if !bad_files <> [] then begin
       let oc = open_out_bin "remove_bad_files.sh" in
