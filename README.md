@@ -1,9 +1,9 @@
 # dead_code_analyzer
-Dead-code analyzer for OCaml
+Dead-code analyzer for OCaml (and more)
 
 ## Overview
 
-This tool scan a compiled OCaml project and report various warnings
+This tool scans a compiled OCaml project and reports various warnings
 about suspicious code:
 
  - Values exported by .mli files but never used in any other module.
@@ -30,7 +30,7 @@ by compiling .ml implementations with -bin-annot).
 
 The project is used internally at LexiFi.
 
-There have been no official release yet.
+There has been no official release yet.
 
 
 ## Limitations
