@@ -6,7 +6,14 @@
 
 
 ##Symbols
+
 [ ]: waiting
 [.]: work in progress
 [!]: asap
 [X]: done
+
+
+#Note
+The 'UNUSED EXPORTED VALUES' section has FN. No FP to report to this section yet
+The 'OPTIONAL ARGUMENTS' section has both FN and FP.
+The 'CODING STYLE' section may have both FN and FP.
