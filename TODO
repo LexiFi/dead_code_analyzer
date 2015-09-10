@@ -1,0 +1,12 @@
+#Testing
+
+[.] Test on big projects (OPAM, js_of_ocaml, coq, ...)
+[!] Test suite
+[ ] Use different versions of OCaml (currently testing with 4.03.0+trunk)
+
+
+##Symbols
+[ ]: waiting
+[.]: work in progress
+[!]: asap
+[X]: done
