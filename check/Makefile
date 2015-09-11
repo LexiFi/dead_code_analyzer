@@ -22,4 +22,4 @@ check.opt$(EXE): $(SRC)
 	$(OCAMLC) $(LIBS) $(SRC) -o $@
 
 clean:
-	rm -f *~ *.cm* *.a *.lib *.o *.obj check.byt$(EXE) check.opt$(EXE) $(TARGET)
+	rm -f *~ *.cm* *.a *.lib *.o *.obj check.byt$(EXE) check.opt$(EXE) *.out
