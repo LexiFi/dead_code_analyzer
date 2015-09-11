@@ -10,7 +10,7 @@ let get_element ?(f = Str.search_forward) ?(regexp = ".*") ?(start = 0) line =
 
 (* Extract filename from current line *)
 let get_filename line =
-  let fn = get_element ~regexp:"[</].*\\.ml" line in
+  let fn = get_element ~regexp:"[</].*\\.mli?" line in
   String.sub fn 1 @@ String.length fn - 1
 
 (* Extract line number name from current line *)
@@ -35,6 +35,11 @@ let sec_end = sec_part ~regexp:"-+"
 
 
 (******** Error messages ********)
+let error ?(why = "unknown reason") ~where () =
+  print_string where;
+  print_string ": ";
+  print_string why
+  |> print_newline
 
 (******** Processing ********)
 
@@ -46,25 +51,36 @@ let old_fn = ref None (* Previous filename processed *)
 
 let rec empty file =
   try
-    input_line file (*|> error message*); empty file
+    let where = input_line file in
+    error ~why:"Not detected" ~where ();
+    empty file
   with End_of_file -> ()
 
 
   (**** Checkers ****)
 
-let rec check_fn name =
+let rec check_fn name line =
   let ok =
     match !fn with
         None -> begin
                   match !old_fn with
-                      Some str when str = name -> false (*ERROR*)
+                      Some str when str = name ->
+                          error ~why:"Should not be detected" ~where:line ();
+                          false
                     | _ -> fn := Some name;
-                          in_file := open_in @@ !dir ^ name;
-                          true
+                          try
+                            in_file := open_in @@ !dir ^ name;
+                            true
+                          with _ ->
+                            error ~why:"File not found" ~where:name ();
+                            false
                 end
       | Some str when str = name ->
-          if !in_file = stdin then false (*ERROR*)
-          else true
+          if not (!in_file = stdin) then true
+          else begin
+            error ~where:line ();
+            false
+          end
       | _ ->
           if in_channel_length !in_file - 1 <= pos_in !in_file then true
           else begin
@@ -73,7 +89,6 @@ let rec check_fn name =
             old_fn := !fn;
             fn := None;
             false
-            (*ERROR*)
           end
   in
   if ok then
@@ -83,7 +98,7 @@ let rec check_fn name =
       close_in !in_file;
       old_fn := !fn;
       fn := None;
-      check_fn name
+      check_fn name line
   else ""
 
 let check_elt ?(f = fun x -> x) line x = f line = x
@@ -99,11 +114,11 @@ let rec section ?(fn = true) ?(pos = true) ?(value = true) ?(info = false) () =
     let line = (input_line !res) in
     if sec_start line then section ~fn ~pos ~value ~info ()
     else if sec_end line then ()
-    else let comp = if fn then get_filename line |> check_fn else "" in
+    else let comp = if fn then (get_filename line |> check_fn) line else "" in
       if not fn || comp <> "" then
         if (pos && not @@ check_pos comp @@ get_pos line)
             || (value && not @@ check_value comp @@ get_value line)
-            || (info && not @@ check_info comp @@ get_info line) then ()
+            || (info && not @@ check_info comp @@ get_info line) then print_string line
   with End_of_file -> ()
 
 let rec sel_section () =
@@ -111,9 +126,15 @@ let rec sel_section () =
   old_fn := None;
   try
     match (input_line !res) with
-        "UNUSED EXPORTED VALUES:" -> section ()
-      | "OPTIONAL ARGUMENTS:" -> section ~info:true ()
-      | "CODING STYLE:" -> section ()
+        "UNUSED EXPORTED VALUES:" -> print_string "UNUSED EXPORTED VALUES:\n";
+            print_string "=======================\n";
+            section ()
+      | "OPTIONAL ARGUMENTS:" -> print_string "OPTIONAL ARGUMENTS:\n";
+            print_string "===================\n";
+            section ~info:true ()
+      | "CODING STYLE:" -> print_string "CODING STYLE:\n";
+            print_string "=============\n";
+            section ()
       | _ -> sel_section ()
   with End_of_file -> ()
 

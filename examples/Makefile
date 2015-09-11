@@ -10,6 +10,10 @@ all:
 	make -C false
 	../src/dead_code.byt .
 
+build:
+	$(OCAMLC) -c $(SRC)
+	make -C false
+
 clean:
 	rm -f *~ *.cm* *.o *.obj
 	make -C false clean
