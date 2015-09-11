@@ -72,6 +72,7 @@ let rec check_fn name line =
                             in_file := open_in @@ !dir ^ name;
                             true
                           with _ ->
+                            fn := None;
                             error ~why:"File not found" ~where:name ();
                             false
                 end
@@ -115,10 +116,12 @@ let rec section ?(fn = true) ?(pos = true) ?(value = true) ?(info = false) () =
     if sec_start line then section ~fn ~pos ~value ~info ()
     else if sec_end line then ()
     else let comp = if fn then (get_filename line |> check_fn) line else "" in
-      if not fn || comp <> "" then
+      let unit = if not fn || comp <> "" then
         if (pos && not @@ check_pos comp @@ get_pos line)
             || (value && not @@ check_value comp @@ get_value line)
             || (info && not @@ check_info comp @@ get_info line) then print_string line
+      in
+      section ~fn ~pos ~value ~info unit
   with End_of_file -> ()
 
 let rec sel_section () =
@@ -127,14 +130,14 @@ let rec sel_section () =
   try
     match (input_line !res) with
         "UNUSED EXPORTED VALUES:" -> print_string "UNUSED EXPORTED VALUES:\n";
-            print_string "=======================\n";
-            section ()
+            print_string "=======================\n"
+            |> section |> sel_section
       | "OPTIONAL ARGUMENTS:" -> print_string "OPTIONAL ARGUMENTS:\n";
-            print_string "===================\n";
-            section ~info:true ()
+            print_string "===================\n"
+            |> section ~info:true |> sel_section
       | "CODING STYLE:" -> print_string "CODING STYLE:\n";
-            print_string "=============\n";
-            section ()
+            print_string "=============\n"
+            |> section |> sel_section
       | _ -> sel_section ()
   with End_of_file -> ()
 
