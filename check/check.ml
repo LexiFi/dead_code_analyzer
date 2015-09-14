@@ -17,8 +17,8 @@ let get_filename line =
 (* Extract line number name from current line *)
 let get_pos line =
   let pos = get_element ~regexp:":.*:" ~f:Str.search_backward ~start:(String.length line - 1) line in
-  if pos <> "" then String.sub pos 1 @@ String.length pos - 2
-  else pos
+  int_of_string (if pos <> "" then String.sub pos 1 @@ String.length pos - 2
+  else pos)
 
 (* Extract value name from current line (for optional arg) *)
 let get_value line =
@@ -106,7 +106,7 @@ let rec check_fn name line =
       check_fn name line
   else ""
 
-let check_elt ?(f = fun x -> x) line x = compare x @@ f line
+let check_elt ~f line x = compare x @@ f line
 
 let check_aux line status=
   if status > 0 then (error ~why:("not detected") ~where:line (); comp := ""; false)
@@ -132,15 +132,14 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     if !nextl = "" then nextl := input_line !res;
     if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
     else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
-    else (comp := if fn && !comp = "" then
-      (get_filename !nextl ^ !extend |> check_fn) !nextl else !comp;
+    else (comp := if fn && !comp = "" then (get_filename !nextl ^ !extend |> check_fn) !nextl else !comp;
       let unit =
         if not fn || !comp <> "" then
           (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
               || (value && not @@ check_value !comp @@ get_value !nextl)
               || (info && not @@ check_info !comp @@ get_info !nextl)) then
             (print_endline !nextl; nextl := ""; comp := ""))
-        else nextl := "";
+        else nextl := ""
       in
       section ~fn ~pos ~value ~info unit)
   with End_of_file ->
