@@ -10,7 +10,7 @@ let get_element ?(f = Str.search_forward) ?(regexp = ".*") ?(start = 0) line =
 
 (* Extract filename from current line *)
 let get_filename line =
-  let fn = get_element ~regexp:"[</].*\\.mli?" line in
+  let fn = get_element ~regexp:"[</].*.mli?" line in
   if fn <> "" then String.sub fn 1 @@ String.length fn - 1
   else fn
 
@@ -38,10 +38,12 @@ let sec_end = sec_part ~regexp:"-+"
 
 
 (******** Error messages ********)
-let error ?(why = "unknown reason") ~where () =
+let error ?(why = "unknown reason") ?(neg = false) ~where () =
+  prerr_string "\x1b[0;31m";
   prerr_string where;
-  prerr_string ": ";
-  prerr_string why
+  prerr_string ": \x1b[0;37;41m";
+  prerr_string why;
+  prerr_string "\x1b[0m"
   |> prerr_newline
 
 (******** Processing ********)
@@ -71,14 +73,14 @@ let rec check_fn name line =
         None -> begin
                   match !old_fn with
                       Some str when str = name ->
-                          error ~why:"Should not be detected." ~where:line ();
+                          error ~why:"Should not be detected" ~where:line ();
                           false
                     | _ -> fn := Some name;
                           try
                             in_file := open_in @@ !dir ^ name;
                             true
                           with _ ->
-                            error ~why:"File not found or cannot be opened"
+                            error ~why:"File not found or cannot be opened."
                                   ~where:(!dir ^ name) ();
                             fn := None;
                             false
@@ -109,8 +111,8 @@ let rec check_fn name line =
 let check_elt ~f line x = compare x @@ f line
 
 let check_aux line status=
-  if status > 0 then (error ~why:("not detected") ~where:line (); comp := ""; false)
-  else if status < 0 then (error ~why:("should not be detected") ~where:!nextl (); nextl := ""; false)
+  if status > 0 then (error ~why:("Not detected") ~where:line (); comp := ""; false)
+  else if status < 0 then (error ~why:("Should not be detected") ~where:!nextl (); nextl := ""; false)
   else true
 
 let check_value line x =
@@ -121,7 +123,7 @@ let check_pos line pos =
 
 let check_info line info =
   if (check_elt ~f:get_info line info) <> 0 then
-    (error ~why:("Expected: " ^ (get_info line)) ~where:!nextl ();
+    (error ~why:("Expected:" ^ (get_info line)) ~where:!nextl ();
     nextl := ""; comp := ""; false)
   else true
 
