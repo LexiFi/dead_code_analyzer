@@ -7,13 +7,13 @@ SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
 
 all:
 	$(OCAMLC) -c $(SRC)
-	make -C false
+	make -C opam
 	../src/dead_code.byt .
 
 build:
 	$(OCAMLC) -c $(SRC)
-	make -C false
+	make -C opam
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
-	make -C false clean
+	make -C opam clean
