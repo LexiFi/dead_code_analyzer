@@ -1,7 +1,10 @@
 #Testing
 
 [.] Test on big projects (OPAM, js_of_ocaml, coq, ...)
-[!] Test suite
+[.] Test suite
+--- [X] Detect FP
+--- [.] Detect FN
+--- [ ] Add some color and info (stats, ...)
 [ ] Use different versions of OCaml (currently testing with 4.03.0+trunk)
 
 
