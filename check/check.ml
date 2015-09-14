@@ -46,6 +46,8 @@ let error ?(why = "unknown reason") ~where () =
 
 (******** Processing ********)
 
+let comp = ref "" (* Line to compare with *)
+let nextl = ref "" (* Line to verify *)
 let dir = ref "" (* Directory to find expected outputs *)
 let res = ref (open_in_gen [Open_creat] 777 "trash.out") (* Output file computed from analysis on ../examples *)
 let fn = ref None (* Filename that should currently be processed *)
@@ -103,42 +105,48 @@ let rec check_fn name line =
       check_fn name line
   else ""
 
-let check_elt ?(f = fun x -> x) line x = f line = x
+let check_elt ?(f = fun x -> x) line x = compare x @@ f line
+
+let check_aux line status=
+  if status > 0 then (error ~why:("not detected") ~where:line (); comp := ""; false)
+  else if status < 0 then (error ~why:("should not be detected") ~where:!nextl (); nextl := ""; false)
+  else true
 
 let check_value line x =
-  if not (check_elt ~f:get_value line x) then (error ~why:("Got value: " ^ x) ~where:line; false)
-  else true
+  check_elt ~f:get_value line x |> check_aux line
 
-let check_pos line pos = 
-  if not (check_elt ~f:get_pos line pos) then (error ~why:("Got position: " ^ pos) ~where:line; false)
-  else true
+let check_pos line pos =
+  check_elt ~f:get_pos line pos |> check_aux line
 
-let check_info line info = 
-  if not (check_elt ~f:get_info line info) then (error ~why:("Got information: " ^ info) ~where:line; false)
+let check_info line info =
+  if (check_elt ~f:get_info line info) <> 0 then
+    (error ~why:("Expected: " ^ info) ~where:line ();
+    nextl := ""; false)
   else true
 
   (**** Blocks ****)
 
 let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
   try
-    let line = (input_line !res) in
-    if sec_start line then section ~fn ~pos ~value ~info ()
-    else if sec_end line then (print_string line; print_string "\n\n\n")
-    else let comp = if fn then (get_filename line |> check_fn) line else "" in
+    if !nextl = "" then nextl := input_line !res;
+    if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
+    else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
+    else (comp := if fn && !comp = "" then (get_filename !nextl |> check_fn) !nextl else !comp;
       let unit =
-        if not fn || comp <> "" then
-          (if not ((pos && not @@ check_pos comp @@ get_pos line)
-            || (value && not @@ check_value comp @@ get_value line)
-            || (info && not @@ check_info comp @@ get_info line)) then print_string line |> print_newline
-          else print_newline ())
-        else (error ~why:"don't know" ~where:line |> ignore)
+        if not fn || !comp <> "" then
+          (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
+            || (value && not @@ check_value !comp @@ get_value !nextl)
+          || (info && not @@ check_info !comp @@ get_info !nextl)) then print_string !nextl |> print_newline; nextl := ""; comp := "")
+          else nextl := ""; comp := ""
       in
-      section ~fn ~pos ~value ~info unit
-  with End_of_file -> ()
+      section ~fn ~pos ~value ~info unit)
+  with End_of_file ->
+    let tmp = open_in "trash.out" in
+    if !in_file <> tmp then (close_in tmp; empty !in_file)
 
 let rec sel_section () =
-  fn := None;
-  old_fn := None;
+  fn := None; old_fn := None;
+  nextl := ""; comp := "";
   try
     match (input_line !res) with
         "UNUSED EXPORTED VALUES:" -> print_string "UNUSED EXPORTED VALUES:\n";
