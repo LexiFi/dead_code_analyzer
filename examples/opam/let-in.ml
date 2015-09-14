@@ -1,4 +1,4 @@
-let complicated ?a ?b c = c
+let complicated ?a ?b ?c d = d
 
 let parent =
   let fst_son = complicated ~a:2 0 in
