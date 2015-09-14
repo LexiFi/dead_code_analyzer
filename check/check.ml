@@ -38,7 +38,10 @@ let sec_end = sec_part ~regexp:"-+"
 
 
 (******** Error messages ********)
+let errors = ref 0 (* Nb FP/FN *)
+
 let error ?(why = "unknown reason") ?(neg = false) ~where () =
+  incr errors;
   prerr_string "\x1b[0;31m";
   prerr_string where;
   prerr_string ": \x1b[0;37;41m";
@@ -48,6 +51,7 @@ let error ?(why = "unknown reason") ?(neg = false) ~where () =
 
 (******** Processing ********)
 
+let total = ref 0 (* Nb tests *)
 let comp = ref "" (* Line to compare with *)
 let nextl = ref "" (* Line to verify *)
 let dir = ref "" (* Directory to find expected outputs *)
@@ -134,7 +138,9 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     if !nextl = "" then nextl := input_line !res;
     if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
     else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
-    else (comp := if fn && !comp = "" then (get_filename !nextl ^ !extend |> check_fn) !nextl else !comp;
+    else begin
+      incr total;
+      comp := if fn && !comp = "" then (get_filename !nextl ^ !extend |> check_fn) !nextl else !comp;
       let unit =
         if not fn || !comp <> "" then
           (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
@@ -143,7 +149,8 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
             (print_endline !nextl; nextl := ""; comp := ""))
         else nextl := ""
       in
-      section ~fn ~pos ~value ~info unit)
+      section ~fn ~pos ~value ~info unit
+    end
   with End_of_file ->
     let tmp = open_in "trash.out" in
     if !in_file <> tmp then (close_in tmp; empty !in_file)
@@ -165,6 +172,17 @@ let rec sel_section () =
       | _ -> sel_section ()
   with End_of_file -> ()
 
+let result () =
+  print_string "Total: \x1b[0;34m";
+  print_int !total;
+  print_string "\x1b[0m\nFailed: \x1b[0;31m";
+  print_int !errors;
+  let ratio = ( -. ) 100. @@ ( *. ) 100. @@ (float_of_int !total |> ( /. ) @@ float_of_int !errors) in
+  print_string @@ "\x1b[0m\nRatio: \x1b[0;3"
+      ^ (if ratio < 50. then "1m" else if ratio < 80. then "3m" else "2m");
+  print_float ratio;
+  print_string "%\x1b[0m"
+  |> print_newline
 
 let () =
   dir :=
@@ -174,5 +192,5 @@ let () =
     if (Array.length Sys.argv) < 3 then open_in "res.out"
     else open_in Sys.argv.(2);
   sel_section () ;
-  print_string ("dir: " ^ !dir ^"\n");
-  close_in !res
+  close_in !res;
+  result ()
