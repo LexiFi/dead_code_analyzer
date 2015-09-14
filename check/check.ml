@@ -39,10 +39,10 @@ let sec_end = sec_part ~regexp:"-+"
 
 (******** Error messages ********)
 let error ?(why = "unknown reason") ~where () =
-  print_string where;
-  print_string ": ";
-  print_string why
-  |> print_newline
+  prerr_string where;
+  prerr_string ": ";
+  prerr_string why
+  |> prerr_newline
 
 (******** Processing ********)
 
@@ -106,14 +106,16 @@ let rec check_fn name line =
 let check_elt ?(f = fun x -> x) line x = f line = x
 
 let check_value line x =
-  if check_elt ~f:get_value line x then true
-  else (error ~why:("Got value: " ^ x) ~where:line; false)
+  if not (check_elt ~f:get_value line x) then (error ~why:("Got value: " ^ x) ~where:line; false)
+  else true
+
 let check_pos line pos = 
-  if check_elt ~f:get_pos line pos then true
-  else (error ~why:("Got position: " ^ pos) ~where:line; false)
+  if not (check_elt ~f:get_pos line pos) then (error ~why:("Got position: " ^ pos) ~where:line; false)
+  else true
+
 let check_info line info = 
-  if check_elt ~f:get_info line info then true
-  else (error ~why:("Got information: " ^ info) ~where:line; false)
+  if not (check_elt ~f:get_info line info) then (error ~why:("Got information: " ^ info) ~where:line; false)
+  else true
 
   (**** Blocks ****)
 
@@ -125,9 +127,10 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     else let comp = if fn then (get_filename line |> check_fn) line else "" in
       let unit =
         if not fn || comp <> "" then
-          (if (pos && not @@ check_pos comp @@ get_pos line)
+          (if not ((pos && not @@ check_pos comp @@ get_pos line)
             || (value && not @@ check_value comp @@ get_value line)
-            || (info && not @@ check_info comp @@ get_info line) then print_string line |> print_newline)
+            || (info && not @@ check_info comp @@ get_info line)) then print_string line |> print_newline
+          else print_newline ())
         else (error ~why:"don't know" ~where:line |> ignore)
       in
       section ~fn ~pos ~value ~info unit
