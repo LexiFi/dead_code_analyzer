@@ -1,1 +1,1 @@
-fooFn.mli:2: FooFn.g
+./examples/fooFn.mli:2: FooFn.g

@@ -1,2 +1,2 @@
-foo.ml:1: a NEVER
-foo.ml:1: b ALWAYS
+./examples/foo.ml:1: a NEVER
+./examples/foo.ml:1: b ALWAYS

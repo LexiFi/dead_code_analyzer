@@ -70,7 +70,7 @@ let rec check_fn name line =
         None -> begin
                   match !old_fn with
                       Some str when str = name ->
-                          error ~why:"Should not be detected" ~where:line ();
+                          error ~why:"Should not be detected." ~where:line ();
                           false
                     | _ -> fn := Some name;
                           try
@@ -120,8 +120,8 @@ let check_pos line pos =
 
 let check_info line info =
   if (check_elt ~f:get_info line info) <> 0 then
-    (error ~why:("Expected: " ^ info) ~where:line ();
-    nextl := ""; false)
+    (error ~why:("Expected: " ^ (get_info line)) ~where:!nextl ();
+    nextl := ""; comp := ""; false)
   else true
 
   (**** Blocks ****)
@@ -135,9 +135,10 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
       let unit =
         if not fn || !comp <> "" then
           (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
-            || (value && not @@ check_value !comp @@ get_value !nextl)
-          || (info && not @@ check_info !comp @@ get_info !nextl)) then print_string !nextl |> print_newline; nextl := ""; comp := "")
-          else nextl := ""; comp := ""
+              || (value && not @@ check_value !comp @@ get_value !nextl)
+              || (info && not @@ check_info !comp @@ get_info !nextl)) then
+            (print_endline !nextl; nextl := ""; comp := ""))
+        else nextl := "";
       in
       section ~fn ~pos ~value ~info unit)
   with End_of_file ->
