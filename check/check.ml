@@ -53,6 +53,7 @@ let res = ref (open_in_gen [Open_creat] 777 "trash.out") (* Output file computed
 let fn = ref None (* Filename that should currently be processed *)
 let in_file = ref !res (* File fn *)
 let old_fn = ref None (* Previous filename processed *)
+let extend = ref "" (* section specific extension *)
 
 let rec empty file =
   try
@@ -131,7 +132,8 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     if !nextl = "" then nextl := input_line !res;
     if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
     else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
-    else (comp := if fn && !comp = "" then (get_filename !nextl |> check_fn) !nextl else !comp;
+    else (comp := if fn && !comp = "" then
+      (get_filename !nextl ^ !extend |> check_fn) !nextl else !comp;
       let unit =
         if not fn || !comp <> "" then
           (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
@@ -157,7 +159,7 @@ let rec sel_section () =
             print_string "===================\n"
             |> section ~value:true |> sel_section
       | "CODING STYLE:" -> print_string "CODING STYLE:\n";
-            print_string "=============\n"
+            print_string "=============\n"; (extend := "style")
             |> section |> sel_section
       | _ -> sel_section ()
   with End_of_file -> ()
