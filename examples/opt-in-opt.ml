@@ -5,3 +5,5 @@ let foo ?a ?b () =
 let baz ?(b = 0) ?(a = 0) () = if a <> 0 then foo ~a () else foo ~a ~b ()
 
 let x = baz ~a:12
+
+(* let y = x () <- Necessary? *)
