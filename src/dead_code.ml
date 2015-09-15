@@ -78,9 +78,17 @@ let merge_nodes n1 n2 =
   else if n2.implem && not n1.implem then n1.ptr <- n2
   else if n1.loc < n2.loc then n2.ptr <- n1 else n1.ptr <- n2
 
+let merge_nodes_f n1 n2 =
+  let n1 = repr n1 and n2 = repr n2 in
+  n1.ptr <- n2
+
 let merge_locs l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
     merge_nodes (vd_node l1) (vd_node l2)
+
+let merge_locs_f l1 l2 =
+  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
+    merge_nodes_f (vd_node l1) (vd_node l2)
 
 let rec sign = function
   | Mty_signature sg -> sg
@@ -104,6 +112,21 @@ let is_unit t =
   | Tconstr (p, [], _) -> Path.same p Predef.path_unit
   | _ -> false
 
+let treat_opts val_loc args =
+  let loc = vd_node val_loc in
+  List.iter
+    (function
+      | (Asttypes.Optional lab, Some e, _) ->
+          let has_val =
+            match e.exp_desc with
+              | Texp_construct(_,{cstr_name="None";_},_) -> false
+              | _ -> true
+            in
+            opt_args := (loc, lab, has_val, e.exp_loc) :: !opt_args
+      | _ -> ()
+    )
+    args
+
 let collect_references =
   let super = Tast_mapper.default in
   let wrap f loc self x =
@@ -118,12 +141,23 @@ let collect_references =
     begin match i.str_desc with
       | Tstr_value (_, [
           {
-            vb_pat={pat_desc=Tpat_var(_, {loc = loc1; _}); _};
+            vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); _};
             vb_expr={exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _};
             _
           }
         ]) ->
-        merge_locs loc1 loc2
+        merge_locs_f loc1 loc2
+      | Tstr_value (_, [
+          {
+            vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); _};
+            vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args); _};
+            _
+          }
+        ]) ->
+        (
+          if not loc2.Location.loc_ghost then
+            treat_opts loc2 args);
+        merge_locs_f loc1 loc2
       | _ ->
         ()
     end;
@@ -150,22 +184,7 @@ let collect_references =
     | Texp_let (Nonrecursive, [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}], {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args)
-      when not val_loc.Location.loc_ghost ->
-        let loc = vd_node val_loc in
-
-        List.iter
-          (function
-            | (Asttypes.Optional lab, Some e, _) ->
-                let has_val =
-                  match e.exp_desc with
-                  | Texp_construct(_,{cstr_name="None";_},_) -> false
-                  | _ -> true
-                in
-                opt_args := (loc, lab, has_val, e.exp_loc) :: !opt_args
-            | _ -> ()
-          )
-          args
-
+      when not val_loc.Location.loc_ghost -> treat_opts val_loc args
     | _ ->
         ()
     end;
