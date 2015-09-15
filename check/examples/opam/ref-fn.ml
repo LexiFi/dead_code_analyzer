@@ -1,2 +1,2 @@
-./examples/false/ref-fn.ml:1: a NEVER
-./examples/false/ref-fn.ml:1: c ALWAYS
+./examples/opam/ref-fn.ml:1: a NEVER
+./examples/opam/ref-fn.ml:1: c ALWAYS

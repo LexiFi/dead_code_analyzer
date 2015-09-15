@@ -1,1 +1,1 @@
-./examples/false/refFn.mli:3: RefFn.x
+./examples/opam/refFn.mli:3: RefFn.x
