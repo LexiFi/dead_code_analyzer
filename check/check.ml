@@ -161,13 +161,13 @@ let rec sel_section () =
   try
     match (input_line !res) with
         "UNUSED EXPORTED VALUES:" -> print_string "UNUSED EXPORTED VALUES:\n";
-            print_string "=======================\n"
+            print_string "=======================" |> print_newline
             |> section |> sel_section
       | "OPTIONAL ARGUMENTS:" -> print_string "OPTIONAL ARGUMENTS:\n";
-            print_string "===================\n"
+            print_string "===================" |> print_newline
             |> section ~value:true |> sel_section
       | "CODING STYLE:" -> print_string "CODING STYLE:\n";
-            print_string "=============\n"; (extend := "style")
+            print_string "=============" |> print_newline; (extend := "style")
             |> section |> sel_section
       | _ -> sel_section ()
   with End_of_file -> ()
