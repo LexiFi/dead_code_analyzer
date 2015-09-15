@@ -4,7 +4,7 @@ let bar ?a = foo ~a
 let baz = foo
 
 let x = bar ~a:0 ()
-let y = baz ()
+let y = baz ~a:0 ()
 
 
 (* foo's a and b never are used; bar's a always is used *)
