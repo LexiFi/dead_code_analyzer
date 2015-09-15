@@ -78,6 +78,7 @@ let rec check_fn name line =
                   match !old_fn with
                       Some str when str = name ->
                           error ~why:"Should not be detected" ~where:line ();
+                          nextl := "";
                           false
                     | _ -> fn := Some name;
                           try
@@ -147,7 +148,6 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
               || (value && not @@ check_value !comp @@ get_value !nextl)
               || (info && not @@ check_info !comp @@ get_info !nextl)) then
             (print_endline !nextl; nextl := ""; comp := ""))
-        else nextl := ""
       in
       section ~fn ~pos ~value ~info unit
     end
