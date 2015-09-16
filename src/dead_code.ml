@@ -68,7 +68,7 @@ let rec next_fn_node n =
   else next_fn_node n.ptr
 
 let vd_node ?(args = []) loc =
-  assert(not loc.Location.loc_ghost);
+  assert (not loc.Location.loc_ghost);
   try (Hashtbl.find vd_nodes loc)
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
@@ -107,7 +107,8 @@ let treat_opts val_loc args =
             in
             let rec locate loc =
               if loc == loc.ptr || List.exists (function x -> Ident.name x = lab) loc.args then loc
-              else locate @@ next_fn_node loc in
+              else locate @@ next_fn_node loc
+            in
             opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
       | _ -> ()
     )
@@ -117,9 +118,7 @@ let rec build_node_args node = function
   | Texp_function (_, [{c_lhs={pat_desc=Tpat_var(var, _);_}; c_rhs={exp_desc=exp; _}; _}], _) ->
       node.args <- var::node.args; build_node_args node exp
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
-        (
-          if not loc2.Location.loc_ghost then
-            treat_opts loc2 args);
+      if not loc2.Location.loc_ghost then treat_opts loc2 args;
       merge_locs_f ~search:next_fn_node node.loc loc2
   | _ -> ()
 
@@ -146,53 +145,6 @@ let is_unit t =
   | Tconstr (p, [], _) -> Path.same p Predef.path_unit
   | _ -> false
 
-(* Debugging help:
-let rec print_pat_exp pat exp = match pat with
-    |Tpat_var (x, _) -> prerr_string " Tpat_var("; prerr_string (Ident.name x ^ ")"); print_exp exp
-    |Tpat_construct _ -> prerr_string " Tpat_construct"
-    |_ -> prerr_string " not interesting"
-
-and print_exp exp = match exp with
-    |Texp_ident _ -> prerr_string" Texp_ident"
-    | Texp_constant _ -> prerr_string" Texp_constant"
-    | Texp_let _ -> prerr_string" Texp_let"
-    | Texp_function (_, l, _) -> prerr_string" Texp_function ";
-      List.iter (fun {c_lhs={pat_desc=pat; _}; c_rhs={exp_desc=exp; _}; _} -> print_pat_exp pat exp) l
-    | Texp_apply _ -> prerr_string" Texp_apply"
-    | Texp_match _ -> prerr_string" Texp_match"
-    | Texp_try _ -> prerr_string" Texp_try"
-    | Texp_tuple _ -> prerr_string" Texp_tuple"
-    | Texp_construct (_, _, l) -> prerr_string" Texp_construct "; List.iter (fun e -> print_exp e.exp_desc) l
-    | Texp_variant _ -> prerr_string" Texp_variant"
-    | Texp_record _ -> prerr_string" Texp_record"
-    | Texp_field _ -> prerr_string" Texp_field"
-    | Texp_setfield _ -> prerr_string" Texp_setfield"
-    | Texp_array _ -> prerr_string" Texp_array"
-    | Texp_ifthenelse _ -> prerr_string" Texp_ifthenelse"
-    | Texp_sequence _ -> prerr_string" Texp_sequence"
-    | Texp_while _ -> prerr_string" Texp_while"
-    | Texp_for _ -> prerr_string" Texp_for"
-    | Texp_send _ -> prerr_string" Texp_send"
-    | Texp_new _ -> prerr_string" Texp_new"
-    | Texp_instvar _ -> prerr_string" Texp_instvar"
-    | Texp_setinstvar _ -> prerr_string" Texp_setinstvar"
-    | Texp_override _ -> prerr_string" Texp_override"
-    | Texp_letmodule _ -> prerr_string" Texp_letmodule"
-    | Texp_assert _ -> prerr_string" Texp_assert"
-    | Texp_lazy _ -> prerr_string" Texp_lazy"
-    | Texp_object _ -> prerr_string" Texp_object"
-    | Texp_pack _ -> prerr_string" Texp_pack"
-
-let print_struct s =
-  let (file, line, col) = Location.get_pos_info s.str_loc.loc_start in
-  prerr_string (file ^ " "); prerr_int line; prerr_char ' '; prerr_int col; prerr_char ' ';
-  (match s.str_desc with
-  |Tstr_value (_, l) -> prerr_string "Tstr_value";
-    List.iter (function {vb_pat={pat_desc; _}; vb_expr={exp_desc; _}; _} -> print_pat_exp pat_desc exp_desc) l; ()
-  |Tstr_open _ -> prerr_string "Tstr_open"
-  |_ -> prerr_string "not interesting");
-  prerr_newline ()
-*)
 let collect_references =
   let super = Tast_mapper.default in
   let wrap f loc self x =
@@ -216,21 +168,11 @@ let collect_references =
       | Tstr_value (_, [
           {
             vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); _};
-            vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args); _};
+            vb_expr={exp_desc=(Texp_function _ | Texp_apply _) as exp_desc; _};
             _
           }
         ]) ->
-        (
-          if not loc2.Location.loc_ghost then
-            treat_opts loc2 args);
-        merge_locs_f ~search:next_fn_node loc1 loc2
-      | Tstr_value (_, [
-          {
-            vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); _};
-            vb_expr={exp_desc=Texp_function _ as exp_desc; _};
-            _
-          }
-        ]) -> build_node_args (vd_node loc1) exp_desc
+        build_node_args (vd_node loc1) exp_desc
       | _ ->
         ()
     end;
@@ -368,16 +310,16 @@ let analyse_opt_args () =
   List.iter
     (fun (loc, lab, has_val, callsite) ->
       let loc = if loc.args = [] then next_fn_node loc else loc in
-       let slot =
-         try Hashtbl.find tbl (loc.loc, lab)
-         with Not_found ->
-           let r = {with_val = []; without_val = []} in
-           all := (loc.loc, lab, r) :: !all;
-           Hashtbl.add tbl (loc.loc, lab) r;
-           r
-       in
-       if has_val then slot.with_val <- callsite :: slot.with_val
-       else slot.without_val <- callsite :: slot.without_val
+      let slot =
+        try Hashtbl.find tbl (loc.loc, lab)
+        with Not_found ->
+          let r = {with_val = []; without_val = []} in
+          all := (loc.loc, lab, r) :: !all;
+          Hashtbl.add tbl (loc.loc, lab) r;
+          r
+      in
+      if has_val then slot.with_val <- callsite :: slot.with_val
+      else slot.without_val <- callsite :: slot.without_val
     )
     !opt_args;
   List.sort compare !all
