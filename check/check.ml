@@ -88,6 +88,7 @@ let rec check_fn name line =
                             error ~why:"File not found or cannot be opened."
                                   ~where:(!dir ^ name) ();
                             fn := None;
+                            nextl := "";
                             false
                 end
       | Some str when str = name ->
