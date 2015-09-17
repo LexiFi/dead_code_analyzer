@@ -97,6 +97,7 @@ let merge_locs_f ?search l1 l2 =
 
 let treat_opts val_loc args =
   let loc = vd_node val_loc in
+  let tbl = Hashtbl.create 256 in
   List.iter
     (function
       | (Asttypes.Optional lab, Some e, _) ->
@@ -105,9 +106,15 @@ let treat_opts val_loc args =
               | Texp_construct(_,{cstr_name="None";_},_) -> false
               | _ -> true
             in
+            let occur = ref (
+              try Hashtbl.find tbl lab + 1
+              with Not_found -> Hashtbl.add tbl lab 1; 1)
+            in
+            let count x l = List.length @@ List.find_all (( =) x) l in
             let rec locate loc =
-              if loc == loc.ptr || List.exists (( = ) lab ) loc.args then loc
-              else locate @@ next_fn_node loc
+              let count = if loc == loc.ptr then 0 else count lab loc.args in
+              if loc == loc.ptr || count >= !occur then loc
+              else (occur := !occur - count; locate @@ next_fn_node loc)
             in
             opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
       | _ -> ()
@@ -133,6 +140,7 @@ let rec sign = function
   | Mty_signature sg -> sg
   | Mty_functor (_, _, t) -> sign t
   | Mty_ident _ | Mty_alias _ -> []
+
 
 let rec collect_export path u = function
   | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
