@@ -7,7 +7,7 @@ let x = bar ~a:0 ()
 let y = baz ~a:0 ()
 
 
-(* foo's a and b never are used; bar's a always is used *)
+(* foo's a and b are never used; bar's a is always used *)
 let foo ?a ?b () = 0
 let bar ?a = foo
 
