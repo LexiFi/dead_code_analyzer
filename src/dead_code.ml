@@ -46,7 +46,7 @@ type vd_node =
     loc: Location.t;
     mutable ptr: vd_node;
     implem: bool;
-    mutable args: Ident.t list;
+    mutable args: string list;
   }
 
 let opt_args = ref []
@@ -106,7 +106,7 @@ let treat_opts val_loc args =
               | _ -> true
             in
             let rec locate loc =
-              if loc == loc.ptr || List.exists (function x -> Ident.name x = lab) loc.args then loc
+              if loc == loc.ptr || List.exists (( = ) lab ) loc.args then loc
               else locate @@ next_fn_node loc
             in
             opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
@@ -116,7 +116,7 @@ let treat_opts val_loc args =
 
 let rec build_node_args node = function
   | Texp_function (_, [{c_lhs={pat_desc=Tpat_var(var, _);_}; c_rhs={exp_desc=exp; _}; _}], _) ->
-      node.args <- var::node.args; build_node_args node exp
+      node.args <- Ident.name var::node.args; build_node_args node exp
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
       if not loc2.Location.loc_ghost then treat_opts loc2 args;
       merge_locs_f ~search:next_fn_node node.loc loc2
@@ -144,6 +144,76 @@ let is_unit t =
   match (Ctype.repr t).desc with
   | Tconstr (p, [], _) -> Path.same p Predef.path_unit
   | _ -> false
+
+(*let print_expr e = match e.exp_desc with
+    |Texp_ident (_, {txt=i; _}, _) -> prerr_string(" Texp_ident(" ^ Longident.last i ^ ")")
+    (*| Texp_constant _ -> prerr_string" Texp_constant"
+    | Texp_let _ -> prerr_string" Texp_let"
+    | Texp_function _ -> prerr_string" Texp_function "*)
+    | Texp_apply _ -> prerr_string" Texp_apply"
+    (*| Texp_match _ -> prerr_string" Texp_match"
+    | Texp_try _ -> prerr_string" Texp_try"
+    | Texp_tuple _ -> prerr_string" Texp_tuple"
+    | Texp_construct _ -> prerr_string" Texp_construct "
+    | Texp_variant _ -> prerr_string" Texp_variant"
+    | Texp_record _ -> prerr_string" Texp_record"
+    | Texp_field _ -> prerr_string" Texp_field"
+    | Texp_setfield _ -> prerr_string" Texp_setfield"
+    | Texp_array _ -> prerr_string" Texp_array"
+    | Texp_ifthenelse _ -> prerr_string" Texp_ifthenelse"
+    | Texp_sequence _ -> prerr_string" Texp_sequence"
+    | Texp_while _ -> prerr_string" Texp_while"
+    | Texp_for _ -> prerr_string" Texp_for"
+    | Texp_send _ -> prerr_string" Texp_send"
+    | Texp_new _ -> prerr_string" Texp_new"
+    | Texp_instvar _ -> prerr_string" Texp_instvar"
+    | Texp_setinstvar _ -> prerr_string" Texp_setinstvar"
+    | Texp_override _ -> prerr_string" Texp_override"
+    | Texp_letmodule _ -> prerr_string" Texp_letmodule"
+    | Texp_assert _ -> prerr_string" Texp_assert"
+    | Texp_lazy _ -> prerr_string" Texp_lazy"
+    | Texp_object _ -> prerr_string" Texp_object"
+    | Texp_pack _ -> prerr_string" Texp_pack"*)
+    |_ -> prerr_string " _"
+
+let print_pat p = match p.pat_desc with
+    |Tpat_var (x, _) -> prerr_string " Tpat_var("; prerr_string (Ident.name x ^ ")")
+    |Tpat_construct _ -> prerr_string " Tpat_construct"
+    |_ -> prerr_string " _"
+
+let print_struct_item s =
+    prerr_newline ();
+    prerr_newline ();
+    let (file, line, col) = Location.get_pos_info s.str_loc.loc_start in
+    prerr_string (file ^ " "); prerr_int line; prerr_char ' '; prerr_int col; prerr_char ' ';
+    (match s.str_desc with
+    |Tstr_value _ -> prerr_string "Tstr_value";
+    |Tstr_open _ -> prerr_string "Tstr_open"
+    |_ -> prerr_string "not interesting");
+    prerr_newline ();
+    prerr_newline ()
+
+let print_structure =
+  let super = Tast_mapper.default in
+  let wrap f loc self x =
+    let l = !last_loc in
+    let ll = loc x in
+    if ll <> Location.none then last_loc := ll;
+    let r = f self x in
+    last_loc := l;
+    r
+  in
+  let pat self p = print_pat p; super.pat self p
+  in
+  let expr self e = print_expr e; super.expr self e
+  in
+  let structure_item self s = print_struct_item s; super.structure_item self s
+  in
+  let expr = wrap expr (fun x -> x.exp_loc) in
+  let pat = wrap pat (fun x -> x.pat_loc) in
+  let structure_item = wrap structure_item (fun x -> x.str_loc) in
+  {super with structure_item; expr; pat}
+*)
 
 let collect_references =
   let super = Tast_mapper.default in
@@ -199,7 +269,7 @@ let collect_references =
     | Texp_let (Nonrecursive, [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}], {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args)
-      when not val_loc.Location.loc_ghost -> treat_opts val_loc args
+    when not val_loc.Location.loc_ghost -> treat_opts val_loc args
     | _ ->
         ()
     end;
