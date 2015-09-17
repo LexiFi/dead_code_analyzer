@@ -1,6 +1,5 @@
 #Fixing
 - Call in if
-- Fun ref
 - Location.loc_ghost
 
 #Testing
@@ -18,4 +17,4 @@
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP.
 - The 'CODING STYLE' section may have both FN and FP.
 
-ratio: *74.07%* succesful (non exhaustive: not all known FN, may exist unknown FP)
+ratio: *75.93%* succesful (non exhaustive: not all known FN, may exist unknown FP)
