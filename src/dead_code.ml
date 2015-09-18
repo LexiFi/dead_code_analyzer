@@ -121,8 +121,16 @@ let treat_opts val_loc args =
     )
     args
 
-let rec build_node_args node = function
-  | Texp_function (_, [{c_lhs={pat_desc=Tpat_var(var, _);_}; c_rhs={exp_desc=exp; _}; _}], _) ->
+let rec check_type t loc = match t.desc with
+  | Tarrow (lab, _, t, _) -> begin match lab with 
+    | Optional _ -> style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
+    | _ -> check_type t loc end
+  | Tlink t -> check_type t loc
+  | _ -> ()
+
+let rec build_node_args node expr = match expr.exp_desc with
+  | Texp_function (_, [{c_lhs={pat_desc=Tpat_var(var, _); pat_type; _}; c_rhs=exp; _}], _) ->
+      check_type pat_type expr.exp_loc;
       node.args <- Ident.name var::node.args; build_node_args node exp
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
       if not loc2.Location.loc_ghost then treat_opts loc2 args;
@@ -180,10 +188,10 @@ let collect_references =
         ]) ->
         merge_locs_f ~search:next_fn_node loc1 loc2
       | Tstr_value (_, l) -> begin match tip l with
-        | [ { vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); _};
-              vb_expr={exp_desc=(Texp_function _ | Texp_apply _) as exp_desc; _};
+        | [ { vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); pat_type; _};
+              vb_expr={exp_desc=(Texp_function _ | Texp_apply _) as exp_desc; exp_type;_} as exp;
               _ } ] ->
-          build_node_args (vd_node loc1) exp_desc
+          build_node_args (vd_node loc1) exp
         |_ -> () end
       | _ ->
         ()
