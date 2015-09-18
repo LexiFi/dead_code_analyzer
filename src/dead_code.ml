@@ -46,6 +46,7 @@ type vd_node =
     loc: Location.t;
     mutable ptr: vd_node;
     implem: bool;
+    mutable args: string list;
   }
 
 let opt_args = ref []
@@ -62,30 +63,92 @@ let rec repr n =
   if n.ptr == n then n
   else repr n.ptr
 
-let vd_node loc =
-  assert(not loc.Location.loc_ghost);
-  try repr (Hashtbl.find vd_nodes loc)
+let rec next_fn_node n =
+  if n.ptr == n || n.ptr.args <> [] then n.ptr
+  else next_fn_node n.ptr
+
+let vd_node ?(args = []) loc =
+  assert (not loc.Location.loc_ghost);
+  try (Hashtbl.find vd_nodes loc)
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
     let implem = Filename.check_suffix fn ".mf" || Filename.check_suffix fn ".ml"  in
-    let rec r = {loc; ptr = r; implem} in
+    let rec r = {loc; ptr = r; implem; args} in
     Hashtbl.add vd_nodes loc r;
     r
 
-let merge_nodes n1 n2 =
-  let n1 = repr n1 and n2 = repr n2 in
+let merge_nodes ?(search = repr) n1 n2 =
+  let n1 = search n1 and n2 = search n2 in
   if n1.implem && not n2.implem then n2.ptr <- n1
   else if n2.implem && not n1.implem then n1.ptr <- n2
   else if n1.loc < n2.loc then n2.ptr <- n1 else n1.ptr <- n2
 
-let merge_locs l1 l2 =
+let merge_nodes_f ?(search = repr) n1 n2 =
+  let n1 = search n1 and n2 = search n2 in
+  n1.ptr <- n2
+
+let merge_locs ?search l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    merge_nodes (vd_node l1) (vd_node l2)
+    merge_nodes ?search (vd_node l1) (vd_node l2)
+
+let merge_locs_f ?search l1 l2 =
+  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
+    merge_nodes_f ?search (vd_node l1) (vd_node l2)
+
+let treat_opts val_loc args =
+  let loc = vd_node val_loc in
+  let tbl = Hashtbl.create 256 in
+  List.iter
+    (function
+      | (Asttypes.Optional lab, Some e, _) ->
+          let has_val =
+            match e.exp_desc with
+              | Texp_construct(_,{cstr_name="None";_},_) -> false
+              | _ -> true
+            in
+            let occur = ref (
+              try Hashtbl.find tbl lab + 1
+              with Not_found -> Hashtbl.add tbl lab 1; 1)
+            in
+            let count x l = List.length @@ List.find_all (( =) x) l in
+            let rec locate loc =
+              let count = if loc == loc.ptr then 0 else count lab loc.args in
+              if loc == loc.ptr || count >= !occur then loc
+              else (occur := !occur - count; locate @@ next_fn_node loc)
+            in
+            opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
+      | _ -> ()
+    )
+    args
+
+let rec check_type t loc = match t.desc with
+  | Tarrow (lab, _, t, _) -> begin match lab with 
+    | Optional _ -> style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
+    | _ -> check_type t loc end
+  | Tlink t -> check_type t loc
+  | _ -> ()
+
+let rec build_node_args node expr = match expr.exp_desc with
+  | Texp_function (_, [{c_lhs={pat_desc=Tpat_var(var, _); pat_type; _}; c_rhs=exp; _}], _) ->
+      check_type pat_type expr.exp_loc;
+      node.args <- Ident.name var::node.args; build_node_args node exp
+  | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
+      if not loc2.Location.loc_ghost then treat_opts loc2 args;
+      merge_locs_f ~search:next_fn_node node.loc loc2
+  | Texp_ident(_, _, {val_loc=loc2}) ->
+      merge_locs_f ~search:next_fn_node node.loc loc2
+  | _ -> ()
+
+let rec tip = function
+  | [] -> []
+  | [e] -> [e]
+  | _::l -> tip l
 
 let rec sign = function
   | Mty_signature sg -> sg
   | Mty_functor (_, _, t) -> sign t
   | Mty_ident _ | Mty_alias _ -> []
+
 
 let rec collect_export path u = function
   | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
@@ -118,12 +181,18 @@ let collect_references =
     begin match i.str_desc with
       | Tstr_value (_, [
           {
-            vb_pat={pat_desc=Tpat_var(_, {loc = loc1; _}); _};
+            vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); _};
             vb_expr={exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _};
             _
           }
         ]) ->
-        merge_locs loc1 loc2
+        merge_locs_f ~search:next_fn_node loc1 loc2
+      | Tstr_value (_, l) -> begin match tip l with
+        | [ { vb_pat={pat_desc=Tpat_var(_, {loc=loc1; _}); pat_type; _};
+              vb_expr={exp_desc=(Texp_function _ | Texp_apply _) as exp_desc; exp_type;_} as exp;
+              _ } ] ->
+          build_node_args (vd_node loc1) exp
+        |_ -> () end
       | _ ->
         ()
     end;
@@ -150,22 +219,7 @@ let collect_references =
     | Texp_let (Nonrecursive, [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}], {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args)
-      when not val_loc.Location.loc_ghost ->
-        let loc = vd_node val_loc in
-
-        List.iter
-          (function
-            | (Asttypes.Optional lab, Some e, _) ->
-                let has_val =
-                  match e.exp_desc with
-                  | Texp_construct(_,{cstr_name="None";_},_) -> false
-                  | _ -> true
-                in
-                opt_args := (loc, lab, has_val, e.exp_loc) :: !opt_args
-            | _ -> ()
-          )
-          args
-
+    when not val_loc.Location.loc_ghost -> treat_opts val_loc args
     | _ ->
         ()
     end;
@@ -275,17 +329,17 @@ let analyse_opt_args () =
   let tbl = Hashtbl.create 256 in
   List.iter
     (fun (loc, lab, has_val, callsite) ->
-       let loc = repr loc in
-       let slot =
-         try Hashtbl.find tbl (loc.loc, lab)
-         with Not_found ->
-           let r = {with_val = []; without_val = []} in
-           all := (loc.loc, lab, r) :: !all;
-           Hashtbl.add tbl (loc.loc, lab) r;
-           r
-       in
-       if has_val then slot.with_val <- callsite :: slot.with_val
-       else slot.without_val <- callsite :: slot.without_val
+      let loc = if loc.args = [] then next_fn_node loc else loc in
+      let slot =
+        try Hashtbl.find tbl (loc.loc, lab)
+        with Not_found ->
+          let r = {with_val = []; without_val = []} in
+          all := (loc.loc, lab, r) :: !all;
+          Hashtbl.add tbl (loc.loc, lab) r;
+          r
+      in
+      if has_val then slot.with_val <- callsite :: slot.with_val
+      else slot.without_val <- callsite :: slot.without_val
     )
     !opt_args;
   List.sort compare !all
