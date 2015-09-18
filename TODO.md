@@ -1,9 +1,8 @@
 #Fixing
-- Call in if
-- Location.loc_ghost
+- Partial application
+- Location.loc_ghost (MAIN ISSUE)
 
 #Testing
-
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
 - \[ \] Test suite
 	+ \[X\] Detect FP
@@ -17,4 +16,4 @@
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP.
 - The 'CODING STYLE' section may have both FN and FP.
 
-ratio: *75.93%* succesful (non exhaustive: not all known FN, may exist unknown FP)
+ratio: *82.456%* succesful (non exhaustive: not all known FN, may exist unknown FP)
