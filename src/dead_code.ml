@@ -49,6 +49,7 @@ type vd_node =
     implem: bool;
     mutable args: string list;
     mutable need: int;
+    mutable used: bool;
   }
 
 let opt_args = ref []
@@ -63,11 +64,15 @@ let vd_nodes = Hashtbl.create 256
 
 let rec repr n =
   if n.ptr == n then n
-  else (if n.need = 0 then n.need <- -1; repr n.ptr)
+  else (if n.need = 0 then
+      n.used <- true;
+    repr n.ptr)
 
 let rec next_fn_node n =
   if n.ptr == n || n.ptr.args <> [] || n.ptr.need > 0 then n.ptr
-  else (if n.need = 0 then n.need <- -1; next_fn_node n.ptr)
+  else (if n.need = 0 then
+      n.used <- true;
+    next_fn_node n.ptr)
 
 let vd_node ?(name = "_unknown_") loc =
   assert (not loc.Location.loc_ghost);
@@ -75,31 +80,32 @@ let vd_node ?(name = "_unknown_") loc =
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
     let implem = Filename.check_suffix fn ".mf" || Filename.check_suffix fn ".ml"  in
-    let rec r = {name; loc; ptr = r; implem; args = []; need = 0} in
+    let rec r = {name; loc; ptr = r; implem; args = []; need = 0; used = false} in
     Hashtbl.add vd_nodes loc r;
     r
 
-let merge_nodes ?(search = repr) n1 n2 =
-  let n1 = search n1 and n2 = search n2 in
+let merge_nodes n1 n2 =
+  let n1 = repr n1 and n2 = repr n2 in
   if n1.implem && not n2.implem then n2.ptr <- n1
   else if n2.implem && not n1.implem then n1.ptr <- n2
   else if n1.loc < n2.loc then n2.ptr <- n1 else n1.ptr <- n2;
-  n2.need <- -1; n1.need <- -1
+  n1.used <- true;
+  n2.used <- true
 
-let merge_nodes_f ?(search = repr) n1 n2 =
+let merge_nodes_f ~search n1 n2 =
   let n1 = search n1 and n2 = search n2 in
-  if n2.need = 0 then n2.need <- -1;
+  if n2.need = 0 then n2.used <- true;
   n1.ptr <- n2
 
-let merge_locs ?search l1 l2 =
+let merge_locs l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    merge_nodes ?search (vd_node l1) (vd_node l2)
+    merge_nodes (vd_node l1) (vd_node l2)
 
-let merge_locs_f ?search ?name1 ?name2 l1 l2 =
+let merge_locs_f ~search ?name l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    merge_nodes_f ?search (vd_node ?name:name1 l1) (vd_node ?name:name2 l2)
+    merge_nodes_f ~search (vd_node ?name l1) (vd_node l2)
 
-let treat_opts val_loc args =
+let rec treat_args val_loc args =
   let loc = vd_node val_loc in
   let tbl = Hashtbl.create 256 in
   let use = ref 0 in
@@ -110,18 +116,29 @@ let treat_opts val_loc args =
             match e.exp_desc with
               | Texp_construct(_,{cstr_name="None";_},_) -> false
               | _ -> true
-            in
-            let occur = ref (
-              try Hashtbl.find tbl lab + 1
-              with Not_found -> Hashtbl.add tbl lab 1; 1)
-            in
-            let count x l = List.length @@ List.find_all (( =) x) l in
-            let rec locate loc =
-              let count = if loc == loc.ptr then 0 else count lab loc.args in
-              if loc == loc.ptr || count >= !occur then loc
-              else (occur := !occur - count; locate @@ next_fn_node loc)
-            in
-            opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
+          in
+          let occur = ref (
+            try Hashtbl.find tbl lab + 1
+            with Not_found -> Hashtbl.add tbl lab 1; 1)
+          in
+          let count x l = List.length @@ List.find_all (( =) x) l in
+          let rec locate loc =
+            let count = if loc == loc.ptr then 0 else count lab loc.args in
+            if loc == loc.ptr || count >= !occur then loc
+            else (occur := !occur - count; locate @@ next_fn_node loc)
+          in
+          opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
+      | (_, Some e, _)  ->
+          begin match e.exp_desc with
+            | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
+                if not val_loc.Location.loc_ghost then
+                  treat_args val_loc args; (vd_node val_loc).used <- true
+            | Texp_ident(_, _, {val_loc; _}) ->
+                if not val_loc.Location.loc_ghost then
+                  (vd_node val_loc).used <- true
+            | _ -> ()
+          end;
+          incr use
       | _ -> incr use
     )
     args;
@@ -132,7 +149,7 @@ let treat_opts val_loc args =
     let rec check_application loc =
       if !use >= loc.need then (
         use := !use - loc.need;
-        loc.need <- -1;
+        loc.used <- true;
         let next = locate loc in
         if not (loc == next) then
           check_application next)
@@ -155,7 +172,7 @@ let rec build_node_args node expr = match expr.exp_desc with
       )
       lab
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
-      if not loc2.Location.loc_ghost then treat_opts loc2 args;
+      if not loc2.Location.loc_ghost then treat_args loc2 args;
       merge_locs_f ~search:next_fn_node node.loc loc2
   | Texp_ident(_, _, {val_loc=loc2}) ->
       merge_locs_f ~search:next_fn_node node.loc loc2
@@ -208,7 +225,7 @@ let collect_references =
             _
           }
         ]) ->
-        merge_locs_f ~search:next_fn_node ~name1:(Ident.name id) loc1 loc2
+        merge_locs_f ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
       | Tstr_value (_, l) -> begin match tip l with
         | [ { vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
               vb_expr={exp_desc=(Texp_function _ | Texp_apply _); _} as exp;
@@ -241,7 +258,7 @@ let collect_references =
     | Texp_let (Nonrecursive, [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}], {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args)
-    when not val_loc.Location.loc_ghost -> treat_opts val_loc args
+    when not val_loc.Location.loc_ghost -> treat_args val_loc args
     | _ ->
         ()
     end;
@@ -375,14 +392,14 @@ let report_opt_args l =
          prloc loc;
          Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS")
       )
-      l;
+      @@ List.fast_sort compare l;
     separator ();
   end
 
 let report_style () =
   if !style <> [] then begin
     section "CODING STYLE";
-    List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s) !style;
+    List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s) @@ List.fast_sort compare !style;
     separator ();
   end
 
@@ -394,7 +411,7 @@ let report_unused_exported () =
       (fun (fn, path, loc) ->
          prloc ~fn loc;
          print_endline (String.concat "." (List.rev_map Ident.name path));
-      ) l;
+      ) @@ List.fast_sort compare l;
     separator ();
   end
 
@@ -405,7 +422,7 @@ let report_unused () =
     (fun (fn, path, _) -> unit fn = unit node.loc.loc_start.pos_fname && Ident.name @@ List.hd path = node.name)
     !vds in
   let l = Hashtbl.fold
-    (fun _ node l -> if node.need >= 0 && not @@ exportable node then node::l else l)
+    (fun _ node l -> if not node.used && not (exportable node) then node::l else l)
     vd_nodes [] in
   if l <> [] then begin
     section "UNUSED VALUES";
