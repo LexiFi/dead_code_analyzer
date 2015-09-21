@@ -63,11 +63,11 @@ let vd_nodes = Hashtbl.create 256
 
 let rec repr n =
   if n.ptr == n then n
-  else repr n.ptr
+  else (if n.need = 0 then n.need <- -1; repr n.ptr)
 
 let rec next_fn_node n =
   if n.ptr == n || n.ptr.args <> [] || n.ptr.need > 0 then n.ptr
-  else next_fn_node n.ptr
+  else (if n.need = 0 then n.need <- -1; next_fn_node n.ptr)
 
 let vd_node ?(name = "_unknown_") loc =
   assert (not loc.Location.loc_ghost);
@@ -136,7 +136,7 @@ let treat_opts val_loc args =
         let next = locate loc in
         if not (loc == next) then
           check_application next)
-    in check_application @@ locate loc
+    in check_application loc
 
 let rec check_type t loc = match t.desc with
   | Tarrow (lab, _, t, _) -> begin match lab with 

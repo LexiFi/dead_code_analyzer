@@ -8,8 +8,9 @@
 
 
 #Note
-- The 'UNUSED EXPORTED VALUES' section has FN. No FP to report to this section yet
+- The 'UNUSED EXPORTED VALUES' section may have both FN and FP (none observed yet).
+- The 'UNUSED VALUES' section has FP. No FN to report to this section yet
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP.
-- The 'CODING STYLE' section may have both FN and FP.
+- The 'CODING STYLE' section may have both FN and FP (none observed yet).
 
-ratio: *82.456%* succesful (non exhaustive: not all known FN, may exist unknown FP)
+ratio: *85.%* succesful (non exhaustive: not all known FN, may exist unknown FP)
