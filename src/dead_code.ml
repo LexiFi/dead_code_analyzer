@@ -413,7 +413,7 @@ let report_unused () =
       (fun node ->
          prloc node.loc;
          print_endline node.name;
-      ) @@ List.fast_sort compare l;
+      ) @@ List.fast_sort (fun n1 n2 -> compare n1.loc n2.loc) l;
     separator ();
   end
 
