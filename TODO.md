@@ -1,3 +1,8 @@
+#FIX
+- Conditional branching
+- Partial application as argument
+- Construct patterns and expressions (ex: ref)
+
 #Testing
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
 - \[ \] Test suite
