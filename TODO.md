@@ -1,7 +1,3 @@
-#Fixing
-- Partial application
-- Location.loc_ghost (MAIN ISSUE)
-
 #Testing
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
 - \[ \] Test suite
