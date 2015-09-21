@@ -1,2 +1,1 @@
-./examples/opam/match-opt.ml:1: a ALWAYS
-./examples/opam/match-opt.ml:3: b NEVER
+./examples/opam/match-opt.ml:8: l

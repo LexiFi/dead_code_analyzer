@@ -1,6 +1,3 @@
-./examples/opam/alias-opt.ml:2: a ALWAYS
-./examples/opam/alias-opt.ml:2: b NEVER
-./examples/opam/alias-opt.ml:3: a ALWAYS
-./examples/opam/alias-opt.ml:11: a NEVER
-./examples/opam/alias-opt.ml:11: b NEVER
-./examples/opam/alias-opt.ml:12: a ALWAYS
+./examples/opam/alias-opt.ml:6: x
+./examples/opam/alias-opt.ml:7: y
+./examples/opam/alias-opt.ml:14: x
