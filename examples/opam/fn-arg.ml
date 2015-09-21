@@ -1,10 +1,10 @@
-let f ?a ?b (* NEVER? *) c = c
+let f ?a ?b c = c
 
 let g ?b f x = f ?b x
 
 let () = ignore (g (f ~a:1) 0)
 
-let h ?a ?b (* ALWAYS? *) c = c
+let h ?a ?b c = c
 
 let i ?c f x= f ?b:c x
 

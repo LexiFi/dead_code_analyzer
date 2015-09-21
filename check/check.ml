@@ -164,8 +164,11 @@ let rec sel_section () =
         "UNUSED EXPORTED VALUES:" -> print_string "UNUSED EXPORTED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
+      | "UNUSED VALUES:" -> print_string "UNUSED VALUES:\n";
+            print_string "=======================" |> print_newline
+            |> section |> sel_section
       | "OPTIONAL ARGUMENTS:" -> print_string "OPTIONAL ARGUMENTS:\n";
-            print_string "===================" |> print_newline
+            print_string "===================" |> print_newline; (extend := "opt")
             |> section ~value:true |> sel_section
       | "CODING STYLE:" -> print_string "CODING STYLE:\n";
             print_string "=============" |> print_newline; (extend := "style")
