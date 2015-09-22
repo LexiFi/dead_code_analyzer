@@ -75,35 +75,37 @@ let rec empty file =
     empty file
   with End_of_file -> close_in file
 
+let rec empty_fnames ~regexp threshold = function
+  | e::l ->
+      if get_element ~regexp ~start:0 e < threshold then (
+        empty @@ open_in e;
+        empty_fnames ~regexp threshold l)
+      else l
+  | _ -> []
 
   (**** Checkers ****)
 
 let rec check_fn name line =
   let ok =
     match !fn with
-        None -> begin
-                  match !old_fn with
-                      Some str when str = name ->
-                          error ~why:"Should not be detected" ~where:line ();
-                          nextl := "";
-                          false
-                    | _ -> fn := Some name;
-                      if (try  (unit name) > (unit (List.hd !fnames)) with _ -> false) then (
-                        try
-                          let tmp = open_in @@ List.hd !fnames in empty tmp; fnames := List.tl !fnames
-                        with _ -> ());
-                          if (try unit name = unit @@ List.hd !fnames with _ -> false) then fnames := List.tl !fnames;
-                          try
-                            close_in !in_file;
-                            in_file := open_in @@ !dir ^ name;
-                            true
-                          with _ ->
-                            error ~why:"File not found or cannot be opened."
-                                  ~where:(!dir ^ name) ();
-                            fn := None;
-                            nextl := "";
-                            false
-                end
+      | None -> begin match !old_fn with
+          | Some str when str = name ->
+              error ~why:"Should not be detected" ~where:line ();
+              nextl := "";
+              false
+          | _ -> fn := Some name;
+              if (try  (unit name) >= (unit (List.hd !fnames)) with _ -> false) then
+              fnames := empty_fnames ~regexp:"[^/]*\.ml[a-z]*" (Filename.basename name) !fnames;
+              try
+                close_in !in_file;
+                in_file := open_in @@ !dir ^ name;
+                true
+              with _ ->
+                error ~why:"File not found or cannot be opened."
+                      ~where:(!dir ^ name) ();
+                fn := None;
+                nextl := "";
+                false end
       | Some str when str = name ->
           let tmp = open_in "trash.out" in
           if not (!in_file = tmp) then (close_in tmp; true)
@@ -174,16 +176,28 @@ let rec sel_section () =
   nextl := ""; comp := "";
   try
     match (input_line !res) with
-        "UNUSED EXPORTED VALUES:" -> print_string "UNUSED EXPORTED VALUES:\n";
+        "UNUSED EXPORTED VALUES:" ->
+            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".mli" !fnames
+            with _ -> ());
+            print_string "UNUSED EXPORTED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
-      | "UNUSED VALUES:" -> print_string "UNUSED VALUES:\n";
+      | "UNUSED VALUES:" ->
+            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".ml" !fnames
+            with _ -> ());
+            print_string "UNUSED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
-      | "OPTIONAL ARGUMENTS:" -> print_string "OPTIONAL ARGUMENTS:\n";
+      | "OPTIONAL ARGUMENTS:" ->
+            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".mlopt" !fnames
+            with _ -> ());
+            print_string "OPTIONAL ARGUMENTS:\n";
             print_string "===================" |> print_newline; (extend := "opt")
             |> section ~value:true |> sel_section
-      | "CODING STYLE:" -> print_string "CODING STYLE:\n";
+      | "CODING STYLE:" ->
+            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".mlstyle" !fnames
+            with _ -> ());
+            print_string "CODING STYLE:\n";
             print_string "=============" |> print_newline; (extend := "style")
             |> section |> sel_section
       | _ -> sel_section ()
@@ -204,8 +218,8 @@ let result () =
 let rec get_fnames ?(acc = []) dir =
   try
     if Sys.is_directory dir then
-      Array.fold_left (fun l s -> get_fnames ~acc:l (dir ^ "/" ^ s)) [] @@ Sys.readdir dir
-    else if dir <> ".//check.ml" && Str.string_match (Str.regexp ".*/[a-zA-Z_-]*.ml[a-z]*") dir 0 then dir::acc
+      acc @ Array.fold_left (fun l s -> get_fnames ~acc:l (dir ^ "/" ^ s)) [] @@ Sys.readdir dir
+    else if dir <> ".//check.ml" && Str.string_match (Str.regexp ".*/[_a-zA-Z0-9-]*.ml[a-z]*") dir 0 then dir::acc
     else acc
   with _ -> acc
 
@@ -216,13 +230,12 @@ let () =
   res :=
     if (Array.length Sys.argv) < 3 then open_in "res.out"
     else open_in Sys.argv.(2);
-  fnames := List.sort
+  fnames := List.fast_sort
     (fun x y ->
       let req s =
-        Str.search_backward (Str.regexp "\\.ml[a-z]*") s (String.length s - 1);
-        Str.matched_string s in
+        get_element ~f:Str.search_backward ~regexp:"\\.ml[a-z]*" ~start:(String.length s - 1) s in
       let c = compare (req x) (req y) in
-      if c = 0 then compare (Filename.basename x) (Filename.basename y)
+      if c = 0 then compare (unit x) (unit y)
       else c)
     @@ get_fnames !dir;
   sel_section () ;
