@@ -1,0 +1,4 @@
+./examples/cond_sel.ml:1: a ALWAYS
+./examples/cond_sel.ml:1: b ALWAYS
+./examples/cond_sel.ml:3: a ALWAYS
+./examples/cond_sel.ml:3: b ALWAYS
