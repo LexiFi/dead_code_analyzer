@@ -1,5 +1,7 @@
 (******** Identification ********)
 
+let unit s = Filename.(chop_extension @@ basename s)
+
 (* Extract an element from a string *)
 let get_element ?(f = Str.search_forward) ?(regexp = ".*") ?(start = 0) line =
   try
@@ -52,21 +54,26 @@ let error ?(why = "unknown reason") ?(neg = false) ~where () =
 (******** Processing ********)
 
 let total = ref 0 (* Nb tests *)
+
 let comp = ref "" (* Line to compare with *)
 let nextl = ref "" (* Line to verify *)
+
+let fnames = ref []
 let dir = ref "" (* Directory to find expected outputs *)
 let res = ref (open_in_gen [Open_creat] 777 "trash.out") (* Output file computed from analysis on ../examples *)
+
 let fn = ref None (* Filename that should currently be processed *)
 let in_file = ref !res (* File fn *)
 let old_fn = ref None (* Previous filename processed *)
+
 let extend = ref "" (* section specific extension *)
 
 let rec empty file =
   try
     let where = input_line file in
-    error ~why:"Not detected" ~where ();
+    if where <> "" then (error ~why:"Not detected" ~where (); incr total);
     empty file
-  with End_of_file -> ()
+  with End_of_file -> close_in file
 
 
   (**** Checkers ****)
@@ -81,7 +88,13 @@ let rec check_fn name line =
                           nextl := "";
                           false
                     | _ -> fn := Some name;
+                      if (try  (unit name) > (unit (List.hd !fnames)) with _ -> false) then (
+                        try
+                          let tmp = open_in @@ List.hd !fnames in empty tmp; fnames := List.tl !fnames
+                        with _ -> ());
+                          if (try unit name = unit @@ List.hd !fnames with _ -> false) then fnames := List.tl !fnames;
                           try
+                            close_in !in_file;
                             in_file := open_in @@ !dir ^ name;
                             true
                           with _ ->
@@ -92,13 +105,13 @@ let rec check_fn name line =
                             false
                 end
       | Some str when str = name ->
-          if not (!in_file = (open_in "trash.out")) then true
+          let tmp = open_in "trash.out" in
+          if not (!in_file = tmp) then (close_in tmp; true)
           else (error ~where:line (); false)
       | _ ->
           if in_channel_length !in_file - 1 <= pos_in !in_file then true
           else begin
             empty !in_file;
-            close_in !in_file;
             old_fn := !fn;
             fn := None;
             false
@@ -143,15 +156,15 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     else begin
       incr total;
       comp := if fn && !comp = "" then (get_filename !nextl ^ !extend |> check_fn) !nextl else !comp;
-      let unit =
-        if not fn || !comp <> "" then
-          (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
-              || (value && not @@ check_value !comp @@ get_value !nextl)
-              || (info && not @@ check_info !comp @@ get_info !nextl)) then
-            (print_endline !nextl; nextl := ""; comp := ""))
-      in
-      section ~fn ~pos ~value ~info unit
-    end
+        begin
+          if not fn || !comp <> "" then
+            (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
+                || (value && not @@ check_value !comp @@ get_value !nextl)
+                || (info && not @@ check_info !comp @@ get_info !nextl)) then
+              (print_endline !nextl; nextl := ""; comp := ""))
+        end
+        |> section ~fn ~pos ~value ~info
+      end
   with End_of_file ->
     let tmp = open_in "trash.out" in
     if !in_file <> tmp then (close_in tmp; empty !in_file)
@@ -188,6 +201,14 @@ let result () =
   print_string "%\x1b[0m"
   |> print_newline
 
+let rec get_fnames ?(acc = []) dir =
+  try
+    if Sys.is_directory dir then
+      Array.fold_left (fun l s -> get_fnames ~acc:l (dir ^ "/" ^ s)) [] @@ Sys.readdir dir
+    else if dir <> ".//check.ml" && Str.string_match (Str.regexp ".*/[a-zA-Z_-]*.ml[a-z]*") dir 0 then dir::acc
+    else acc
+  with _ -> acc
+
 let () =
   dir :=
     if (Array.length Sys.argv) < 2 then "./"
@@ -195,6 +216,15 @@ let () =
   res :=
     if (Array.length Sys.argv) < 3 then open_in "res.out"
     else open_in Sys.argv.(2);
+  fnames := List.sort
+    (fun x y ->
+      let req s =
+        Str.search_backward (Str.regexp "\\.ml[a-z]*") s (String.length s - 1);
+        Str.matched_string s in
+      let c = compare (req x) (req y) in
+      if c = 0 then compare (Filename.basename x) (Filename.basename y)
+      else c)
+    @@ get_fnames !dir;
   sel_section () ;
   close_in !res;
   result ()
