@@ -1,6 +1,7 @@
+Code need to be cleaned
+
 #FIX
 - Conditional branching
-- Partial application as argument
 - Construct patterns and expressions (ex: ref)
 
 #Testing
