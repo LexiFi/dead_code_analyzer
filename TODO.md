@@ -1,8 +1,7 @@
-Code need to be cleaned
-
 #FIX
 - Conditional branching
 - Construct patterns and expressions (ex: ref)
+- Clean code
 
 #Testing
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
@@ -15,8 +14,8 @@ Code need to be cleaned
 
 #Note
 - The 'UNUSED EXPORTED VALUES' section may have both FN and FP (none observed yet).
-- The 'UNUSED VALUES' section has both FP and FN.
+- The 'UNUSED VALUES' section has FN; may have some unknown FP.
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP.
 - The 'CODING STYLE' section may have both FN and FP (none observed yet).
 
-ratio: *83.75%* succesful
+ratio: *87.01%* succesful
