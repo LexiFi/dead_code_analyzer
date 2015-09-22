@@ -1,6 +1,6 @@
 #FIX
-- Conditional branching
-- Construct patterns and expressions (ex: ref)
+- Conditional branching (if/match)
+- Partial application as arg
 - Clean code
 
 #Testing
@@ -18,4 +18,4 @@
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP.
 - The 'CODING STYLE' section may have both FN and FP (none observed yet).
 
-ratio: *82.93%* succesful (over 82 results)
+ratio: *85.333%* succesful (over 75 expected results)

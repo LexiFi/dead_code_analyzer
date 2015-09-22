@@ -238,6 +238,12 @@ let collect_references =
               }
             ] ->
               build_node_args (vd_node ~name:(Ident.name id) loc1) exp
+          | [
+              {
+                vb_pat={pat_desc=Tpat_var(id, {loc; _}); _};
+                _
+              }
+            ] when not loc.Location.loc_ghost -> vd_node ~name:(Ident.name id) loc |> ignore
           | _ -> () end
     | _ -> () end;
     super.structure_item self i

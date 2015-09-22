@@ -90,6 +90,7 @@ let rec check_fn name line =
     match !fn with
       | None -> begin match !old_fn with
           | Some str when str = name ->
+              decr total;
               error ~why:"Should not be detected" ~where:line ();
               nextl := "";
               false
@@ -133,7 +134,7 @@ let check_elt ~f line x = compare x @@ f line
 
 let check_aux line status=
   if status > 0 then (error ~why:("Not detected") ~where:line (); comp := ""; false)
-  else if status < 0 then (error ~why:("Should not be detected") ~where:!nextl (); nextl := ""; false)
+  else if status < 0 then (decr total; error ~why:("Should not be detected") ~where:!nextl (); nextl := ""; false)
   else true
 
 let check_value line x =
