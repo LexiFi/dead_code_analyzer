@@ -399,7 +399,9 @@ let report_opt_args l =
 let report_style () =
   if !style <> [] then begin
     section "CODING STYLE";
-    List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s) @@ List.fast_sort compare !style;
+    List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s)
+      @@ List.fast_sort (fun (fn, path, loc) (fn2, path2, loc2) -> compare (unit fn, path, loc) (unit fn2, path2, loc2))
+      !style;
     separator ();
   end
 
@@ -411,7 +413,7 @@ let report_unused_exported () =
       (fun (fn, path, loc) ->
          prloc ~fn loc;
          print_endline (String.concat "." (List.rev_map Ident.name path));
-      ) @@ List.fast_sort compare l;
+      ) @@ List.fast_sort (fun (fn, path, loc) (fn2, path2, loc2) -> compare (unit fn, path, loc) (unit fn2, path2, loc2)) l;
     separator ();
   end
 
@@ -430,7 +432,10 @@ let report_unused () =
       (fun node ->
          prloc node.loc;
          print_endline node.name;
-      ) @@ List.fast_sort (fun n1 n2 -> compare n1.loc n2.loc) l;
+      ) @@ List.fast_sort (fun n1 n2 ->
+            let make_b (fn, l, c) = (unit fn, l, c) in
+            let make_bb loc = make_b @@ Location.get_pos_info loc in
+            compare (make_bb n1.loc.loc_start) (make_bb n2.loc.loc_start)) l;
     separator ();
   end
 
@@ -443,8 +448,8 @@ let () =
       load_file "unused_exported_values";
     Printf.eprintf " [DONE]\n%!";
 
-    report_unused_exported ();
     report_unused ();
+    report_unused_exported ();
     report_opt_args (analyse_opt_args ());
     report_style ();
 
