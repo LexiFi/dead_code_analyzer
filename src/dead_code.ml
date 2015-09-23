@@ -97,7 +97,7 @@ let rec repr ?(cond = (fun _ -> false)) n =
     repr n.ptr)
 
 (* repr specialization to get the next node corresponding to a function *)
-let rec next_fn_node n =
+let next_fn_node n =
   repr ~cond:(fun n -> n.func.opt_args <> [] || n.func.need > 0) n.ptr
 
 (* Get or create a vd_node corresponding to the location *)
@@ -525,12 +525,20 @@ let parse () =
       style_flag := make_flag b; exported_flag := make_flag b; unused_flag := make_flag b; opt_flag := make_flag b
   in
 
-  let update_flag b flag = function
-    | "+1" -> !flag.sub1 := b
-    | "+2" -> !flag.sub2 := b
-    | "+3" -> !flag.sub3 := b
-    | "+4" -> !flag.sub4 := b
-    | _  -> flag := make_flag b
+  let rec update_flag b flag s =
+    let comp = if String.length s > 3 then String.sub s 0 2 else s in
+    match comp with
+      | "+1" -> !flag.sub1 := b;
+          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
+      | "+2" -> !flag.sub2 := b;
+          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
+      | "+3" -> !flag.sub3 := b;
+          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
+      | "+4" -> !flag.sub4 := b;
+          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
+      | "all"  -> flag := make_flag b
+      | "" -> ()
+      |_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
   in
 
   Arg.(parse
@@ -544,25 +552,25 @@ let parse () =
       "-e", Clear !exported_flag.sub1, " Disable unused exported values warnings";
       "-E", Set !exported_flag.sub1, " Enable unused exported values warnings";
 
-      "-o", Symbol (["+1"; "+2"; "all"], update_flag false opt_flag),
-        " Disable optional arguments warnings
+      "-o", String (update_flag false opt_flag),
+        " Disable optional arguments warnings. Options:\
           See -O";
-      "-O", Symbol (["+1"; "+2"; "all"], update_flag true opt_flag),
-        " Enable optional arguments warnings
-          +1: ALWAYS
-          +2: NEVER
-          all: all";
+      "-O", String (update_flag true opt_flag),
+        " Enable optional arguments warnings. Options (can be used together):\
+          +1: ALWAYS\
+          +2: NEVER\
+          all: +1+2";
 
-      "-s", Symbol (["+1"; "+2"; "+3"; "+4"; "all"], update_flag false style_flag),
-        " Disable coding style warnings
+      "-s", String (update_flag false style_flag),
+        " Disable coding style warnings. Options:\
           See -S";
-      "-S", Symbol (["+1"; "+2"; "+3"; "+4"; "all"], update_flag true style_flag),
-        " Enable coding style warnings
-          +1: optional arg in arg
-          +2: unit pattern
-          +3: use sequence
-          +4: useless binding
-          all: all";
+      "-S", String (update_flag true style_flag),
+        " Enable coding style warnings. Options (can be used together):\
+          +1: optional arg in arg\
+          +2: unit pattern\
+          +3: use sequence\
+          +4: useless binding\
+          all: +1+2+3+4";
 
       "-u", Clear !unused_flag.sub1, " Disable unused values warnings";
       "-U", Set !unused_flag.sub1, " Enable unused values warnings";
