@@ -5,6 +5,29 @@
 open Types
 open Typedtree
 
+type flags =
+  {
+    sub1: bool ref;
+    sub2: bool ref;
+    sub3: bool ref;
+    sub4: bool ref;
+  }
+
+
+let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b}
+
+(*opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false *)
+let opt_flag = ref {(make_flag true) with sub3 = ref false; sub4 = ref false}
+(*style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding *)
+and style_flag = ref @@ make_flag true
+(*unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; *)
+and unused_flag = ref {(make_flag false) with sub1 = ref true}
+(*exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; *)
+and exported_flag = ref {(make_flag false) with sub1 = ref true}
+
+let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.sub4)
+
+
 let abspath = Hashtbl.create 16
 let bad_files = ref []
 
@@ -41,11 +64,11 @@ let prloc ?fn (loc : Location.t) =
 
 
 type func_info =
-{
-  mutable opt_args: string list;
-  mutable need: int; (* Nb of mandatory arguments *)
-  mutable used: bool; (* Complete application or passed as argument or binded *)
-}
+  {
+    mutable opt_args: string list;
+    mutable need: int; (* Nb of mandatory arguments *)
+    mutable used: bool; (* Complete application or passed as argument or binded *)
+  }
 
 type vd_node =
   {
@@ -128,7 +151,7 @@ let rec treat_args val_loc args =
     in
     List.iter
       (function
-        | (Asttypes.Optional lab, Some e, _) ->
+        | (Asttypes.Optional lab, Some e, _) when status_flag !opt_flag->
             check_arg e;
             let has_val =
               match e.exp_desc with
@@ -156,9 +179,10 @@ let rec treat_args val_loc args =
   end
 
 (* Look for bad style typing *)
-let rec check_type t loc = match t.desc with
+let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
   | Tarrow (lab, _, t, _) -> begin match lab with
-    | Optional _ -> style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
+    | Optional _ (*when !(!style_flag.sub1)*) ->
+        style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
     | _ -> check_type t loc end
   | Tlink t -> check_type t loc
   | _ -> ()
@@ -250,7 +274,7 @@ let collect_references =
   in
   let pat self p =
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
-    begin if is_unit p.pat_type then match p.pat_desc with
+    begin if is_unit p.pat_type && !(!style_flag.sub2) then match p.pat_desc with
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
       | Tpat_var (_, {txt; loc = _}) -> u txt
@@ -264,12 +288,12 @@ let collect_references =
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc e.exp_loc;
         (vd_node val_loc).func.used <- true
-    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type ->
+    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) ->
         style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
-          {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 ->
+          {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 && !(!style_flag.sub4) ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args) ->
         treat_args val_loc args
@@ -331,7 +355,6 @@ let exclude_dir, is_excluded_dir =
   exclude_dir, is_excluded_dir
 
 let rec load_file fn =
-  (* Printf.eprintf "Scanning %s\n%!" fn; *)
   match kind fn with
   | `Iface src ->
       (* only consider module with an explicit interface *)
@@ -347,6 +370,7 @@ let rec load_file fn =
       end
 
   | `Implem src ->
+      Printf.eprintf ".";
       let open Cmt_format in
       last_loc := Location.none;
       regabs src;
@@ -370,7 +394,11 @@ let rec load_file fn =
       end
 
   | `Dir ->
-      if not (is_excluded_dir fn) then Array.iter (fun s -> if s <> ".svn" then load_file (fn ^ "/" ^ s)) (Sys.readdir fn)
+      Printf.eprintf "\nScanning: `%s' " fn;
+      if not (is_excluded_dir fn) then
+        Array.iter
+          (fun s -> if s <> ".svn" then load_file (fn ^ "/" ^ s))
+          (Sys.readdir fn)
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 
   | `Ignore ->
@@ -408,7 +436,11 @@ let comp_loc loc1 loc2 =
 
 let report_opt_args l =
   let l =
-    List.filter (fun (_, _, slot) -> slot.with_val = [] || slot.without_val = []) l
+    List.filter
+      (fun (_, _, slot) ->
+        slot.with_val = [] && !(!opt_flag.sub2)
+        || slot.without_val = [] && !(!opt_flag.sub1)) 
+      l
     |> List.fast_sort
         (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
             let tmp = comp_loc loc1 loc2 in
@@ -482,19 +514,72 @@ let report_unused () =
     separator ()
   end
 
+let set_all fn =
+  opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
+  exported_flag := {!opt_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
+  unused_flag := {!opt_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
+  load_file fn
+
+let parse () =
+  let update_all b () =
+      style_flag := make_flag b; exported_flag := make_flag b; unused_flag := make_flag b; opt_flag := make_flag b
+  in
+
+  let update_flag b flag = function
+    | "+1" -> !flag.sub1 := b
+    | "+2" -> !flag.sub2 := b
+    | "+3" -> !flag.sub3 := b
+    | "+4" -> !flag.sub4 := b
+    | _  -> flag := make_flag b
+  in
+
+  Arg.(parse
+    [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
+
+      "-a", Unit (update_all false), " Disable all warnings";
+      "--nothing", Unit (update_all false), " Disable all warnings";
+      "-A", Unit (update_all true), " Enable all warnings";
+      "--all", Unit (update_all true), " Enable all warnings";
+
+      "-e", Clear !exported_flag.sub1, " Disable unused exported values warnings";
+      "-E", Set !exported_flag.sub1, " Enable unused exported values warnings";
+
+      "-o", Symbol (["+1"; "+2"; "all"], update_flag false opt_flag),
+        " Disable optional arguments warnings
+          See -O";
+      "-O", Symbol (["+1"; "+2"; "all"], update_flag true opt_flag),
+        " Enable optional arguments warnings
+          +1: ALWAYS
+          +2: NEVER
+          all: all";
+
+      "-s", Symbol (["+1"; "+2"; "+3"; "+4"; "all"], update_flag false style_flag),
+        " Disable coding style warnings
+          See -S";
+      "-S", Symbol (["+1"; "+2"; "+3"; "+4"; "all"], update_flag true style_flag),
+        " Enable coding style warnings
+          +1: optional arg in arg
+          +2: unit pattern
+          +3: use sequence
+          +4: useless binding
+          all: all";
+
+      "-u", Clear !unused_flag.sub1, " Disable unused values warnings";
+      "-U", Set !unused_flag.sub1, " Enable unused values warnings";
+    ]
+    set_all
+    ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
+
 
 let () =
   try
-    Printf.eprintf "Scanning files...%!";
-    Arg.parse
-      ["--exclude-directory", Arg.String exclude_dir, "Exclude given directory from research."]
-      load_file "unused_exported_values";
-    Printf.eprintf " [DONE]\n%!";
+    parse ();
+    Printf.eprintf "\n [DONE]\n\n%!";
 
-    report_unused ();
-    report_unused_exported ();
-    report_opt_args (analyse_opt_args ());
-    report_style ();
+    if (status_flag !unused_flag)    then  report_unused ();
+    if (status_flag !exported_flag)  then  report_unused_exported ();
+    if (status_flag !opt_flag)       then  report_opt_args (analyse_opt_args ());
+    if (status_flag !style_flag)     then  report_style ();
 
     if !bad_files <> [] then begin
       let oc = open_out_bin "remove_bad_files.sh" in
