@@ -1,7 +1,6 @@
 #FIX
 - Conditional branching (if/match)
-- Partial application as arg
-- Clean code
+- Clean code !!
 
 #Testing
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
@@ -14,8 +13,8 @@
 
 #Note
 - The 'UNUSED EXPORTED VALUES' section may have both FN and FP (none observed yet).
-- The 'UNUSED VALUES' section has FN; may have some unknown FP.
-- The 'OPTIONAL ARGUMENTS' section has both FN and FP.
+- The 'UNUSED VALUES' section may have both FN and FP (none observed yet).
+- The 'OPTIONAL ARGUMENTS' section has both FN; may have some unknown FP.
 - The 'CODING STYLE' section may have both FN and FP (none observed yet).
 
-ratio: *90.67%* succesful (over 75 expected results)
+ratio: *94.73%* succesful (over 76 expected results)
