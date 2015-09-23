@@ -133,26 +133,15 @@ let merge_locs ?(force = false) ?(search = repr ~cond:(fun _ -> false)) ?name l1
 
 
 let rec treat_args val_loc args =
+  check_args args;
   if val_loc.Location.loc_ghost then () (* Ghostbuster *)
   else begin
     let loc = vd_node val_loc in
     let tbl = Hashtbl.create 256 in
     let use = ref 0 in
-    let check_arg e = (* If the value used as arg matches a node then it is marked as used *)
-      match e.exp_desc with
-        | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
-            treat_args val_loc args;
-            if not val_loc.Location.loc_ghost then
-              (vd_node val_loc).func.used <- true
-        | Texp_ident(_, _, {val_loc; _}) ->
-            if not val_loc.Location.loc_ghost then
-              (vd_node val_loc).func.used <- true
-        | _ -> ()
-    in
     List.iter
       (function
         | (Asttypes.Optional lab, Some e, _) when status_flag !opt_flag->
-            check_arg e;
             let has_val =
               match e.exp_desc with
                 | Texp_construct(_,{cstr_name="None";_},_) -> false
@@ -170,13 +159,47 @@ let rec treat_args val_loc args =
             in
             opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
         | (_, Some e, _)  ->
-            check_arg e;
             incr use
         | _ -> incr use
       )
       args;
     if !use >= loc.func.need then loc.func.used <- true
   end
+
+and check_args args=
+  List.iter
+    (function
+      | (_, Some e, _) -> begin match e.exp_desc with
+        | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
+            treat_args val_loc args;
+            if not val_loc.Location.loc_ghost then (
+              (vd_node val_loc).func.used <- true;
+              last_loc := val_loc;)
+        | Texp_ident (_, _, {val_loc; _}) ->
+            if not val_loc.Location.loc_ghost then
+              (vd_node val_loc).func.used <- true
+        | Texp_let (* Partial application as argument may cut in two parts:
+                    * let _ = partial in implicit opt_args elimination *)
+              ( _,
+                [{vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, _); _};
+                  _}],
+                { exp_desc=Texp_function
+                    ( _,
+                      [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
+                        c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],
+                       _);
+                  exp_loc={loc_ghost=true; _}})
+          when not val_loc.Location.loc_ghost ->
+            treat_args val_loc args
+        | Texp_function (_,
+              [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
+                c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
+                  prerr_newline();
+            treat_args !last_loc args
+        | _ -> () end
+      | _ -> ())
+    args
+
 
 (* Look for bad style typing *)
 let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
