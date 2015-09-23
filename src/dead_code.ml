@@ -132,7 +132,7 @@ let merge_locs ?(force = false) ?(search = repr ~cond:(fun _ -> false)) ?name l1
     (if force then merge_nodes_f else merge_nodes) ~search (vd_node ?name l1) (vd_node l2)
 
 
-let rec treat_args val_loc args =
+let rec treat_args ?(anon = false) val_loc args =
   check_args args;
   if val_loc.Location.loc_ghost then () (* Ghostbuster *)
   else begin
@@ -141,11 +141,14 @@ let rec treat_args val_loc args =
     let use = ref 0 in
     List.iter
       (function
-        | (Asttypes.Optional lab, Some e, _) when status_flag !opt_flag->
-            let has_val =
-              match e.exp_desc with
+        | (Asttypes.Optional lab, (None as expr), _)
+        | (Asttypes.Optional lab, (Some _ as expr), _)
+          when (expr <> None || not anon) && status_flag !opt_flag->
+            let has_val = match expr with
+              | Some e -> begin match e.exp_desc with
                 | Texp_construct(_,{cstr_name="None";_},_) -> false
-                | _ -> true
+                | _ -> true end
+              | None -> false
             in
             let occur = ref (
               try Hashtbl.find tbl lab + 1
@@ -157,7 +160,9 @@ let rec treat_args val_loc args =
               if loc == loc.ptr || count >= !occur then loc
               else (occur := !occur - count; locate @@ next_fn_node loc)
             in
-            opt_args := (locate loc, lab, has_val, e.exp_loc) :: !opt_args
+            opt_args :=
+              (locate loc, lab, has_val, (match expr with Some e -> e.exp_loc | _ -> !last_loc))
+              :: !opt_args
         | (_, Some e, _)  ->
             incr use
         | _ -> incr use
@@ -190,7 +195,7 @@ and check_args args=
                        _);
                   exp_loc={loc_ghost=true; _}})
           when not val_loc.Location.loc_ghost ->
-            treat_args val_loc args
+            treat_args ~anon:true val_loc args
         | Texp_function (_,
               [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
                 c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
