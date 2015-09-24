@@ -1,4 +1,5 @@
 #FIX
+- Module binding
 - Conditional branching (if/match)
 - Clean code !!
 
@@ -17,4 +18,4 @@
 - The 'OPTIONAL ARGUMENTS' section has both FN; may have some unknown FP.
 - The 'CODING STYLE' section may have both FN and FP (none observed yet).
 
-ratio: *94.73%* succesful (over 76 expected results)
+ratio: *91.25%* succesful (over 80 expected results)

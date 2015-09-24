@@ -260,6 +260,27 @@ let is_unit t =
 let tip =
   List.fold_left (fun _ e -> [e]) []
 
+(* Binding in Tstr_value *)
+let value_binding = function
+  | {
+      vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
+      vb_expr={exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _};
+      _
+    } ->
+      merge_locs ~force:true ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
+  | {
+      vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
+      vb_expr={exp_desc=(Texp_function _ | Texp_apply _); _} as exp;
+      _
+    } ->
+      build_node_args (vd_node ~name:(Ident.name id) loc1) exp
+  | {
+      vb_pat={pat_desc=Tpat_var(id, {loc; _}); _};
+      _
+    } when not loc.Location.loc_ghost ->
+      vd_node ~name:(Ident.name id) loc |> ignore
+  | _ -> ()
+
 (* Parse the AST *)
 let collect_references =
   let super = Tast_mapper.default in
@@ -272,31 +293,9 @@ let collect_references =
     r
   in
   let structure_item self i = begin match i.str_desc with
-    | Tstr_value (_, l) -> begin (* Look for bindings *)
-        match tip l with
-          | [
-              {
-                vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
-                vb_expr={exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _};
-                _
-              }
-            ] ->
-              merge_locs ~force:true ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
-          | [
-              {
-                vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
-                vb_expr={exp_desc=(Texp_function _ | Texp_apply _); _} as exp;
-                _
-              }
-            ] ->
-              build_node_args (vd_node ~name:(Ident.name id) loc1) exp
-          | [
-              {
-                vb_pat={pat_desc=Tpat_var(id, {loc; _}); _};
-                _
-              }
-            ] when not loc.Location.loc_ghost -> vd_node ~name:(Ident.name id) loc |> ignore
-          | _ -> () end
+    | Tstr_value (_, l) -> begin match tip l with
+      | [vb] -> value_binding vb
+      | _ -> () end
     | _ -> () end;
     super.structure_item self i
   in
@@ -382,9 +381,12 @@ let exclude_dir, is_excluded_dir =
   let is_excluded_dir s = Hashtbl.mem tbl (normalize_path s) in
   exclude_dir, is_excluded_dir
 
+let print_names = ref false
+
 let rec load_file fn =
   match kind fn with
   | `Iface src ->
+      if !print_names then Printf.eprintf "\nScanning: `%s' " fn;
       (* only consider module with an explicit interface *)
       let open Cmi_format in
       last_loc := Location.none;
@@ -398,7 +400,7 @@ let rec load_file fn =
       end
 
   | `Implem src ->
-      Printf.eprintf ".";
+      if !print_names then Printf.eprintf "\nScanning: `%s' " fn else Printf.eprintf ".";
       let open Cmt_format in
       last_loc := Location.none;
       regabs src;
@@ -571,6 +573,7 @@ let parse () =
 
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
+      "--print-names", Set print_names, "Print names of the files being scanned";
 
       "-a", Unit (update_all false), " Disable all warnings";
       "--nothing", Unit (update_all false), " Disable all warnings";
