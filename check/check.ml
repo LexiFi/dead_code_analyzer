@@ -178,25 +178,25 @@ let rec sel_section () =
   try
     match (input_line !res) with
         "UNUSED EXPORTED VALUES:" ->
-            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".mli" !fnames
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mli" !fnames
             with _ -> ());
             print_string "UNUSED EXPORTED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
       | "UNUSED VALUES:" ->
-            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".ml" !fnames
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".ml" !fnames
             with _ -> ());
             print_string "UNUSED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
       | "OPTIONAL ARGUMENTS:" ->
-            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".mlopt" !fnames
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopt" !fnames
             with _ -> ());
             print_string "OPTIONAL ARGUMENTS:\n";
             print_string "===================" |> print_newline; (extend := "opt")
             |> section ~value:true |> sel_section
       | "CODING STYLE:" ->
-            (try fnames := List.hd !fnames :: empty_fnames ~regexp:"\.ml[a-z]*$" ".mlstyle" !fnames
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames
             with _ -> ());
             print_string "CODING STYLE:\n";
             print_string "=============" |> print_newline; (extend := "style")
