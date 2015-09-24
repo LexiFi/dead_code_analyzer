@@ -163,7 +163,7 @@ let rec treat_args ?(anon = false) val_loc args =
             opt_args :=
               (locate loc, lab, has_val, (match expr with Some e -> e.exp_loc | _ -> !last_loc))
               :: !opt_args
-        | (_, Some e, _)  ->
+        | (_, Some _, _)  ->
             incr use
         | _ -> incr use
       )
@@ -544,8 +544,8 @@ let report_unused () =
 
 let set_all fn =
   opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
-  exported_flag := {!opt_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
-  unused_flag := {!opt_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
+  exported_flag := {!exported_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
+  unused_flag := {!unused_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
   load_file fn
 
 let parse () =
@@ -577,31 +577,31 @@ let parse () =
       "-A", Unit (update_all true), " Enable all warnings";
       "--all", Unit (update_all true), " Enable all warnings";
 
-      "-e", Clear !exported_flag.sub1, " Disable unused exported values warnings";
-      "-E", Set !exported_flag.sub1, " Enable unused exported values warnings";
+      "-e", Unit (fun () -> !exported_flag.sub1 := false), " Disable unused exported values warnings";
+      "-E", Unit (fun () -> !exported_flag.sub1 := true), " Enable unused exported values warnings";
 
       "-o", String (update_flag false opt_flag),
-        " Disable optional arguments warnings. Options:\
-          See -O";
+        " Disable optional arguments warnings. Options:\n\
+          \tSee -O";
       "-O", String (update_flag true opt_flag),
-        " Enable optional arguments warnings. Options (can be used together):\
-          +1: ALWAYS\
-          +2: NEVER\
-          all: +1+2";
+        " Enable optional arguments warnings. Options (can be used together):\n\
+          \t+1: ALWAYS\n\
+          \t+2: NEVER\n\
+          \tall: +1+2";
 
       "-s", String (update_flag false style_flag),
-        " Disable coding style warnings. Options:\
-          See -S";
+        " Disable coding style warnings. Options:\n\
+          \tSee -S";
       "-S", String (update_flag true style_flag),
-        " Enable coding style warnings. Options (can be used together):\
-          +1: optional arg in arg\
-          +2: unit pattern\
-          +3: use sequence\
-          +4: useless binding\
-          all: +1+2+3+4";
+        " Enable coding style warnings. Options (can be used together):\n\
+          \t+1: optional arg in arg\n\
+          \t+2: unit pattern\n\
+          \t+3: use sequence\n\
+          \t+4: useless binding\n\
+          \tall: +1+2+3+4";
 
-      "-u", Clear !unused_flag.sub1, " Disable unused values warnings";
-      "-U", Set !unused_flag.sub1, " Enable unused values warnings";
+      "-u", Unit (fun () -> !unused_flag.sub1 := false), " Disable unused values warnings";
+      "-U", Unit (fun () -> !unused_flag.sub1 := true), " Enable unused values warnings";
     ]
     set_all
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
