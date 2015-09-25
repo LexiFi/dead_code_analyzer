@@ -17,13 +17,13 @@ type flags =
 let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b}
 
 (*opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false *)
-let opt_flag = ref {(make_flag true) with sub3 = ref false; sub4 = ref false}
+let opt_flag = ref @@ make_flag false
 (*style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding *)
-and style_flag = ref @@ make_flag true
+and style_flag = ref @@ make_flag false
 (*unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; *)
-and unused_flag = ref {(make_flag false) with sub1 = ref true}
+and unused_flag = ref @@ make_flag true
 (*exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; *)
-and exported_flag = ref {(make_flag false) with sub1 = ref true}
+and exported_flag = ref @@ make_flag true
 
 let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.sub4)
 
@@ -39,6 +39,8 @@ let last_loc = ref Location.none
     (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
 
+let verbose = ref false
+let set_verbose () = verbose := true
 
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
@@ -193,13 +195,12 @@ and check_args args=
                       [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
                         c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],
                        _);
-                  exp_loc={loc_ghost=true; _}})
+                  exp_loc={loc_ghost=true; _}; _})
           when not val_loc.Location.loc_ghost ->
             treat_args ~anon:true val_loc args
         | Texp_function (_,
               [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
                 c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-                  prerr_newline();
             treat_args !last_loc args
         | _ -> () end
       | _ -> ())
@@ -228,7 +229,7 @@ let rec build_node_args node expr = match expr.exp_desc with
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
       treat_args loc2 args;
       merge_locs ~force:true ~search:next_fn_node node.loc loc2
-  | Texp_ident(_, _, {val_loc=loc2}) ->
+  | Texp_ident(_, _, {val_loc=loc2; _}) ->
       merge_locs ~force:true ~search:next_fn_node node.loc loc2
   | _ -> ()
 
@@ -381,15 +382,13 @@ let exclude_dir, is_excluded_dir =
   let is_excluded_dir s = Hashtbl.mem tbl (normalize_path s) in
   exclude_dir, is_excluded_dir
 
-let print_names = ref false
-
 let rec load_file fn =
   match kind fn with
   | `Iface src ->
-      if !print_names then Printf.eprintf "\nScanning: `%s' " fn;
       (* only consider module with an explicit interface *)
       let open Cmi_format in
       last_loc := Location.none;
+      if !verbose then Printf.eprintf "Scanning %s\n%!" fn;
       begin try
         regabs src;
         let u = unit fn in
@@ -400,9 +399,9 @@ let rec load_file fn =
       end
 
   | `Implem src ->
-      if !print_names then Printf.eprintf "\nScanning: `%s' " fn else Printf.eprintf ".";
       let open Cmt_format in
       last_loc := Location.none;
+      if !verbose then Printf.eprintf "Scanning %s\n%!" fn;
       regabs src;
       let cmt =
         try Some (read_cmt fn)
@@ -424,7 +423,6 @@ let rec load_file fn =
       end
 
   | `Dir ->
-      Printf.eprintf "\nScanning: `%s' " fn;
       if not (is_excluded_dir fn) then
         Array.iter
           (fun s -> if s <> ".svn" then load_file (fn ^ "/" ^ s))
@@ -469,7 +467,7 @@ let report_opt_args l =
     List.filter
       (fun (_, _, slot) ->
         slot.with_val = [] && !(!opt_flag.sub2)
-        || slot.without_val = [] && !(!opt_flag.sub1)) 
+        || slot.without_val = [] && !(!opt_flag.sub1))
       l
     |> List.fast_sort
         (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
@@ -548,6 +546,7 @@ let set_all fn =
   opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
   exported_flag := {!exported_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
   unused_flag := {!unused_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
+  Printf.eprintf "Scanning files...\n%!";
   load_file fn
 
 let parse () =
@@ -573,7 +572,8 @@ let parse () =
 
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
-      "--print-names", Set print_names, "Print names of the files being scanned";
+      "--verbose", Unit set_verbose, "Verbose mode (ie., show scanned files)";
+      "-v", Unit set_verbose, "Verbose mode (ie., show scanned files)";
 
       "-a", Unit (update_all false), " Disable all warnings";
       "--nothing", Unit (update_all false), " Disable all warnings";
@@ -613,7 +613,7 @@ let parse () =
 let () =
   try
     parse ();
-    Printf.eprintf "\n [DONE]\n\n%!";
+    Printf.eprintf " [DONE]\n\n%!";
 
     if (status_flag !unused_flag)    then  report_unused ();
     if (status_flag !exported_flag)  then  report_unused_exported ();
