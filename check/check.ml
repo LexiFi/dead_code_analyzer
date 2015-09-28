@@ -3,7 +3,7 @@
 let unit s = Filename.(chop_extension @@ basename s)
 
 (* Extract an element from a string *)
-let get_element ?(f = Str.search_forward) ?(regexp = ".*") ?(start = 0) line =
+let get_element ?(f = Str.search_forward) ~regexp ?(start = 0) line =
   try
     f (Str.regexp regexp) line start
     |> ignore;
@@ -32,7 +32,7 @@ let get_value line =
 let get_info line =
   get_element ~regexp:" .*[\r\n]?" ~f:Str.search_backward ~start:(String.length line - 1) line
 
-let sec_part ?(regexp = ".*") line =
+let sec_part ~regexp line =
   Str.string_match (Str.regexp regexp) line 0
 
 let sec_start = sec_part ~regexp:"=+"
@@ -42,7 +42,7 @@ let sec_end = sec_part ~regexp:"-+"
 (******** Error messages ********)
 let errors = ref 0 (* Nb FP/FN *)
 
-let error ?(why = "unknown reason") ?(neg = false) ~where () =
+let error ?(why = "unknown reason") ~where () =
   incr errors;
   prerr_string "\x1b[0;31m";
   prerr_string where;
