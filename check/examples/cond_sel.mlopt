@@ -2,3 +2,7 @@
 ./examples/cond_sel.ml:1: b ALWAYS
 ./examples/cond_sel.ml:3: a ALWAYS
 ./examples/cond_sel.ml:3: b ALWAYS
+./examples/cond_sel.ml:9: a ALWAYS
+./examples/cond_sel.ml:9: b ALWAYS
+./examples/cond_sel.ml:11: a ALWAYS
+./examples/cond_sel.ml:11: b ALWAYS

@@ -207,6 +207,21 @@ and check_args args=
       | _ -> ())
     args
 
+let rec treat_exp exp args = match exp.exp_desc with
+  | Texp_ident (_, _, {Types.val_loc; _}) ->
+        treat_args val_loc args
+  | Texp_ifthenelse (_, exp_then, exp_else) ->
+      treat_exp exp_then args;
+      (match exp_else with
+        | Some exp -> treat_exp exp args
+        | _ -> ())
+  | Texp_match (_, l1, l2, _) ->
+      List.iter (fun {c_rhs=exp; _} -> treat_exp exp args) l1;
+      List.iter (fun {c_rhs=exp; _} -> treat_exp exp args) l2
+  | Texp_apply(exp, in_args) ->
+      treat_exp exp (in_args @ args)
+  | _ -> ()
+
 
 (* Look for bad style typing *)
 let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
@@ -325,8 +340,7 @@ let collect_references =
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
           {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 && !(!style_flag.sub4) ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
-    | Texp_apply({exp_desc = Texp_ident (_, _, {Types.val_loc; _}); _}, args) ->
-        treat_args val_loc args
+    | Texp_apply(exp, args) -> treat_exp exp args
     | _ ->
         ()
     end;
