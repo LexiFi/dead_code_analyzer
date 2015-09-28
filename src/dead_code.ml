@@ -43,6 +43,9 @@ let current_src = ref ""
 let verbose = ref false
 let set_verbose () = verbose := true
 
+let underscore = ref false
+let set_underscore () = underscore := true
+
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
 let section s =
@@ -226,7 +229,7 @@ let rec treat_exp exp args = match exp.exp_desc with
 (* Look for bad style typing *)
 let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
   | Tarrow (lab, _, t, _) -> begin match lab with
-    | Optional _ (*when !(!style_flag.sub1)*) ->
+    | Optional lab when not !underscore || lab.[0] <> '_' ->
         style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
     | _ -> check_type t loc end
   | Tlink t -> check_type t loc
@@ -322,7 +325,7 @@ let collect_references =
     begin if is_unit p.pat_type && !(!style_flag.sub2) then match p.pat_desc with
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
-      | Tpat_var (_, {txt; loc = _}) -> u txt
+      | Tpat_var (_, {txt; loc = _})-> if not !underscore || txt.[0] <> '_' then u txt
       | Tpat_any -> u "_"
       | _ -> u ""
     end;
@@ -334,11 +337,15 @@ let collect_references =
         Hashtbl.add references val_loc e.exp_loc;
         (vd_node val_loc).func.used <- true
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) ->
-        style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style
+        begin match vb_pat.pat_desc with
+          | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
+          | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style
+        end
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
-          {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _}) when id1 = id2 && !(!style_flag.sub4) ->
+          {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
+      when id1 = id2 && !(!style_flag.sub4) && (not !underscore || (Ident.name id1).[0] <> '_') ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | Texp_apply(exp, args) -> treat_exp exp args
     | _ ->
@@ -496,8 +503,9 @@ let report_opt_args l =
     section "OPTIONAL ARGUMENTS";
     List.iter
       (fun (loc, lab, slot) ->
-         prloc loc;
-         Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS")
+         if not !underscore || lab.[0] <> '_' then begin
+           prloc loc;
+           Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS") end
       ) l;
     separator ()
   end
@@ -523,8 +531,9 @@ let report_unused_exported () =
     section "UNUSED EXPORTED VALUES";
     List.iter
       (fun (fn, path, loc) ->
-         prloc ~fn loc;
-         print_endline (String.concat "." (List.rev_map Ident.name path));
+         if not !underscore || (Ident.name @@ List.hd path).[0] <> '_' then begin
+           prloc ~fn loc;
+           print_endline (String.concat "." (List.rev_map Ident.name path)) end
       ) l;
     separator ()
   end
@@ -556,8 +565,9 @@ let report_unused () =
     section "UNUSED VALUES";
     List.iter
       (fun node ->
+         if not !underscore || node.name.[0] <> '_' then begin
          prloc node.loc;
-         print_endline node.name)
+         print_endline node.name end)
       l;
     separator ()
   end
@@ -592,8 +602,12 @@ let parse () =
 
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
+
+      "--no-underscore", Unit set_underscore, "Hide names starting with an underscore";
+
       "--verbose", Unit set_verbose, "Verbose mode (ie., show scanned files)";
       "-v", Unit set_verbose, "Verbose mode (ie., show scanned files)";
+
 
       "-a", Unit (update_all false), " Disable all warnings";
       "--nothing", Unit (update_all false), " Disable all warnings";
