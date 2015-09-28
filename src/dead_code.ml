@@ -249,7 +249,8 @@ let rec collect_export path u = function
       *)
       if u = unit val_loc.Location.loc_start.Lexing.pos_fname then
         vds := (!current_src, id :: path, val_loc) :: !vds
-  | Sig_module (id, {Types.md_type = t; _}, _) -> List.iter (collect_export (id :: path) u) (sign t)
+  | Sig_module (id, {Types.md_type = t; _}, _)
+  | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
   | _ -> ()
 
 
@@ -498,8 +499,10 @@ let report_style () =
 
 let report_unused_exported () =
   let l =
-    List.filter (fun (_, _, loc) -> not (Hashtbl.mem references loc
-  || try Hashtbl.mem references @@ Hashtbl.find corres loc with Not_found -> false)) !vds
+    List.filter
+      (fun (_, _, loc) -> not (Hashtbl.mem references loc
+        || try Hashtbl.mem references @@ Hashtbl.find corres loc with Not_found -> false))
+      !vds
     |> List.fast_sort (fun x y -> compare (base_pos_info x) (base_pos_info y))
   in
   if l <> [] then begin
