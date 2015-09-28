@@ -6,6 +6,8 @@ Dead-code analyzer for OCaml (and more)
 This tool scans a compiled OCaml project and reports various warnings
 about suspicious code:
 
+ - Values not exported and never used.
+
  - Values exported by .mli files but never used in any other module.
    (The declaration can be dropped from the interface, and then from
    the implementation if there is no internal use -- which will be reportef
@@ -17,7 +19,8 @@ about suspicious code:
  - Other stylistic issues:  patterns matching a value of type `unit`
    which are not `()` (typically, `_` or a variable);  let-binding
    `let () = ... in ...` (it's usually better to use sequencing);
-   let-binding of the form `let x = ... in x` (the binding is useless).
+   let-binding of the form `let x = ... in x` (the binding is useless);
+   optional argument in argument's type: `val f: ... -> (... -> ?_:_ -> ...) -> ...`
 
 
 The tool assumes that .mli files are compiled with -keep-locs and .ml
