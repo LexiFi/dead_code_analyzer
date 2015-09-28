@@ -33,6 +33,7 @@ let bad_files = ref []
 
 let vds = ref []  (* all exported value declarations *)
 let references = Hashtbl.create 256  (* all value references *)
+let corres = Hashtbl.create 256  (* link from dec to def *)
 
 let style = ref [] (* patterns of type unit which are not () *)
 let last_loc = ref Location.none
@@ -414,6 +415,7 @@ let rec load_file fn =
               ignore (collect_references.structure collect_references x);
               List.iter
                 (fun (vd1, vd2) ->
+                  Hashtbl.add corres vd2.Types.val_loc vd1.Types.val_loc;
                    merge_locs vd1.Types.val_loc vd2.Types.val_loc
                 )
                 cmt.cmt_value_dependencies
@@ -496,7 +498,8 @@ let report_style () =
 
 let report_unused_exported () =
   let l =
-    List.filter (fun (_, _, loc) -> not (Hashtbl.mem references loc)) !vds
+    List.filter (fun (_, _, loc) -> not (Hashtbl.mem references loc
+  || try Hashtbl.mem references @@ Hashtbl.find corres loc with Not_found -> false)) !vds
     |> List.fast_sort (fun x y -> compare (base_pos_info x) (base_pos_info y))
   in
   if l <> [] then begin
