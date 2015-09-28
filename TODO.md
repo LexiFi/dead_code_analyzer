@@ -1,6 +1,5 @@
 #FIX
-- Module binding
-- Conditional branching (if/match)
+- Conditional branching (if/match -> see cond_sel.ml)
 - Clean code !!
 
 #Testing
@@ -13,9 +12,9 @@
 
 
 #Note
-- The 'UNUSED EXPORTED VALUES' section may have both FN and FP (none observed yet).
-- The 'UNUSED VALUES' section may have both FN and FP (none observed yet).
-- The 'OPTIONAL ARGUMENTS' section has both FN; may have some unknown FP.
-- The 'CODING STYLE' section may have both FN and FP (none observed yet).
+- The 'UNUSED EXPORTED VALUES' section may have both FN and FP (none known).
+- The 'UNUSED VALUES' section may have both FN and FP (none known).
+- The 'OPTIONAL ARGUMENTS' section has FN; may have some unknown FP.
+- The 'CODING STYLE' section may have both FN and FP (none known).
 
-ratio: *91.25%* succesful (over 80 expected results)
+ratio: *94.94%* succesful (over 79 expected results)
