@@ -478,38 +478,70 @@ let analyse_opt_args () =
   !all
 
 
-(* Helpers for the following sortings *)
+(* Helpers for the following reports *)
 
+let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
+  | s -> s
+  | exception Not_found -> loc.Location.loc_start.pos_fname
+
+let dir first =
+  let prev = ref @@ Filename.dirname first
+  in fun s -> let s = Filename.dirname s in
+    !prev <> s && (prev := s; true)
 
 let report_opt_args l =
-  let l =
+  let lalways =
     List.filter
       (fun (_, _, slot) ->
-        slot.with_val = [] && !(!opt_flag.sub2)
-        || slot.without_val = [] && !(!opt_flag.sub1))
+        slot.without_val = [] && !(!opt_flag.sub1))
       l
-    |> List.sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
-        let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
-          | s -> s
-          | exception Not_found -> loc.Location.loc_start.pos_fname
-        in compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
+    |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
+        compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
   in
-  if l <> [] then begin
+  let lnever =
+    List.filter
+      (fun (_, _, slot) ->
+        slot.with_val = [] && !(!opt_flag.sub2))
+      l
+    |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
+        compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
+  in
+  if lalways <> [] || lnever <> [] then begin
     section "OPTIONAL ARGUMENTS";
+    let change =
+      let (loc, _, _) = List.hd lalways in
+      dir @@ abs loc
+    in
     List.iter
       (fun (loc, lab, slot) ->
          if not !underscore || lab.[0] <> '_' then begin
+           if change @@ abs loc then print_newline ();
            prloc loc;
            Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS") end
-      ) l;
+      ) lalways;
+    print_newline ();
+    List.iter
+      (fun (loc, lab, slot) ->
+         if not !underscore || lab.[0] <> '_' then begin
+           if change @@ abs loc then print_newline ();
+           prloc loc;
+           Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS") end
+      ) lnever;
     separator ()
   end
 
 let report_style () =
   if !style <> [] then begin
     section "CODING STYLE";
-    List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s)
-    @@ List.sort compare !style;
+    let change =
+      let (fn, _, _) = List.hd !style in
+      dir fn
+    in
+    List.iter (fun (fn, l, s) ->
+      if change fn then print_newline ();
+      prloc ~fn l;
+      print_endline s)
+    @@ List.fast_sort compare !style;
     separator ()
   end
 
@@ -519,19 +551,21 @@ let report_unused_exported () =
       (fun (_, _, loc) -> not (Hashtbl.mem references loc
         || try Hashtbl.mem references @@ Hashtbl.find corres loc with Not_found -> false))
       !vds
-    |> List.sort (fun (fn1, path1, loc1) (fn2, path2, loc2) ->
-        let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
-          | s -> s
-          | exception Not_found -> loc.Location.loc_start.pos_fname
-        in compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
+    |> List.fast_sort (fun (fn1, path1, loc1) (fn2, path2, loc2) ->
+        compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
   in
   if l <> [] then begin
     section "UNUSED EXPORTED VALUES";
+    let change =
+      let (fn, _, _) = List.hd l in
+      dir fn
+    in
     List.iter
       (fun (fn, path, loc) ->
-         if not !underscore || (Ident.name @@ List.hd path).[0] <> '_' then begin
-           prloc ~fn loc;
-           print_endline (String.concat "." (List.rev_map Ident.name path)) end
+        if not !underscore || (Ident.name @@ List.hd path).[0] <> '_' then begin
+          if change fn then print_newline ();
+          prloc ~fn loc;
+          print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path)) end
       ) l;
     separator ()
   end
@@ -552,20 +586,19 @@ let report_unused () =
           if not node.func.used && not (exportable node) then node::l
           else l)
       vd_nodes []
-    |> List.sort (fun n1 n2 ->
-        let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
-          | s -> s
-          | exception Not_found -> loc.Location.loc_start.pos_fname
-        in let cmp = compare (abs n1.loc) (abs n2.loc) in
+    |> List.fast_sort (fun n1 n2 ->
+        let cmp = compare (abs n1.loc) (abs n2.loc) in
         if cmp = 0 then compare n1 n2 else cmp)
   in
   if l <> [] then begin
     section "UNUSED VALUES";
+    let change = dir @@ abs (List.hd l).loc in
     List.iter
       (fun node ->
-         if not !underscore || node.name.[0] <> '_' then begin
-         prloc node.loc;
-         print_endline node.name end)
+        if not !underscore || node.name.[0] <> '_' then begin
+        if change @@ abs node.loc then print_newline ();
+        prloc node.loc;
+        print_endline node.name end)
       l;
     separator ()
   end
