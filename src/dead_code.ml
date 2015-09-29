@@ -78,11 +78,11 @@ type func_info =
 
 type vd_node =
   {
-    name: string;
     loc: Location.t;
+    name: string;
+    func: func_info;
     mutable ptr: vd_node; (* points to itself if not a binding to another known value *)
     implem: bool;
-    func: func_info;
   }
 
 let opt_args = ref []
@@ -326,7 +326,7 @@ let collect_references =
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
       | Tpat_var (_, {txt; loc = _})-> if not !underscore || txt.[0] <> '_' then u txt
-      | Tpat_any -> u "_"
+      | Tpat_any -> if not !underscore then u "_"
       | _ -> u ""
     end;
     super.pat self p
@@ -475,16 +475,11 @@ let analyse_opt_args () =
       else slot.without_val <- callsite :: slot.without_val
     )
     !opt_args;
-  List.sort compare !all
+  !all
 
 
 (* Helpers for the following sortings *)
 
-let base_pos_info (fn, l, c) = (unit fn, l, c)
-
-let comp_loc loc1 loc2 =
-  let start loc = Location.(get_pos_info loc.loc_start) in
-  compare (base_pos_info @@ start loc1) (base_pos_info @@ start loc2)
 
 let report_opt_args l =
   let l =
@@ -493,11 +488,11 @@ let report_opt_args l =
         slot.with_val = [] && !(!opt_flag.sub2)
         || slot.without_val = [] && !(!opt_flag.sub1))
       l
-    |> List.fast_sort
-        (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
-            let tmp = comp_loc loc1 loc2 in
-            if tmp = 0 then compare (lab1, slot1) (lab2, slot2)
-            else tmp)
+    |> List.sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
+        let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
+          | s -> s
+          | exception Not_found -> loc.Location.loc_start.pos_fname
+        in compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
   in
   if l <> [] then begin
     section "OPTIONAL ARGUMENTS";
@@ -514,8 +509,7 @@ let report_style () =
   if !style <> [] then begin
     section "CODING STYLE";
     List.iter (fun (fn, l, s) -> prloc ~fn l; print_endline s)
-      @@ List.fast_sort (fun x y -> compare (base_pos_info x) (base_pos_info y))
-      !style;
+    @@ List.sort compare !style;
     separator ()
   end
 
@@ -525,7 +519,11 @@ let report_unused_exported () =
       (fun (_, _, loc) -> not (Hashtbl.mem references loc
         || try Hashtbl.mem references @@ Hashtbl.find corres loc with Not_found -> false))
       !vds
-    |> List.fast_sort (fun x y -> compare (base_pos_info x) (base_pos_info y))
+    |> List.sort (fun (fn1, path1, loc1) (fn2, path2, loc2) ->
+        let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
+          | s -> s
+          | exception Not_found -> loc.Location.loc_start.pos_fname
+        in compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
   in
   if l <> [] then begin
     section "UNUSED EXPORTED VALUES";
@@ -553,13 +551,13 @@ let report_unused () =
       (fun _ node l ->
           if not node.func.used && not (exportable node) then node::l
           else l)
-      vd_nodes
-      []
-    |> List.fast_sort
-      (fun n1 n2 ->
-          let tmp = comp_loc n1.loc n2.loc in
-          if tmp = 0 then compare n1 n2
-          else tmp)
+      vd_nodes []
+    |> List.sort (fun n1 n2 ->
+        let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
+          | s -> s
+          | exception Not_found -> loc.Location.loc_start.pos_fname
+        in let cmp = compare (abs n1.loc) (abs n2.loc) in
+        if cmp = 0 then compare n1 n2 else cmp)
   in
   if l <> [] then begin
     section "UNUSED VALUES";
