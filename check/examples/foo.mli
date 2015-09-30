@@ -1,1 +1,1 @@
-./examples/foo.mli:2: Foo.y
+./examples/foo.mli:2: y

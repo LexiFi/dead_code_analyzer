@@ -11,21 +11,31 @@ type flags =
     sub2: bool ref;
     sub3: bool ref;
     sub4: bool ref;
+    call: bool ref;
   }
 
 
-let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b}
+let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; call = ref b}
 
-(*opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false *)
+(*opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false; call: show callsites *)
 let opt_flag = ref @@ make_flag false
-(*style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding *)
+(*style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; call: false *)
 and style_flag = ref @@ make_flag false
-(*unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; *)
+(*unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
 and unused_flag = ref @@ make_flag true
-(*exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; *)
+(*exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
 and exported_flag = ref @@ make_flag true
 
 let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.sub4)
+
+let verbose = ref false
+let set_verbose () = verbose := true
+
+let underscore = ref false
+let set_underscore () = underscore := true
+
+let precision = ref 0.
+let set_precision x = precision := x
 
 
 let abspath = Hashtbl.create 16
@@ -39,12 +49,6 @@ let style = ref [] (* patterns of type unit which are not () *)
 let last_loc = ref Location.none
     (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
-
-let verbose = ref false
-let set_verbose () = verbose := true
-
-let underscore = ref false
-let set_underscore () = underscore := true
 
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
@@ -493,7 +497,9 @@ let report_opt_args l =
   let lalways =
     List.filter
       (fun (_, _, slot) ->
-        slot.without_val = [] && !(!opt_flag.sub1))
+        let len_wo = float_of_int @@ List.length slot.without_val in
+        let len_w = float_of_int @@ List.length slot.with_val in
+        (len_wo /. (len_wo +. len_w)) <= !precision && !(!opt_flag.sub1))
       l
     |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
         compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
@@ -501,7 +507,9 @@ let report_opt_args l =
   let lnever =
     List.filter
       (fun (_, _, slot) ->
-        slot.with_val = [] && !(!opt_flag.sub2))
+        let len_wo = float_of_int @@ List.length slot.without_val in
+        let len_w = float_of_int @@ List.length slot.with_val in
+        (len_w /. (len_wo +. len_w)) <= !precision && !(!opt_flag.sub2))
       l
     |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
         compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
@@ -512,21 +520,45 @@ let report_opt_args l =
       let (loc, _, _) = List.hd lalways in
       dir @@ abs loc
     in
-    List.iter
-      (fun (loc, lab, slot) ->
-         if not !underscore || lab.[0] <> '_' then begin
-           if change @@ abs loc then print_newline ();
-           prloc loc;
-           Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS") end
-      ) lalways;
+    let pretty_print with_val =
+      let last_loc = last_loc in
+      let last_lab = ref "___none___" in
+      fun (loc, lab, slot) ->
+      let l = if with_val then slot.with_val else slot.without_val in
+      let len = List.length l in
+      let ratio = float_of_int len
+        /. ((float_of_int @@ List.length slot.with_val) +. (float_of_int @@ List.length slot.without_val)) in
+      if not !underscore || lab.[0] <> '_' then begin
+        if change @@ abs loc then print_newline ();
+        prloc loc;
+        Printf.printf "%s " lab;
+        if ratio <> 0. then print_string "tends to ";
+        print_string (if with_val then "NEVER" else "ALWAYS");
+        if ratio <> 0. then begin
+          print_string " (";
+          print_float (100. -. 100. *. ratio);
+          print_string "% of the time)";
+          if !(!opt_flag.call) then print_string "  Exceptions:"
+        end;
+        print_newline ()
+      end;
+        if !(!opt_flag.call) then begin
+          List.iter
+            (function
+              | loc when not loc.Location.loc_ghost ->
+                  print_string "\t|> ";
+                  prloc loc;
+                  (fun (_, _, c) -> print_int c |> print_newline) @@ Location.get_pos_info loc.loc_start
+              | _ ->
+                  if (!last_loc, !last_lab) <> (loc, lab) then print_endline "\t|~ ghost";
+                  last_loc := loc; last_lab := lab)
+            l;
+          if len <> 0 then print_newline()
+        end
+    in
+    List.iter (pretty_print false) lalways;
     print_newline ();
-    List.iter
-      (fun (loc, lab, slot) ->
-         if not !underscore || lab.[0] <> '_' then begin
-           if change @@ abs loc then print_newline ();
-           prloc loc;
-           Printf.printf "%s %s\n" lab (if slot.with_val = [] then "NEVER" else "ALWAYS") end
-      ) lnever;
+    List.iter (pretty_print true) lnever;
     separator ()
   end
 
@@ -612,33 +644,43 @@ let set_all fn =
 
 let parse () =
   let update_all b () =
-      style_flag := make_flag b; exported_flag := make_flag b; unused_flag := make_flag b; opt_flag := make_flag b
+    style_flag := {(make_flag b) with call = !style_flag.call};
+      exported_flag := {(make_flag b) with call = !exported_flag.call};
+      unused_flag := {(make_flag b) with call = !unused_flag.call};
+      opt_flag := {(make_flag b) with call = !opt_flag.call}
   in
 
-  let rec update_flag b flag s =
-    let comp = if String.length s > 3 then String.sub s 0 2 else s in
-    match comp with
-      | "+1" -> !flag.sub1 := b;
-          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
-      | "+2" -> !flag.sub2 := b;
-          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
-      | "+3" -> !flag.sub3 := b;
-          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
-      | "+4" -> !flag.sub4 := b;
-          update_flag b flag @@ String.sub s (String.length comp) (String.length s - String.length comp)
-      | "all"  -> flag := make_flag b
-      | "" -> ()
-      |_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
+  let update_flag b flag s =
+    let rec aux l =
+      match l with
+        | "1"::l -> !flag.sub1 := b;
+            aux l
+        | "2"::l -> !flag.sub2 := b;
+            aux l
+        | "3"::l -> !flag.sub3 := b;
+            aux l
+        | "4"::l -> !flag.sub4 := b;
+            aux l
+        | "all"::l -> flag := {(make_flag b) with call = !flag.call};
+            aux l
+        | "call-site"::l -> !flag.call := b;
+            aux l
+        | ""::l -> ();
+            aux l
+        | s::_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
+        | [] -> ()
+      in aux @@ Str.split (Str.regexp "\\+") s
   in
 
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
 
-      "--no-underscore", Unit set_underscore, "Hide names starting with an underscore";
+      "--no-underscore", Unit set_underscore, " Hide names starting with an underscore";
 
-      "--verbose", Unit set_verbose, "Verbose mode (ie., show scanned files)";
-      "-v", Unit set_verbose, "Verbose mode (ie., show scanned files)";
+      "--verbose", Unit set_verbose, " Verbose mode (ie., show scanned files)";
+      "-v", Unit set_verbose, " Verbose mode (ie., show scanned files)";
 
+      "--flexibility", Float set_precision, "<percent (between 0 and 1)>";
 
       "-a", Unit (update_all false), " Disable all warnings";
       "--nothing", Unit (update_all false), " Disable all warnings";
@@ -655,7 +697,8 @@ let parse () =
         " Enable optional arguments warnings. Options (can be used together):\n\
           \t+1: ALWAYS\n\
           \t+2: NEVER\n\
-          \tall: +1+2";
+          \t+all: 1+2\n\
+          \t+call-site: show call_sites\n";
 
       "-s", String (update_flag false style_flag),
         " Disable coding style warnings. Options:\n\
@@ -666,7 +709,7 @@ let parse () =
           \t+2: unit pattern\n\
           \t+3: use sequence\n\
           \t+4: useless binding\n\
-          \tall: +1+2+3+4";
+          \t+all: 1+2+3+4";
 
       "-u", Unit (fun () -> !unused_flag.sub1 := false), " Disable unused values warnings";
       "-U", Unit (fun () -> !unused_flag.sub1 := true), " Enable unused values warnings";

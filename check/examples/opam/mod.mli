@@ -1,1 +1,1 @@
-./examples/opam/mod.mli:11: Mod.M.g
+./examples/opam/mod.mli:11: M.g

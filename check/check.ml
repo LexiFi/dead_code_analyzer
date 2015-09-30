@@ -105,7 +105,7 @@ let rec check_fn name line =
                 true
               with _ ->
                 error ~why:"File not found or cannot be opened."
-                      ~where:(!dir ^ name) ();
+                      ~where:(name) ();
                 fn := None;
                 nextl := "";
                 false end
@@ -155,11 +155,13 @@ let check_info line info =
 
 let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
   try
-    if !nextl = "" then nextl := input_line !res;
-    if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
+    if !nextl = "" then (nextl := input_line !res; section ~fn ~pos ~value ~info ())
+    else if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
     else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
     else begin
       incr total;
+      if get_info !nextl = " NEVER" then (extend:= "optn"; try fnames := List.hd !fnames :: empty_fnames ~regexp:"\\.ml[a-z]*$" ".mloptn" !fnames
+            with _ -> ());
       comp := if fn && !comp = "" then (get_path !nextl ^ !extend |> check_fn) !nextl else !comp;
         begin
           if not fn || !comp <> "" then
@@ -195,7 +197,7 @@ let rec sel_section () =
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopt" !fnames
             with _ -> ());
             print_string "OPTIONAL ARGUMENTS:\n";
-            print_string "===================" |> print_newline; (extend := "opt")
+            print_string "===================" |> print_newline; (extend := "opta")
             |> section ~value:true |> sel_section
       | "CODING STYLE:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames

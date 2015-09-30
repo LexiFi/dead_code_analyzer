@@ -1,1 +1,1 @@
-./examples/functor.mli:3: Functor.M.none
+./examples/functor.mli:3: M.none
