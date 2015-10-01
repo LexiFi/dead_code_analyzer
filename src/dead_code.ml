@@ -17,13 +17,13 @@ type flags =
 
 let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; call = ref b}
 
-(*opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false; call: show callsites *)
+(* opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false; call: show callsites *)
 let opt_flag = ref @@ make_flag false
-(*style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; call: false *)
+(* style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; call: false *)
 and style_flag = ref @@ make_flag false
-(*unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
-and unused_flag = ref @@ make_flag true
-(*exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
+(* unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
+and unused_flag = ref @@ {(make_flag true) with call=ref false}
+(* exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
 and exported_flag = ref @@ make_flag true
 
 let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.sub4)
@@ -34,7 +34,7 @@ let set_verbose () = verbose := true
 let underscore = ref false
 let set_underscore () = underscore := true
 
-let precision = ref 0.
+let precision = ref 0
 let set_precision x = precision := x
 
 
@@ -77,7 +77,8 @@ type func_info =
   {
     mutable opt_args: string list;
     mutable need: int; (* Nb of mandatory arguments *)
-    mutable used: bool; (* Complete application or passed as argument or binded *)
+    used: int ref; (* Nb complete application or passed as argument or binded *)
+    mutable call_sites: Location.t list;
   }
 
 type vd_node =
@@ -102,9 +103,7 @@ let vd_nodes = Hashtbl.create 256
 (* Go deeper in the vd_node until cond is respected (or it is as deep as it can) *)
 let rec repr ?(cond = (fun _ -> false)) n =
   if n.ptr == n || cond n then n
-  else (if n.func.need = 0 then
-      n.func.used <- true;
-    repr n.ptr)
+  else repr n.ptr
 
 (* repr specialization to get the next node corresponding to a function *)
 let next_fn_node n =
@@ -117,8 +116,9 @@ let vd_node ?(name = "_unknown_") loc =
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
     let implem = Filename.check_suffix fn ".mf" || Filename.check_suffix fn ".ml"  in
-    let rec r = {name; loc; ptr = r; implem; func = {opt_args = []; need = 0; used = false}} in
-    Hashtbl.add vd_nodes loc r;
+    let rec r = {name; loc; ptr = r; implem; func = {opt_args = []; need = 0; used = ref 0; call_sites = []}} in
+    if name <> "_unknown_" then
+      Hashtbl.add vd_nodes loc r;
     r
 
 (* Makes the most recent declaration points on the oldest one *)
@@ -126,14 +126,11 @@ let merge_nodes ~search n1 n2 =
   let n1 = search n1 and n2 = search n2 in
   if n1.implem && not n2.implem then n2.ptr <- n1
   else if n2.implem && not n1.implem then n1.ptr <- n2
-  else if n1.loc < n2.loc then n2.ptr <- n1 else n1.ptr <- n2;
-  n1.func.used <- true;
-  n2.func.used <- true
+  else if n1.loc < n2.loc then n2.ptr <- n1 else n1.ptr <- n2
 
 (* Merge nodes in order *)
 let merge_nodes_f ~search n1 n2 =
   let n1 = search n1 and n2 = search n2 in
-  if n2.func.need = 0 then n2.func.used <- true;
   n1.ptr <- n2
 
 (* Locations l1 and l2 are part of a binding from one to another *)
@@ -143,7 +140,7 @@ let merge_locs ?(force = false) ?(search = repr ~cond:(fun _ -> false)) ?name l1
 
 
 let rec treat_args ?(anon = false) val_loc args =
-  check_args args;
+  check_args val_loc args;
   if val_loc.Location.loc_ghost then () (* Ghostbuster *)
   else begin
     let loc = vd_node val_loc in
@@ -164,7 +161,7 @@ let rec treat_args ?(anon = false) val_loc args =
               try Hashtbl.find tbl lab + 1
               with Not_found -> Hashtbl.add tbl lab 1; 1)
             in
-            let count x l = List.length @@ List.find_all (( =) x) l in
+            let count x l = List.length @@ List.find_all (( = ) x) l in
             let rec locate loc =
               let count = if loc == loc.ptr then 0 else count lab loc.func.opt_args in
               if loc == loc.ptr || count >= !occur then loc
@@ -173,26 +170,27 @@ let rec treat_args ?(anon = false) val_loc args =
             opt_args :=
               (locate loc, lab, has_val, (match expr with Some e -> e.exp_loc | _ -> !last_loc))
               :: !opt_args
-        | (_, Some _, _)  ->
-            incr use
         | _ -> incr use
       )
-      args;
-    if !use >= loc.func.need then loc.func.used <- true
+      args
   end
 
-and check_args args=
+and check_args call_site args =
   List.iter
     (function
       | (_, Some e, _) -> begin match e.exp_desc with
         | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
             treat_args val_loc args;
             if not val_loc.Location.loc_ghost then (
-              (vd_node val_loc).func.used <- true;
+              let node = vd_node val_loc in
+              incr node.func.used;
+              node.func.call_sites <- call_site :: node.func.call_sites;
               last_loc := val_loc;)
         | Texp_ident (_, _, {val_loc; _}) ->
-            if not val_loc.Location.loc_ghost then
-              (vd_node val_loc).func.used <- true
+            if not val_loc.Location.loc_ghost then (
+              let node = vd_node val_loc in
+              incr node.func.used;
+              node.func.call_sites <- call_site :: node.func.call_sites)
         | Texp_let (* Partial application as argument may cut in two parts:
                     * let _ = partial in implicit opt_args elimination *)
               ( _,
@@ -339,7 +337,9 @@ let collect_references =
     begin match e.exp_desc with
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc e.exp_loc;
-        (vd_node val_loc).func.used <- true
+        let node = vd_node val_loc in
+        incr node.func.used;
+        node.func.call_sites <- e.exp_loc :: node.func.call_sites
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) ->
         begin match vb_pat.pat_desc with
           | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
@@ -466,7 +466,13 @@ let analyse_opt_args () =
   let tbl = Hashtbl.create 256 in
   List.iter
     (fun (loc, lab, has_val, callsite) ->
-      let loc = if loc.func.opt_args = [] then next_fn_node loc else loc in
+      let loc =
+        let loc = if loc.func.opt_args = [] then next_fn_node loc else loc in
+        if not loc.implem then
+          try vd_node @@ Hashtbl.find corres loc.loc
+          with Not_found -> loc
+        else loc
+      in
       let slot =
         try Hashtbl.find tbl (loc.loc, lab)
         with Not_found ->
@@ -497,9 +503,7 @@ let report_opt_args l =
   let lalways =
     List.filter
       (fun (_, _, slot) ->
-        let len_wo = float_of_int @@ List.length slot.without_val in
-        let len_w = float_of_int @@ List.length slot.with_val in
-        (len_wo /. (len_wo +. len_w)) <= !precision && !(!opt_flag.sub1))
+        List.length slot.without_val <= !precision && !(!opt_flag.sub1))
       l
     |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
         compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
@@ -507,9 +511,7 @@ let report_opt_args l =
   let lnever =
     List.filter
       (fun (_, _, slot) ->
-        let len_wo = float_of_int @@ List.length slot.without_val in
-        let len_w = float_of_int @@ List.length slot.with_val in
-        (len_w /. (len_wo +. len_w)) <= !precision && !(!opt_flag.sub2))
+        List.length slot.with_val <= !precision && !(!opt_flag.sub2))
       l
     |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
         compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
@@ -528,7 +530,7 @@ let report_opt_args l =
       let len = List.length l in
       let ratio = float_of_int len
         /. ((float_of_int @@ List.length slot.with_val) +. (float_of_int @@ List.length slot.without_val)) in
-      if not !underscore || lab.[0] <> '_' then begin
+      if (not !underscore || lab.[0] <> '_') && ratio <> 1. then begin
         if change @@ abs loc then print_newline ();
         prloc loc;
         Printf.printf "%s " lab;
@@ -542,7 +544,7 @@ let report_opt_args l =
         end;
         print_newline ()
       end;
-        if !(!opt_flag.call) then begin
+        if !(!opt_flag.call) && ratio <> 1. then begin
           List.iter
             (function
               | loc when not loc.Location.loc_ghost ->
@@ -615,7 +617,7 @@ let report_unused () =
   let l =
     Hashtbl.fold
       (fun _ node l ->
-          if not node.func.used && not (exportable node) then node::l
+          if !(node.func.used) <= !precision && not (exportable node) then node::l
           else l)
       vd_nodes []
     |> List.fast_sort (fun n1 n2 ->
@@ -628,9 +630,27 @@ let report_unused () =
     List.iter
       (fun node ->
         if not !underscore || node.name.[0] <> '_' then begin
-        if change @@ abs node.loc then print_newline ();
-        prloc node.loc;
-        print_endline node.name end)
+          if change @@ abs node.loc then print_newline ();
+          prloc node.loc;
+          print_string node.name;
+          if !(node.func.used) <> 0 then Printf.printf "\t(called %d time(s))" !(node.func.used);
+          print_newline ();
+          if !(!unused_flag.call) then begin
+          List.iter
+            (let pretty_printer () =
+              let last_loc = last_loc in let last_lab = ref "___none___" in
+              function
+                | loc when not loc.Location.loc_ghost ->
+                    print_string "\t|> ";
+                    prloc loc;
+                    (fun (_, _, c) -> print_int c |> print_newline) @@ Location.get_pos_info loc.loc_start
+                | _ ->
+                    if (!last_loc, !last_lab) <> (node.loc, node.name) then print_endline "\t|~ ghost";
+                    last_loc := node.loc; last_lab := node.name
+            in pretty_printer ())
+            node.func.call_sites;
+            if !(node.func.used) <> 0 then print_newline() end
+        end)
       l;
     separator ()
   end
@@ -680,7 +700,7 @@ let parse () =
       "--verbose", Unit set_verbose, " Verbose mode (ie., show scanned files)";
       "-v", Unit set_verbose, " Verbose mode (ie., show scanned files)";
 
-      "--flexibility", Float set_precision, "<percent (between 0 and 1)>";
+      "--flexibility", Int set_precision, "<integer> Number max of exceptions to still be considered in the category";
 
       "-a", Unit (update_all false), " Disable all warnings";
       "--nothing", Unit (update_all false), " Disable all warnings";
@@ -698,7 +718,7 @@ let parse () =
           \t+1: ALWAYS\n\
           \t+2: NEVER\n\
           \t+all: 1+2\n\
-          \t+call-site: show call_sites\n";
+          \t+call-site: show call_sites";
 
       "-s", String (update_flag false style_flag),
         " Disable coding style warnings. Options:\n\
@@ -712,7 +732,10 @@ let parse () =
           \t+all: 1+2+3+4";
 
       "-u", Unit (fun () -> !unused_flag.sub1 := false), " Disable unused values warnings";
-      "-U", Unit (fun () -> !unused_flag.sub1 := true), " Enable unused values warnings";
+      "-U", String (update_flag true unused_flag),
+        " Enable unused values warnings. Options (can be used together):\n\
+          \t+all: Enable warnings\n\
+          \t+call-site: show call_sites";
     ]
     set_all
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
