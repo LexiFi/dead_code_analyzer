@@ -8,12 +8,6 @@ let get_element ?(f = Str.search_forward) ~regexp ?(start = 0) line =
     Str.matched_string line
   with _ -> ""
 
-(* Extract filename from current line *)
-let get_filename line =
-  let fn = get_element ~regexp:"[</].*.mli?" line in
-  if fn <> "" then String.sub fn 1 @@ String.length fn - 1
-  else fn
-
 (* Extract abs_path from current line *)
 let get_path =
   get_element ~regexp:"\./.*[</].*.mli?"

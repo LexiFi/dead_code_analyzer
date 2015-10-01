@@ -159,7 +159,7 @@ let rec treat_args ?(anon = false) val_loc args =
             | Some e -> begin match e.exp_desc with
               | Texp_construct(_, {cstr_name="None"; _}, _) -> false
               | _ -> true end
-            | None -> false
+            | None -> anon
           in
           let occur = ref @@
             try Hashtbl.find tbl lab + 1
@@ -215,7 +215,7 @@ and check_args call_site = function
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
   | Texp_ident (_, _, {Types.val_loc; _}) ->
-      treat_args val_loc args
+      treat_args ~anon:true val_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
       begin match exp_else with
@@ -253,7 +253,7 @@ let rec build_node_args node expr = match expr.exp_desc with
       merge_locs ~force:true ~search:next_fn_node node.loc loc2
   | Texp_ident(_, _, {val_loc=loc2; _}) ->
       merge_locs ~force:true ~search:next_fn_node node.loc loc2
-  | _ -> ()
+  | _ -> treat_exp expr @@ List.map (fun lab -> (Asttypes.Optional lab, None, Optional)) node.func.opt_args
 
 
 let rec sign = function
@@ -290,15 +290,10 @@ let value_binding = function
       merge_locs ~force:true ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
   | {
       vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
-      vb_expr={exp_desc=(Texp_function _ | Texp_apply _); _} as exp;
+      vb_expr=exp;
       _
     } ->
       build_node_args (vd_node ~name:(Ident.name id) loc1) exp
-  | {
-      vb_pat={pat_desc=Tpat_var(id, {loc; _}); _};
-      _
-    } when not loc.Location.loc_ghost ->
-      vd_node ~name:(Ident.name id) loc |> ignore
   | _ -> ()
 
 
@@ -315,9 +310,7 @@ let collect_references =
   in
 
   let structure_item self i = begin match i.str_desc with
-    | Tstr_value (_, l) -> begin match List.fold_left (fun _ e -> [e]) [] l with (* tip of the tail *)
-      | [vb] -> value_binding vb
-      | _ -> () end
+    | Tstr_value (_, l) -> List.iter value_binding l
     | _ -> () end;
     super.structure_item self i
   in
