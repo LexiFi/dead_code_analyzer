@@ -56,8 +56,12 @@ let current_src = ref ""
 
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
-let section s =
-  Printf.printf "%s:\n%s\n" s (String.make (String.length s + 1) '=')
+let section ?(sub = false) s =
+  Printf.printf "%s %s:\n%s%s\n"
+    (if sub then ">>>> " else ">>")
+    s
+    (if sub then "    " else "  ")
+    (String.make ((if sub then 2 else 1) + String.length s + 1) (if sub then '~' else '='))
 
 let separator () =
   Printf.printf "%s\n\n\n" (String.make 80 '-')
@@ -153,7 +157,7 @@ let rec treat_args ?(anon = false) val_loc args =
     let tbl = Hashtbl.create 256 in
     let use = ref 0 in
 
-    let treat = function 
+    let treat = function
       | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) && status_flag !opt_flag->
           let has_val = match expr with
             | Some e -> begin match e.exp_desc with
@@ -192,7 +196,7 @@ and check_args call_site = function
     | Texp_function (_,
           [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
             c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-        treat_args !last_loc args
+        treat_args call_site args
     | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
         treat_args val_loc args;
         if not val_loc.Location.loc_ghost then begin
@@ -487,65 +491,68 @@ let dir first =
 (* Print call site *)
 let pretty_print_call () = let ghost = ref false in (* static *)function
   | loc when not loc.Location.loc_ghost ->
-      print_string "\t|> "; prloc loc;
+      print_string "         "; prloc loc;
       (fun (_, _, c) -> print_int c |> print_newline) @@ Location.get_pos_info loc.loc_start
   | _ ->
-      if not !ghost then print_endline "\t|~ ghost";
+      if not !ghost then print_endline "        |~ ghost";
       ghost := true
 
 
-let report_opt_args l =
-  let filter with_val = List.filter
-      (fun (_, _, slot) ->
-        List.length (if with_val then slot.with_val else slot.without_val) <= !flexibility && !(!opt_flag.sub1))
+let rec report_opt_args ?(nb_call = 0) s l =
+  let filter = List.filter
+      (fun (_, lab, slot, ratio, _) ->
+        (not !underscore || lab.[0] <> '_') && ratio <> 1.
+        && List.length slot = nb_call && !(!opt_flag.sub1))
+    @@ List.map
+      (fun (loc, lab, slot) ->
+        let ratio = (* quantity / total *)
+          let flen l = float_of_int @@ List.length l in
+          flen (if s = "NEVER" then slot.with_val else slot.without_val)
+          /. (flen slot.with_val +. flen slot.without_val)
+        in (loc, lab, (if s = "NEVER" then slot.with_val else slot.without_val), ratio, List.length slot.with_val + List.length slot.without_val))
       l
-    |> List.fast_sort (fun (loc1, lab1, slot1) (loc2, lab2, slot2) ->
-        compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
+    |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
+        compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2 ))
   in
-  let lalways = filter false in
-  let lnever = filter true in
-  if lalways <> [] || lnever <> [] then begin
-    section "OPTIONAL ARGUMENTS";
+  let lo = filter in
 
-    let change =
-      let (loc, _, _) = List.hd lalways in
-      dir @@ abs loc
-    in
+  let change =
+    let (loc, _, _, _, _) = try List.hd lo with _ -> (!last_loc, "_none_", [], 0., 0) in
+    dir @@ abs loc
+  in
 
-    let pretty_print with_val = fun (loc, lab, slot) ->
-      let l = if with_val then slot.with_val else slot.without_val in
-      let len = List.length l in
-      let ratio = (* quantity / total *)
-        let flen l = float_of_int @@ List.length l in
-        float_of_int len
-        /. (flen slot.with_val +. flen slot.without_val)
-      in
-      if (not !underscore || lab.[0] <> '_') && ratio <> 1. then begin
-        if change @@ abs loc then print_newline ();
-        prloc loc; Printf.printf "%s " lab;
-        if ratio <> 0. then print_string "tends to ";
-        print_string (if with_val then "NEVER" else "ALWAYS");
-        if ratio <> 0. then begin
-          print_string " ("; print_float (100. -. 100. *. ratio); print_string "% of the time)";
-          if !(!opt_flag.call) then print_string "  Exceptions:"
-        end;
-        print_newline ()
-      end;
-      if !(!opt_flag.call) && ratio <> 1. then begin
-        List.iter (pretty_print_call ()) l;
-        if len <> 0 then print_newline()
-      end
-    in
-
-    List.iter (pretty_print false) lalways;
+  let pretty_print = fun (loc, lab, slot, ratio, total) ->
+    let len = List.length slot in
+    if change @@ abs loc then print_newline ();
+    prloc loc; print_string lab;
+    if ratio <> 0. then begin
+      print_string " ("; print_float (100. -. 100. *. ratio); Printf.printf "%% out of %d call(s))" total;
+      if !(!opt_flag.call) then print_string "  Exceptions:"
+    end;
     print_newline ();
-    List.iter (pretty_print true) lnever;
-    separator ()
-  end
+    if !(!opt_flag.call) && ratio <> 1. then begin
+      List.iter (pretty_print_call ()) slot;
+      if len <> 0 then print_newline()
+    end
+  in
+
+  if lo <> [] then begin
+    section ~sub:(nb_call <> 0) @@ Printf.sprintf
+      "OPTIONAL ARGUMENTS: %s"
+      (if nb_call = 0 then s else Printf.sprintf "almost %s. Except %d time(s)" s nb_call);
+        List.iter pretty_print lo;
+    if nb_call < !flexibility then
+      print_endline "--------" |> print_newline |> print_newline
+  end;
+  if nb_call < !flexibility then report_opt_args s ~nb_call:(nb_call+1) l
+  else if !flexibility > 0 then
+    print_endline "Nothing else to report in this section";
+  if nb_call >= !flexibility then separator ()
 
 let report_style () =
   if !style <> [] then begin
     section "CODING STYLE";
+    style := List.fast_sort compare !style;
     let change =
       let (fn, _, _) = List.hd !style in
       dir fn
@@ -554,7 +561,7 @@ let report_style () =
       if change fn then print_newline ();
       prloc ~fn l;
       print_endline s)
-    @@ List.fast_sort compare !style;
+    !style;
     separator ()
   end
 
@@ -714,10 +721,12 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
-    if (status_flag !unused_flag)    then  report_unused ();
-    if (status_flag !exported_flag)  then  report_unused_exported ();
-    if (status_flag !opt_flag)       then  report_opt_args (analyse_opt_args ());
-    if (status_flag !style_flag)     then  report_style ();
+    if (status_flag !unused_flag)    then report_unused ();
+    if (status_flag !exported_flag)  then report_unused_exported ();
+    if (status_flag !opt_flag)       then begin let tmp = analyse_opt_args () in
+                                          report_opt_args "ALWAYS" tmp;
+                                          report_opt_args "NEVER" tmp end;
+    if (status_flag !style_flag)     then report_style ();
 
     if !bad_files <> [] then begin
       let oc = open_out_bin "remove_bad_files.sh" in

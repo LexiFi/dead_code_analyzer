@@ -18,12 +18,6 @@ let get_pos line =
   int_of_string (if pos <> "" then String.sub pos 1 @@ String.length pos - 2
   else pos)
 
-(* Extract value name from current line (for optional arg) *)
-let get_value line =
-  let x = get_element ~regexp:" .* " ~f:Str.search_backward ~start:(String.length line - 1) line in
-  if x <> "" then String.sub x 1 @@ String.length x - 2
-  else x
-
 (* Extract extra info from current line *)
 let get_info line =
   get_element ~regexp:" .*[\r\n]?" ~f:Str.search_backward ~start:(String.length line - 1) line
@@ -31,7 +25,7 @@ let get_info line =
 let sec_part ~regexp line =
   Str.string_match (Str.regexp regexp) line 0
 
-let sec_start = sec_part ~regexp:"=+"
+let sec_start = sec_part ~regexp:" *=+"
 let sec_end = sec_part ~regexp:"-+"
 
 
@@ -134,7 +128,7 @@ let check_aux line status=
   else true
 
 let check_value line x =
-  check_elt ~f:get_value line x |> check_aux line
+  check_elt ~f:get_info line x |> check_aux line
 
 let check_pos line pos =
   check_elt ~f:get_pos line pos |> check_aux line
@@ -154,13 +148,11 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
     else begin
       incr total;
-      if get_info !nextl = " NEVER" then (extend:= "optn"; try fnames := List.hd !fnames :: empty_fnames ~regexp:"\\.ml[a-z]*$" ".mloptn" !fnames
-            with _ -> ());
       comp := if fn && !comp = "" then (get_path !nextl ^ !extend |> check_fn) !nextl else !comp;
         begin
           if not fn || !comp <> "" then
             (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
-                || (value && not @@ check_value !comp @@ get_value !nextl)
+                || (value && not @@ check_value !comp @@ get_info !nextl)
                 || (info && not @@ check_info !comp @@ get_info !nextl)) then
               (print_endline !nextl; nextl := ""; comp := ""))
         end
@@ -175,24 +167,30 @@ let rec sel_section () =
   nextl := ""; comp := "";
   try
     match (input_line !res) with
-        "UNUSED EXPORTED VALUES:" ->
+        ">> UNUSED EXPORTED VALUES:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mli" !fnames
             with _ -> ());
             print_string "UNUSED EXPORTED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
-      | "UNUSED VALUES:" ->
+      | ">> UNUSED VALUES:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".ml" !fnames
             with _ -> ());
             print_string "UNUSED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
-      | "OPTIONAL ARGUMENTS:" ->
-            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopt" !fnames
+      | ">> OPTIONAL ARGUMENTS: ALWAYS:" ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopta" !fnames
             with _ -> ());
-            print_string "OPTIONAL ARGUMENTS:\n";
-            print_string "===================" |> print_newline; (extend := "opta")
-            |> section ~value:true |> sel_section
+            print_string "OPTIONAL ARGUMENTS: ALWAYS:\n";
+            print_string "===========================" |> print_newline; (extend := "opta")
+            |> section ~value:true ~info:false |> sel_section
+      | ">> OPTIONAL ARGUMENTS: NEVER:" ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mloptn" !fnames
+            with _ -> ());
+            print_string "OPTIONAL ARGUMENTS: NEVER:\n";
+            print_string "==========================" |> print_newline; (extend := "optn")
+            |> section ~value:true ~info:false |> sel_section
       | "CODING STYLE:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames
             with _ -> ());

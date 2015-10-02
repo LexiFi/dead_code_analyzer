@@ -1,2 +1,2 @@
-./examples/opam/anonFn.ml:1: b NEVER
-./examples/opam/anonFn.ml:2: b NEVER
+./examples/opam/anonFn.ml:1: b
+./examples/opam/anonFn.ml:2: b

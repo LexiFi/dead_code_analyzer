@@ -1,5 +1,5 @@
-./examples/if_end.ml:1: a ALWAYS
-./examples/if_end.ml:1: b ALWAYS
-./examples/if_end.ml:3: a ALWAYS
-./examples/if_end.ml:3: b ALWAYS
-./examples/if_end.ml:3: d ALWAYS
+./examples/if_end.ml:1: a
+./examples/if_end.ml:1: b
+./examples/if_end.ml:3: a
+./examples/if_end.ml:3: b
+./examples/if_end.ml:3: d
