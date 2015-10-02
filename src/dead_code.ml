@@ -58,7 +58,7 @@ let unit fn = Filename.chop_extension (Filename.basename fn)
 
 let section ?(sub = false) s =
   Printf.printf "%s %s:\n%s%s\n"
-    (if sub then ">>>> " else ">>")
+    (if sub then ">>-> " else ">>")
     s
     (if sub then "    " else "  ")
     (String.make ((if sub then 2 else 1) + String.length s + 1) (if sub then '~' else '='))
@@ -175,11 +175,12 @@ let rec treat_args ?(anon = false) val_loc args =
             if loc == loc.ptr || count >= !occur then loc
             else (occur := !occur - count; locate @@ next_fn_node loc)
           in
-          opt_args :=
-            (locate loc, lab, has_val, (match expr with
-              | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
-              | _ -> !last_loc))
-            :: !opt_args
+          if (not !underscore || lab.[0] <> '_') then
+            opt_args :=
+              (locate loc, lab, has_val, (match expr with
+                | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
+                | _ -> !last_loc))
+              :: !opt_args
       | _ -> incr use
     in
 
@@ -277,7 +278,8 @@ let rec collect_export path u = function
             module M : Set.S with type elt = int
         will create value definitions whose location is in set.mli
       *)
-      if u = unit val_loc.Location.loc_start.Lexing.pos_fname then
+      if u = unit val_loc.Location.loc_start.Lexing.pos_fname
+          && (not !underscore || (Ident.name id).[0] <> '_') then
         vds := (!current_src, id :: path, val_loc) :: !vds
   | Sig_module (id, {Types.md_type = t; _}, _)
   | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
@@ -338,7 +340,7 @@ let collect_references =
   let expr self e = begin match e.exp_desc with
     | Texp_apply(exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-        Hashtbl.add references val_loc e.exp_loc;
+        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> []);
         let node = vd_node val_loc in
         node.func.call_sites <- e.exp_loc :: node.func.call_sites
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) ->
@@ -502,57 +504,143 @@ let pretty_print_call () = let ghost = ref false in (* static *)function
       if not !ghost then print_endline "        |~ ghost";
       ghost := true
 
-
-let rec report_opt_args ?(nb_call = 0) s l =
-  let filter = List.filter
-      (fun (_, lab, slot, ratio, _) ->
-        (not !underscore || lab.[0] <> '_') && ratio <> 1.
-        && List.length slot = nb_call && !(!opt_flag.sub1))
-    @@ List.map
-      (fun (loc, lab, slot) ->
-        let ratio = (* quantity / total *)
-          let flen l = float_of_int @@ List.length l in
-          flen (if s = "NEVER" then slot.with_val else slot.without_val)
-          /. (flen slot.with_val +. flen slot.without_val)
-        in (loc, lab, (if s = "NEVER" then slot.with_val else slot.without_val), ratio, List.length slot.with_val + List.length slot.without_val))
-      l
-    |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
-        compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2 ))
-  in
-  let lo = filter in
-
-  let change =
-    let (loc, _, _, _, _) = try List.hd lo with _ -> (!last_loc, "_none_", [], 0., 0) in
-    dir @@ abs loc
-  in
-
-  let pretty_print = fun (loc, lab, slot, ratio, total) ->
-    let len = List.length slot in
-    if change @@ abs loc then print_newline ();
-    prloc loc; print_string lab;
-    if ratio <> 0. then begin
-      print_string " ("; print_float (100. -. 100. *. ratio); Printf.printf "%% out of %d call(s))" total;
-      if !(!opt_flag.call) then print_string "  Exceptions:"
-    end;
-    print_newline ();
-    if !(!opt_flag.call) && ratio <> 1. then begin
-      List.iter (pretty_print_call ()) slot;
-      if len <> 0 then print_newline()
-    end
-  in
-
-  if lo <> [] then begin
-    section ~sub:(nb_call <> 0) @@ Printf.sprintf
-      "OPTIONAL ARGUMENTS: %s"
-      (if nb_call = 0 then s else Printf.sprintf "almost %s. Except %d time(s)" s nb_call);
-        List.iter pretty_print lo;
+let report s ?(extra = "Called") l nb_call pretty_print reporter =
+  if l <> [] then begin
+    section ~sub:(nb_call <> 0)
+    @@ (if nb_call = 0 then s
+        else Printf.sprintf "%s: %s %d time(s)" s extra nb_call);
+        List.iter pretty_print l;
     if nb_call < !flexibility then
       print_endline "--------" |> print_newline |> print_newline
   end;
-  if nb_call < !flexibility then report_opt_args s ~nb_call:(nb_call+1) l
+  if nb_call < !flexibility then reporter (nb_call+1)
   else if !flexibility > 0 then
-    print_endline "Nothing else to report in this section";
-  if nb_call >= !flexibility then separator ()
+    (print_newline(); print_endline "Nothing else to report in this section" |> separator)
+  else if l <> [] then separator ()
+
+
+
+let report_opt_args s l =
+  let rec report_opt_args nb_call =
+    let l = List.filter
+        (fun (_, _, slot, ratio, _) -> ratio <> 1. && List.length slot = nb_call
+        && (s = "NEVER" && !(!opt_flag.sub2) || s <> "NEVER" && !(!opt_flag.sub1)))
+      @@ List.map
+        (fun (loc, lab, slot) ->
+          let l = if s = "NEVER" then slot.with_val else slot.without_val in
+          let flen = float_of_int @@ List.length l in
+          let total = List.length slot.with_val + List.length slot.without_val in
+          let ratio = flen /. float_of_int total
+          in (loc, lab, l, ratio, total))
+        l
+      |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
+          compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2 ))
+    in
+
+    let change =
+      let (loc, _, _, _, _) = try List.hd l with _ -> (!last_loc, "_none_", [], 0., 0) in
+      dir @@ abs loc
+    in
+
+    let pretty_print = fun (loc, lab, slot, ratio, total) ->
+      if change @@ abs loc then print_newline ();
+      prloc loc; print_string lab;
+      if ratio <> 0. then begin
+        print_string " ("; print_float (100. -. 100. *. ratio); Printf.printf "%% out of %d call(s))" total;
+        if !(!opt_flag.call) then print_string "  Exceptions:"
+      end;
+      print_newline ();
+      if !(!opt_flag.call) && ratio <> 1. then begin
+        List.iter (pretty_print_call ()) slot;
+        if nb_call <> 0 then print_newline()
+      end
+    in
+
+    let s =
+      (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
+      else "OPTIONAL ARGUMENTS: ") ^ s
+    in
+    report s ~extra:"Except" l nb_call pretty_print report_opt_args;
+
+  in report_opt_args 0
+
+
+let report_unused_exported () =
+  let rec report_unused_exported nb_call =
+    let l =
+      List.fold_left
+        (fun acc (fn, path, loc) ->
+          let l = ref [] in
+          match not (Hashtbl.mem references loc
+                    && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
+                  || (let loc = Hashtbl.find corres loc in Hashtbl.mem references loc
+                    && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call))
+                && List.length !l = nb_call with
+            | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
+            | true -> (fn, path, loc, !l)::acc
+            | false -> acc)
+        [] !vds
+      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
+          compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
+    in
+
+    let change =
+      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", [], !last_loc, []) in
+      dir fn
+    in
+    let pretty_print = fun (fn, path, loc, call_sites) ->
+      if change fn then print_newline ();
+      prloc ~fn loc;
+      print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
+        if !(!exported_flag.call) then begin
+          List.iter (pretty_print_call ()) call_sites;
+          if nb_call <> 0 then print_newline()
+        end
+    in
+
+    let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
+    report s l nb_call pretty_print report_unused_exported
+
+  in report_unused_exported 0
+
+
+let report_unused () =
+  let rec report_unused nb_call =
+    let exportable node =
+      List.exists
+        (fun (fn, path, _) ->
+            unit fn = unit node.loc.loc_start.pos_fname
+            && Ident.name @@ List.hd path = node.name)
+        !vds
+    in
+    let l =
+      Hashtbl.fold
+        (fun _ node l ->
+            if List.length node.func.call_sites = nb_call && not (exportable node)
+                && (not !underscore || node.name.[0] <> '_') then node::l
+            else l)
+        vd_nodes []
+      |> List.fast_sort (fun n1 n2 ->
+          let cmp = compare (abs n1.loc) (abs n2.loc) in
+          if cmp = 0 then compare n1 n2 else cmp)
+    in
+
+    let change = dir @@ (try abs (List.hd l).loc with _ -> "_none_") in
+    let pretty_print =fun node ->
+      if change @@ abs node.loc then print_newline ();
+      prloc node.loc; print_string node.name;
+        print_newline ();
+        if !(!unused_flag.call) then begin
+          List.iter (pretty_print_call ()) node.func.call_sites;
+          if nb_call <> 0 then print_newline()
+        end
+    in
+
+    let s = if nb_call > 0 then "ALMOST UNUSED VALUES" else "UNUSED VALUES" in
+    report s l nb_call pretty_print report_unused
+
+  in report_unused 0
+
 
 let report_style () =
   if !style <> [] then begin
@@ -570,78 +658,8 @@ let report_style () =
     separator ()
   end
 
-let report_unused_exported () =
-  let l =
-    List.filter
-      (fun (_, _, loc) ->
-        try not (Hashtbl.mem references loc || Hashtbl.mem references @@ Hashtbl.find corres loc)
-        with Not_found -> false)
-      !vds
-    |> List.fast_sort (fun (fn1, path1, loc1) (fn2, path2, loc2) ->
-        compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
-  in
-  if l <> [] then begin
-    section "UNUSED EXPORTED VALUES";
-    let change =
-      let (fn, _, _) = List.hd l in
-      dir fn
-    in
-    List.iter
-      (fun (fn, path, loc) ->
-        if not !underscore || (Ident.name @@ List.hd path).[0] <> '_' then begin
-          if change fn then print_newline ();
-          prloc ~fn loc;
-          print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path))
-        end)
-      l;
-    separator ()
-  end
 
-
-let rec report_unused ?(nb_call = 0) () =
-  let exportable node =
-    List.exists
-      (fun (fn, path, _) ->
-          unit fn = unit node.loc.loc_start.pos_fname
-          && Ident.name @@ List.hd path = node.name)
-      !vds
-  in
-  let l =
-    Hashtbl.fold
-      (fun _ node l ->
-          if List.length node.func.call_sites = nb_call && not (exportable node)
-              && (not !underscore || node.name.[0] <> '_') then node::l
-          else l)
-      vd_nodes []
-    |> List.fast_sort (fun n1 n2 ->
-        let cmp = compare (abs n1.loc) (abs n2.loc) in
-        if cmp = 0 then compare n1 n2 else cmp)
-  in
-  if l <> [] then begin
-    section ~sub:(nb_call <> 0)
-    @@ (if nb_call = 0 then "UNUSED VALUES"
-      else Printf.sprintf "ALMOST UNUSED VALUES: called %d time(s)" nb_call);
-    let change = dir @@ abs (List.hd l).loc in
-    List.iter
-      (fun node ->
-        if change @@ abs node.loc then print_newline ();
-        prloc node.loc; print_string node.name;
-        let len = List.length node.func.call_sites in
-        if len <> 0 then Printf.printf "\t(called %d time(s))" len;
-        print_newline ();
-        if !(!unused_flag.call) then begin
-          List.iter (pretty_print_call ()) node.func.call_sites;
-          if len <> 0 then print_newline()
-        end)
-      l;
-    if nb_call < !flexibility then
-      print_endline "--------" |> print_newline |> print_newline
-  end;
-  if nb_call < !flexibility then report_unused ~nb_call:(nb_call+1) ()
-  else if !flexibility > 0 then
-    print_endline "Nothing else to report in this section";
-  if nb_call >= !flexibility then separator ()
-
+(* Init *)
 let set_all fn =
   opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
   exported_flag := {!exported_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
@@ -694,7 +712,10 @@ let parse () =
       "--all", Unit (update_all true), " Enable all warnings";
 
       "-e", Unit (fun () -> !exported_flag.sub1 := false), " Disable unused exported values warnings";
-      "-E", Unit (fun () -> !exported_flag.sub1 := true), " Enable unused exported values warnings";
+      "-E", String (update_flag true exported_flag),
+        " Enable unused exported values warnings. Options (can be used together):\n\
+          \t+all: Enable warnings\n\
+          \t+call-site: show call sites";
 
       "-o", String (update_flag false opt_flag),
         " Disable optional arguments warnings. Options:\n\
