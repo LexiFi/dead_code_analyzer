@@ -145,7 +145,9 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
   try
     if !nextl = "" then (nextl := input_line !res; section ~fn ~pos ~value ~info ())
     else if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
-    else if sec_end !nextl then (print_string !nextl; print_string "\n\n\n"; nextl := "")
+    else if sec_end !nextl then
+      (let tmp = open_in "trash.out" in if !in_file <> tmp then (close_in tmp; empty !in_file);
+      print_string !nextl; print_string "\n\n\n"; nextl := "")
     else begin
       incr total;
       comp := if fn && !comp = "" then (get_path !nextl ^ !extend |> check_fn) !nextl else !comp;
@@ -191,7 +193,7 @@ let rec sel_section () =
             print_string "OPTIONAL ARGUMENTS: NEVER:\n";
             print_string "==========================" |> print_newline; (extend := "optn")
             |> section ~value:true ~info:false |> sel_section
-      | "CODING STYLE:" ->
+      | ">> CODING STYLE:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames
             with _ -> ());
             print_string "CODING STYLE:\n";
