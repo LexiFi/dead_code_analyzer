@@ -176,7 +176,9 @@ let rec treat_args ?(anon = false) val_loc args =
             else (occur := !occur - count; locate @@ next_fn_node loc)
           in
           opt_args :=
-            (locate loc, lab, has_val, (match expr with Some e -> e.exp_loc | _ -> !last_loc))
+            (locate loc, lab, has_val, (match expr with
+              | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
+              | _ -> !last_loc))
             :: !opt_args
       | _ -> incr use
     in
@@ -187,33 +189,36 @@ let rec treat_args ?(anon = false) val_loc args =
 (* Verify the nature of the argument to detect and treat function applications and uses *)
 and check_args call_site = function
   | (_, None, _) -> ()
-  | (_, Some e, _) -> match e.exp_desc with
-
-    | Texp_ident (_, _, {val_loc; _}) ->
-        if not val_loc.Location.loc_ghost then
-          let node = vd_node val_loc in
-          node.func.call_sites <- call_site :: node.func.call_sites
-    | Texp_function (_,
-          [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-            c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-        treat_args call_site args
-    | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
-        treat_args val_loc args;
-        if not val_loc.Location.loc_ghost then begin
-          let node = vd_node val_loc in
-          node.func.call_sites <- call_site :: node.func.call_sites;
-          last_loc := val_loc
-        end
-    | Texp_let (* Partial application as argument may cut in two parts:
-                * let _ = partial in implicit opt_args elimination *)
-        ( _,
-          [{vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, _); _}; _}],
-          { exp_desc=Texp_function (_,
+  | (_, Some e, _) ->
+      let call_site =
+        if call_site.Location.loc_ghost then  e.exp_loc
+        else            (* default *)         call_site
+      in match e.exp_desc with
+        | Texp_ident (_, _, {val_loc; _}) ->
+                if not val_loc.Location.loc_ghost then
+              let node = vd_node val_loc in
+              node.func.call_sites <- call_site :: node.func.call_sites
+        | Texp_function (_,
               [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-                c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
-            exp_loc={loc_ghost=true; _};_}) ->
-        treat_args ~anon:true val_loc args
-    | _ -> ()
+                c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
+            treat_args call_site args
+        | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
+            treat_args val_loc args;
+            if not val_loc.Location.loc_ghost then begin
+              let node = vd_node val_loc in
+              node.func.call_sites <- call_site :: node.func.call_sites;
+              last_loc := val_loc
+            end
+        | Texp_let (* Partial application as argument may cut in two parts:
+                    * let _ = partial in implicit opt_args elimination *)
+            ( _,
+              [{vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, _); _}; _}],
+              { exp_desc=Texp_function (_,
+                  [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
+                    c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
+                exp_loc={loc_ghost=true; _};_}) ->
+            treat_args ~anon:true val_loc args
+        | _ -> ()
 
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
@@ -593,7 +598,7 @@ let report_unused_exported () =
   end
 
 
-let report_unused () =
+let rec report_unused ?(nb_call = 0) () =
   let exportable node =
     List.exists
       (fun (fn, path, _) ->
@@ -604,7 +609,8 @@ let report_unused () =
   let l =
     Hashtbl.fold
       (fun _ node l ->
-          if List.length node.func.call_sites <= !flexibility && not (exportable node) then node::l
+          if List.length node.func.call_sites = nb_call && not (exportable node)
+              && (not !underscore || node.name.[0] <> '_') then node::l
           else l)
       vd_nodes []
     |> List.fast_sort (fun n1 n2 ->
@@ -612,24 +618,29 @@ let report_unused () =
         if cmp = 0 then compare n1 n2 else cmp)
   in
   if l <> [] then begin
-    section "UNUSED VALUES";
+    section ~sub:(nb_call <> 0)
+    @@ (if nb_call = 0 then "UNUSED VALUES"
+      else Printf.sprintf "ALMOST UNUSED VALUES: called %d time(s)" nb_call);
     let change = dir @@ abs (List.hd l).loc in
     List.iter
       (fun node ->
-        if not !underscore || node.name.[0] <> '_' then begin
-          if change @@ abs node.loc then print_newline ();
-          prloc node.loc; print_string node.name;
-          let len = List.length node.func.call_sites in
-          if len <> 0 then Printf.printf "\t(called %d time(s))" len;
-          print_newline ();
-          if !(!unused_flag.call) then begin
-            List.iter (pretty_print_call ()) node.func.call_sites;
-            if len <> 0 then print_newline()
-          end
+        if change @@ abs node.loc then print_newline ();
+        prloc node.loc; print_string node.name;
+        let len = List.length node.func.call_sites in
+        if len <> 0 then Printf.printf "\t(called %d time(s))" len;
+        print_newline ();
+        if !(!unused_flag.call) then begin
+          List.iter (pretty_print_call ()) node.func.call_sites;
+          if len <> 0 then print_newline()
         end)
       l;
-    separator ()
-  end
+    if nb_call < !flexibility then
+      print_endline "--------" |> print_newline |> print_newline
+  end;
+  if nb_call < !flexibility then report_unused ~nb_call:(nb_call+1) ()
+  else if !flexibility > 0 then
+    print_endline "Nothing else to report in this section";
+  if nb_call >= !flexibility then separator ()
 
 let set_all fn =
   opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
