@@ -17,16 +17,13 @@ type flags =
 
 let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; call = ref b}
 
-(* opt_flag = {sub1: ALWAYS; sub2: NEVER; sub3: false; sub4: false; call: show callsites *)
+(* opt_flag = {sub1: ALWAYS; sub2: NEVER; call: show callsites; _}
+ * style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; _}
+ * unused_flag = {sub1: all; call: show callsites; _}
+ * exported_flag = {sub1: all; _} *)
 let opt_flag = ref @@ make_flag false
-
-(* style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; call: false *)
 and style_flag = ref @@ make_flag false
-
-(* unused_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: show callsites *)
 and unused_flag = ref @@ {(make_flag true) with call=ref false}
-
-(* exported_flag = {sub1: all; sub2: false; sub3: false; sub4: false; call: false *)
 and exported_flag = ref @@ make_flag true
 
 (* Is one of the subsections to print? *)
@@ -35,6 +32,7 @@ let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.su
 let verbose = ref false
 let set_verbose () = verbose := true
 
+(* Print name starting with '_' *)
 let underscore = ref false
 let set_underscore () = underscore := true
 
@@ -45,17 +43,21 @@ let set_flexibility x = flexibility := x
 let abspath = Hashtbl.create 16
 let bad_files = ref []
 
-let vds = ref []  (* all exported value declarations *)
-let references = Hashtbl.create 256  (* all value references *)
-let corres = Hashtbl.create 256  (* link from dec to def *)
+let vds = ref []                        (* all exported value declarations *)
+let references = Hashtbl.create 256     (* all value references *)
+let corres = Hashtbl.create 256         (* link from dec to def *)
 
-let style = ref [] (* patterns of type unit which are not () *)
-let last_loc = ref Location.none
-    (* helper to diagnose occurrences of Location.none in the typedtree *)
+let style = ref []                      (* patterns of type unit which are not () *)
+let last_loc = ref Location.none        (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
 
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
+(* Section printer:
+ * section: `>> SECTION: '
+ *          `  ========'
+ * subsection: `>>->  SUBSECTION: '
+ *             `    ~~~~~~~~~~~~' *)
 let section ?(sub = false) s =
   Printf.printf "%s %s:\n%s%s\n"
     (if sub then ">>-> " else ">>")
@@ -66,6 +68,7 @@ let section ?(sub = false) s =
 let separator () =
   Printf.printf "%s\n\n\n" (String.make 80 '-')
 
+(* Location printer: `filename:line: ' *)
 let prloc ?fn (loc : Location.t) = begin match fn with
   | Some s when Filename.chop_extension (loc.loc_start.pos_fname) = Filename.chop_extension (Filename.basename s) ->
       print_string (Filename.dirname s ^ "/" ^ loc.loc_start.pos_fname)
@@ -85,7 +88,7 @@ let prloc ?fn (loc : Location.t) = begin match fn with
 type func_info =
   {
     mutable opt_args: string list;
-    mutable need: int; (* Nb of mandatory arguments *)
+    mutable need: int;                  (* Nb of mandatory arguments *)
     mutable call_sites: Location.t list;
   }
 
@@ -94,7 +97,7 @@ type vd_node =
     loc: Location.t;
     name: string;
     func: func_info;
-    mutable ptr: vd_node; (* points to itself if not a binding to another known value *)
+    mutable ptr: vd_node;               (* points to itself if not a binding to another known value *)
     implem: bool;
   }
 
@@ -108,7 +111,7 @@ type opt_arg =
 
 let vd_nodes = Hashtbl.create 256
 
-(* Go deeper in the vd_node until cond is respected (or it is as deep as it can) *)
+(* Go deeper in the vd_node until cond is respected (or cannot go deeper) *)
 let rec repr ?(cond = (fun _ -> false)) n =
   if n.ptr == n || cond n then n
   else repr n.ptr
@@ -143,40 +146,42 @@ let merge_locs ~search ?name l1 l2 =
 (* Verify the optional args calls. Treat args *)
 let rec treat_args ?(anon = false) val_loc args =
   List.iter (check_args val_loc) args;
-  if val_loc.Location.loc_ghost then () (* Ghostbuster *)
-  else begin (* begin ... end for aesthetics *)
+  if val_loc.Location.loc_ghost then ()     (* Ghostbuster *)
+  else begin                                (* else: `begin ... end' for aesthetics *)
     let loc = vd_node val_loc in
-    let tbl = Hashtbl.create 256 in
-    let use = ref 0 in
+    let tbl = Hashtbl.create 256 in         (* tbl: label -> nb of occurences *)
 
-    let treat = function
-      | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) && status_flag !opt_flag->
-          let has_val = match expr with
-            | Some e -> begin match e.exp_desc with
-              | Texp_construct(_, {cstr_name="None"; _}, _) -> false
-              | _ -> true end
-            | None -> anon
-          in
-          let occur = ref @@
-            try Hashtbl.find tbl lab + 1
-            with Not_found -> Hashtbl.add tbl lab 1; 1
-          in
-          let count x l = List.length @@ List.find_all (( = ) x) l in
-          let rec locate loc =
-            let count = if loc == loc.ptr then 0 else count lab loc.func.opt_args in
-            if loc == loc.ptr || count >= !occur then loc
-            else (occur := !occur - count; locate @@ next_fn_node loc)
-          in
-          if (not !underscore || lab.[0] <> '_') then
-            opt_args :=
-              (locate loc, lab, has_val, (match expr with
-                | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
-                | _ -> !last_loc))
-              :: !opt_args
-      | _ -> incr use
+    let treat lab expr =
+      let has_val = match expr with
+        | Some e -> begin match e.exp_desc with
+          | Texp_construct(_, {cstr_name="None"; _}, _) -> false
+          | _ -> true end
+        | None -> anon
+      in
+      let occur = ref @@
+        try Hashtbl.find tbl lab + 1
+        with Not_found -> Hashtbl.add tbl lab 1; 1
+      in
+      let count x l = List.length @@ List.find_all (( = ) x) l in
+      let rec locate loc =
+        let count = if loc == loc.ptr then 0 else count lab loc.func.opt_args in
+        if loc == loc.ptr || count >= !occur then loc
+        else (occur := !occur - count; locate @@ next_fn_node loc)
+      in
+      if (not !underscore || lab.[0] <> '_') then
+        opt_args :=
+          (locate loc, lab, has_val, (match expr with
+            | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
+            | _ -> !last_loc))
+          :: !opt_args
     in
 
-    List.iter treat args
+    List.iter
+      (function
+        | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) && status_flag !opt_flag ->
+          treat lab expr
+        | _ -> ())
+      args
   end
 
 (* Verify the nature of the argument to detect and treat function applications and uses *)
@@ -187,14 +192,17 @@ and check_args call_site = function
         if call_site.Location.loc_ghost then  e.exp_loc
         else            (* default *)         call_site
       in match e.exp_desc with
+
         | Texp_ident (_, _, {val_loc; _}) ->
-                if not val_loc.Location.loc_ghost then
+            if not val_loc.Location.loc_ghost then
               let node = vd_node val_loc in
               node.func.call_sites <- call_site :: node.func.call_sites
+
         | Texp_function (_,
               [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
                 c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
             treat_args call_site args
+
         | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
             treat_args val_loc args;
             if not val_loc.Location.loc_ghost then begin
@@ -202,6 +210,7 @@ and check_args call_site = function
               node.func.call_sites <- call_site :: node.func.call_sites;
               last_loc := val_loc
             end
+
         | Texp_let (* Partial application as argument may cut in two parts:
                     * let _ = partial in implicit opt_args elimination *)
             ( _,
@@ -211,6 +220,7 @@ and check_args call_site = function
                     c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
                 exp_loc={loc_ghost=true; _};_}) ->
             treat_args ~anon:true val_loc args
+
         | _ -> ()
 
 
@@ -301,7 +311,7 @@ let value_binding = function
 
 
 (* Parse the AST *)
-let collect_references =
+let collect_references =                          (* Tast_mapper *)
   let super = Tast_mapper.default in
   let wrap f loc self x =
     let l = !last_loc in
@@ -433,11 +443,9 @@ let rec load_file fn =
                   (fun (vd1, vd2) ->
                     let vd1 = vd1.Types.val_loc in
                     let vd2 = vd2.Types.val_loc in
-                    if (Filename.check_suffix vd1.Location.loc_start.pos_fname ".mf"
-                          || Filename.check_suffix vd1.Location.loc_start.pos_fname ".ml")
-                        && (Filename.check_suffix vd2.Location.loc_start.pos_fname ".mf"
-                          || Filename.check_suffix vd2.Location.loc_start.pos_fname ".ml")
-                        then begin
+                    let is_implem s = Str.string_match (Str.regexp ".*\\.m\\(f\\|l\\)$") s 0 in
+                    if is_implem vd1.Location.loc_start.pos_fname
+                        && is_implem vd2.Location.loc_start.pos_fname then begin
                       Hashtbl.add references vd1
                         (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
                       Hashtbl.add corres vd1 vd2
@@ -581,10 +589,11 @@ let report_unused_exported () =
       List.fold_left
         (fun acc (fn, path, loc) ->
           let l = ref [] in
-          match not (Hashtbl.mem references loc
-                    && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
-                  || (let loc = Hashtbl.find corres loc in Hashtbl.mem references loc
-                    && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call))
+          let test loc =
+            Hashtbl.mem references loc
+            && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
+          in
+          match not (test loc || (let loc = Hashtbl.find corres loc in test loc))
                 && List.length !l = nb_call with
             | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
             | exception Not_found -> acc
