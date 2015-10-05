@@ -481,6 +481,11 @@ let analyse_opt_args () =
   in
 
   List.iter analyse !opt_args;
+  List.iter
+    (fun (_, _, slot) ->
+      slot.with_val     <- List.sort_uniq compare slot.with_val;
+      slot.without_val  <- List.sort_uniq compare slot.without_val)
+    !all;
   !all
 
 
@@ -596,7 +601,7 @@ let report_unused_exported () =
       prloc ~fn loc;
       print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
         if !(!exported_flag.call) then begin
-          List.iter (pretty_print_call ()) call_sites;
+          List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
           if nb_call <> 0 then print_newline()
         end
     in
@@ -619,7 +624,10 @@ let report_unused () =
     let l =
       Hashtbl.fold
         (fun _ node l ->
-            if List.length node.func.call_sites = nb_call && not (exportable node)
+          node.func.call_sites <- List.sort_uniq
+            (fun loc1 loc2 -> compare loc1.Location.loc_start loc2.Location.loc_start)
+            node.func.call_sites;
+          if (List.length node.func.call_sites = nb_call) && not (exportable node)
                 && (not !underscore || node.name.[0] <> '_') then node::l
             else l)
         vd_nodes []
