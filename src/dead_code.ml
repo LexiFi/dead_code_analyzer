@@ -129,23 +129,15 @@ let vd_node ?(name = "_unknown_") loc =
       Hashtbl.add vd_nodes loc r;
     r
 
-(* Makes the most recent declaration points on the oldest one *)
-let merge_nodes ~search n1 n2 =
-  let n1 = search n1 and n2 = search n2 in
-  if n1.implem && not n2.implem       then  n2.ptr <- n1
-  else if n2.implem && not n1.implem  then  n1.ptr <- n2
-  else if n1.loc < n2.loc             then  n2.ptr <- n1
-  else              (*default*)             n1.ptr <- n2
-
 (* Merge nodes in order *)
-let merge_nodes_f ~search n1 n2 =
+let merge_nodes ~search n1 n2 =
   let n1 = search n1 and n2 = search n2 in
   n1.ptr <- n2
 
 (* Locations l1 and l2 are part of a binding from one to another *)
-let merge_locs ?(force = false) ?(search = repr ~cond:(fun _ -> false)) ?name l1 l2 =
+let merge_locs ~search ?name l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    (if force then merge_nodes_f else merge_nodes) ~search (vd_node ?name l1) (vd_node l2)
+    merge_nodes ~search (vd_node ?name l1) (vd_node l2)
 
 
 (* Verify the optional args calls. Treat args *)
@@ -260,9 +252,9 @@ let rec build_node_args node expr = match expr.exp_desc with
         | _ -> node.func.need <- node.func.need + 1 end
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
       treat_args loc2 args;
-      merge_locs ~force:true ~search:next_fn_node node.loc loc2
+      merge_locs ~search:next_fn_node node.loc loc2
   | Texp_ident(_, _, {val_loc=loc2; _}) ->
-      merge_locs ~force:true ~search:next_fn_node node.loc loc2
+      merge_locs ~search:next_fn_node node.loc loc2
   | _ -> treat_exp expr @@ List.map (fun lab -> (Asttypes.Optional lab, None, Optional)) node.func.opt_args
 
 
@@ -298,7 +290,7 @@ let value_binding = function
       vb_expr={exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _};
       _
     } ->
-      merge_locs ~force:true ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
+      merge_locs ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
   | {
       vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
       vb_expr=exp;
@@ -439,8 +431,18 @@ let rec load_file fn =
                 ignore (collect_references.structure collect_references x);
                 List.iter
                   (fun (vd1, vd2) ->
-                    Hashtbl.add corres vd2.Types.val_loc vd1.Types.val_loc;
-                    merge_locs vd1.Types.val_loc vd2.Types.val_loc
+                    let vd1 = vd_node vd1.Types.val_loc in
+                    let vd2 = vd_node vd2.Types.val_loc in
+                    if (Filename.check_suffix vd1.loc.Location.loc_start.pos_fname ".mf"
+                          || Filename.check_suffix vd1.loc.Location.loc_start.pos_fname ".ml")
+                        && (Filename.check_suffix vd2.loc.Location.loc_start.pos_fname ".mf"
+                          || Filename.check_suffix vd2.loc.Location.loc_start.pos_fname ".ml")
+                        then begin
+                      Hashtbl.add references vd1.loc
+                        (vd2.loc :: try Hashtbl.find references vd2.loc with Not_found -> [])
+                    end
+                    else
+                      Hashtbl.add corres vd2.loc vd1.loc
                   )
                   cmt.cmt_value_dependencies
             | _ -> ()  (* todo: support partial_implementation? *)
