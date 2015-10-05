@@ -295,7 +295,7 @@ let value_binding = function
       vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
       vb_expr=exp;
       _
-    } ->
+    } when not loc1.loc_ghost ->
       build_node_args (vd_node ~name:(Ident.name id) loc1) exp
   | _ -> ()
 
@@ -431,19 +431,19 @@ let rec load_file fn =
                 ignore (collect_references.structure collect_references x);
                 List.iter
                   (fun (vd1, vd2) ->
-                    let vd1 = vd_node vd1.Types.val_loc in
-                    let vd2 = vd_node vd2.Types.val_loc in
-                    if (Filename.check_suffix vd1.loc.Location.loc_start.pos_fname ".mf"
-                          || Filename.check_suffix vd1.loc.Location.loc_start.pos_fname ".ml")
-                        && (Filename.check_suffix vd2.loc.Location.loc_start.pos_fname ".mf"
-                          || Filename.check_suffix vd2.loc.Location.loc_start.pos_fname ".ml")
+                    let vd1 = vd1.Types.val_loc in
+                    let vd2 = vd2.Types.val_loc in
+                    if (Filename.check_suffix vd1.Location.loc_start.pos_fname ".mf"
+                          || Filename.check_suffix vd1.Location.loc_start.pos_fname ".ml")
+                        && (Filename.check_suffix vd2.Location.loc_start.pos_fname ".mf"
+                          || Filename.check_suffix vd2.Location.loc_start.pos_fname ".ml")
                         then begin
-                      Hashtbl.add references vd1.loc
-                        (vd2.loc :: try Hashtbl.find references vd2.loc with Not_found -> []);
-                      Hashtbl.add corres vd1.loc vd2.loc
+                      Hashtbl.add references vd1
+                        (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
+                      Hashtbl.add corres vd1 vd2
                     end
                     else
-                      Hashtbl.add corres vd2.loc vd1.loc
+                      Hashtbl.add corres vd2 vd1
                   )
                   cmt.cmt_value_dependencies
             | _ -> ()  (* todo: support partial_implementation? *)
@@ -465,9 +465,11 @@ let analyse_opt_args () =
 
   let analyse = fun (loc, lab, has_val, callsite) ->
     let loc =
-      let loc = if loc.func.opt_args = [] then next_fn_node loc else loc in
-      try vd_node ~name:loc.name @@ Hashtbl.find corres loc.loc
-      with Not_found -> loc
+      let node = if loc.func.opt_args = [] then next_fn_node loc else loc in
+      try let loc = Hashtbl.find corres node.loc in
+        if not loc.loc_ghost then vd_node ~name:node.name loc
+        else node
+      with Not_found -> node
     in
     let slot =
       try Hashtbl.find tbl (loc.loc, lab)
