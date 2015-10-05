@@ -255,7 +255,7 @@ let rec build_node_args node expr = match expr.exp_desc with
       merge_locs ~search:next_fn_node node.loc loc2
   | Texp_ident(_, _, {val_loc=loc2; _}) ->
       merge_locs ~search:next_fn_node node.loc loc2
-  | _ -> treat_exp expr @@ List.map (fun lab -> (Asttypes.Optional lab, None, Optional)) node.func.opt_args
+  | _ -> ()
 
 
 let rec sign = function
