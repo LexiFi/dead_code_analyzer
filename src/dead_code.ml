@@ -577,6 +577,7 @@ let report_unused_exported () =
                     && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call))
                 && List.length !l = nb_call with
             | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
+            | exception Not_found -> acc
             | true -> (fn, path, loc, !l)::acc
             | false -> acc)
         [] !vds
