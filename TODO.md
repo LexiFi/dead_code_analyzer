@@ -1,5 +1,4 @@
 #FIX
-- Conditional and opt args (see if_end.ml)
 - Clean code !!
 
 #Testing
@@ -13,8 +12,8 @@
 
 #Note
 - The 'UNUSED EXPORTED VALUES' may have both FN and FP (none known).
-- The 'UNUSED VALUES' section has FN; may have FP (none known).
-- The 'OPTIONAL ARGUMENTS' section has both FN and FP.
+- The 'UNUSED VALUES' section may have both FN and FP (none known).
+- The 'OPTIONAL ARGUMENTS' section may have both FN and FP (none known).
 - The 'CODING STYLE' section may have both FN and FP (none known).
 
-ratio: *92.31%* succesful (over 91 expected results)
+ratio: *100%* succesful (over 89 expected results)
