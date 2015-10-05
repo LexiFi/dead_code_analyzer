@@ -439,7 +439,8 @@ let rec load_file fn =
                           || Filename.check_suffix vd2.loc.Location.loc_start.pos_fname ".ml")
                         then begin
                       Hashtbl.add references vd1.loc
-                        (vd2.loc :: try Hashtbl.find references vd2.loc with Not_found -> [])
+                        (vd2.loc :: try Hashtbl.find references vd2.loc with Not_found -> []);
+                      Hashtbl.add corres vd1.loc vd2.loc
                     end
                     else
                       Hashtbl.add corres vd2.loc vd1.loc
@@ -616,9 +617,9 @@ let report_unused () =
   let rec report_unused nb_call =
     let exportable node =
       List.exists
-        (fun (fn, path, _) ->
-            unit fn = unit node.loc.loc_start.pos_fname
-            && Ident.name @@ List.hd path = node.name)
+        (fun (_, _, loc) ->
+          loc = node.loc || Hashtbl.mem corres node.loc
+          || try Hashtbl.find corres loc = node.loc with Not_found -> false)
         !vds
     in
     let l =
