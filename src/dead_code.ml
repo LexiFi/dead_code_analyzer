@@ -472,10 +472,10 @@ let rec load_file fn =
         if is_implem vd1.Location.loc_start.pos_fname
             && is_implem vd2.Location.loc_start.pos_fname then begin (* if both are .ml/.mf *)
           Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
-          Hashtbl.add corres vd1 vd2
+          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         end
         else
-          Hashtbl.add corres vd2 vd1
+          Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
       in
 
       begin match cmt with
@@ -507,7 +507,7 @@ let analyse_opt_args () =
   let analyse = fun (loc, lab, has_val, callsite) ->
     let loc =
       let node = if loc.func.opt_args = [] then next_fn_node loc else loc in
-      try let loc = Hashtbl.find corres node.loc in
+      try let loc = List.hd @@ Hashtbl.find corres node.loc in
         if not loc.loc_ghost then vd_node ~name:node.name loc
         else node
       with Not_found -> node
@@ -626,7 +626,8 @@ let report_unused_exported () =
             Hashtbl.mem references loc
             && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
           in
-          match not (test loc || (let loc = Hashtbl.find corres loc in test loc))
+          match not (test loc || (let loc = Hashtbl.find corres loc in
+                  List.fold_left (fun res node -> res || test node) false loc))
                 && List.length !l = nb_call with
             | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
             | exception Not_found -> acc
@@ -663,7 +664,7 @@ let report_unused () =
       List.exists
         (fun (_, _, loc) ->
           loc = node.loc || Hashtbl.mem corres node.loc
-          || try Hashtbl.find corres loc = node.loc with Not_found -> false)
+          || try List.mem node.loc (Hashtbl.find corres loc) with Not_found -> false)
         !vds
     in
     let l =
