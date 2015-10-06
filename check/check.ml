@@ -33,7 +33,7 @@ let sec_end = sec_part ~regexp:"-+"
 
 let errors = ref 0 (* Nb FP/FN *)
 
-let error ?(why = "unknown reason") ~where () =
+let error ~why ~where () =
   incr errors;
   prerr_string "\x1b[0;31m";
   prerr_string where;

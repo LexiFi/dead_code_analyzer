@@ -1,6 +1,3 @@
-#FIX
-- Clean code !!
-
 #Testing
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
 - \[X\] Test suite
