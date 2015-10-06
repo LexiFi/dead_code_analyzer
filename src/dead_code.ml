@@ -2,9 +2,18 @@
 (*  Copyright (C) 2014-2015 LexiFi SAS. All rights reserved.               *)
 (***************************************************************************)
 
+(** Dead code anlyzing tool. It detects unused values and unused exported values by default.
+ * Options can enable reporting of optional arguments always/never used as bad style of code.
+ * In addition to selecting which reports are to be displayed, the limit of authorized
+ * occurences needed to be reported can be selected (default is 0).
+ * It assumes .mli/.mfi are compiled with -keep-locs and .ml/.mf are compiled with -bin-annot.
+ *)
+
 open Types
 open Typedtree
 
+
+                (********   FLAGS   ********)
 type flags =
   {
     sub1: bool ref;
@@ -40,7 +49,9 @@ let flexibility = ref 0
 let set_flexibility x = flexibility := x
 
 
-let abspath = Hashtbl.create 16
+                (********   ATTRIBUTES   ********)
+
+let abspath = Hashtbl.create 16         (* abspath: filename's basename -> absolute path *)
 let bad_files = ref []
 
 let vds = ref []                        (* all exported value declarations *)
@@ -51,20 +62,26 @@ let style = ref []                      (* patterns of type unit which are not (
 let last_loc = ref Location.none        (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
 
+
+                (********   HELPERS   ********)
+
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
+let check_underscore name = not !underscore || name.[0] <> '_'
+
 (* Section printer:
- * section: `>> SECTION: '
- *          `  ========'
- * subsection: `>>->  SUBSECTION: '
- *             `    ~~~~~~~~~~~~' *)
+ * section:     `.> SECTION: '
+ *              `  ========='
+ * subsection:  `.>->  SUBSECTION: '
+ *              `    ~~~~~~~~~~~~~' *)
 let section ?(sub = false) s =
   Printf.printf "%s %s:\n%s%s\n"
-    (if sub then ">>-> " else ">>")
+    (if sub then ".>-> " else ".>")
     s
     (if sub then "    " else "  ")
     (String.make ((if sub then 2 else 1) + String.length s + 1) (if sub then '~' else '='))
 
+(* End of section *)
 let separator () =
   Printf.printf "%s\n\n\n" (String.make 80 '-')
 
@@ -85,10 +102,12 @@ let prloc ?fn (loc : Location.t) = begin match fn with
   print_string ": "
 
 
+                (********   TYPES   *********)
+
 type func_info =
   {
     mutable opt_args: string list;
-    mutable need: int;                  (* Nb of mandatory arguments *)
+    mutable need: int;                  (* nb of mandatory arguments *)
     mutable call_sites: Location.t list;
   }
 
@@ -110,6 +129,9 @@ type opt_arg =
   }
 
 let vd_nodes = Hashtbl.create 256
+
+
+                (********   NODE MANIPULATION   ********)
 
 (* Go deeper in the vd_node until cond is respected (or cannot go deeper) *)
 let rec repr ?(cond = (fun _ -> false)) n =
@@ -143,13 +165,19 @@ let merge_locs ~search ?name l1 l2 =
     merge_nodes ~search (vd_node ?name l1) (vd_node l2)
 
 
+                (********   PROCESSING   ********)
+
 (* Verify the optional args calls. Treat args *)
 let rec treat_args ?(anon = false) val_loc args =
-  List.iter (check_args val_loc) args;
-  if val_loc.Location.loc_ghost then ()     (* Ghostbuster *)
-  else begin                                (* else: `begin ... end' for aesthetics *)
+  List.iter                               (* treat each arg's expression before all (even if ghost) *)
+    (function
+      | (_, None, _) -> ()
+      | (_, Some e, _) -> check_args val_loc e)
+    args;
+  if val_loc.Location.loc_ghost then ()   (* Ghostbuster *)
+  else begin                              (* else: `begin ... end' for aesthetics *)
     let loc = vd_node val_loc in
-    let tbl = Hashtbl.create 256 in         (* tbl: label -> nb of occurences *)
+    let tbl = Hashtbl.create 256 in       (* tbl: label -> nb of occurences *)
 
     let treat lab expr =
       let has_val = match expr with
@@ -166,9 +194,9 @@ let rec treat_args ?(anon = false) val_loc args =
       let rec locate loc =
         let count = if loc == loc.ptr then 0 else count lab loc.func.opt_args in
         if loc == loc.ptr || count >= !occur then loc
-        else (occur := !occur - count; locate @@ next_fn_node loc)
+        else  (occur := !occur - count; locate @@ next_fn_node loc)
       in
-      if (not !underscore || lab.[0] <> '_') then
+      if check_underscore lab then
         opt_args :=
           (locate loc, lab, has_val, (match expr with
             | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
@@ -185,43 +213,41 @@ let rec treat_args ?(anon = false) val_loc args =
   end
 
 (* Verify the nature of the argument to detect and treat function applications and uses *)
-and check_args call_site = function
-  | (_, None, _) -> ()
-  | (_, Some e, _) ->
-      let call_site =
-        if call_site.Location.loc_ghost then  e.exp_loc
-        else            (* default *)         call_site
-      in match e.exp_desc with
+and check_args call_site e =
+  let call_site =
+    if call_site.Location.loc_ghost then  e.exp_loc
+    else            (* default *)         call_site
+  in match e.exp_desc with
 
-        | Texp_ident (_, _, {val_loc; _}) ->
-            if not val_loc.Location.loc_ghost then
-              let node = vd_node val_loc in
-              node.func.call_sites <- call_site :: node.func.call_sites
+    | Texp_ident (_, _, {val_loc; _}) ->
+        if not val_loc.Location.loc_ghost then
+          let node = vd_node val_loc in
+          node.func.call_sites <- call_site :: node.func.call_sites
 
-        | Texp_function (_,
+    | Texp_function (_,
+          [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
+            c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
+        treat_args call_site args
+
+    | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
+        treat_args val_loc args;
+        if not val_loc.Location.loc_ghost then begin
+          let node = vd_node val_loc in
+          node.func.call_sites <- call_site :: node.func.call_sites;
+          last_loc := val_loc
+        end
+
+    | Texp_let (* Partial application as argument may cut in two parts:
+                * let _ = partial in implicit opt_args elimination *)
+        ( _,
+          [{vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, _); _}; _}],
+          { exp_desc=Texp_function (_,
               [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-                c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-            treat_args call_site args
+                c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
+            exp_loc={loc_ghost=true; _};_}) ->
+        treat_args ~anon:true val_loc args
 
-        | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
-            treat_args val_loc args;
-            if not val_loc.Location.loc_ghost then begin
-              let node = vd_node val_loc in
-              node.func.call_sites <- call_site :: node.func.call_sites;
-              last_loc := val_loc
-            end
-
-        | Texp_let (* Partial application as argument may cut in two parts:
-                    * let _ = partial in implicit opt_args elimination *)
-            ( _,
-              [{vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, _); _}; _}],
-              { exp_desc=Texp_function (_,
-                  [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-                    c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
-                exp_loc={loc_ghost=true; _};_}) ->
-            treat_args ~anon:true val_loc args
-
-        | _ -> ()
+    | _ -> ()
 
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
@@ -245,7 +271,7 @@ let rec treat_exp exp args = match exp.exp_desc with
 let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
   | Tlink t -> check_type t loc
   | Tarrow (lab, _, t, _) -> begin match lab with
-    | Optional lab when not !underscore || lab.[0] <> '_' ->
+    | Optional lab when check_underscore lab ->
         style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
     | _ -> check_type t loc end
   | _ -> ()
@@ -281,7 +307,7 @@ let rec collect_export path u = function
         will create value definitions whose location is in set.mli
       *)
       if u = unit val_loc.Location.loc_start.Lexing.pos_fname
-          && (not !underscore || (Ident.name id).[0] <> '_') then
+          && check_underscore (Ident.name id) then
         vds := (!current_src, id :: path, val_loc) :: !vds
   | Sig_module (id, {Types.md_type = t; _}, _)
   | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
@@ -328,18 +354,18 @@ let collect_references =                          (* Tast_mapper *)
     super.structure_item self i
   in
 
-  let pat self p =
+  let pat self p =                                (* look for unit pattern *)
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
     begin if is_unit p.pat_type && !(!style_flag.sub2) then match p.pat_desc with
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
-      | Tpat_var (_, {txt; loc = _})-> if not !underscore || txt.[0] <> '_' then u txt
+      | Tpat_var (_, {txt; loc = _})-> if check_underscore txt then u txt
       | Tpat_any -> if not !underscore then u "_"
       | _ -> u "" end;
     super.pat self p
   in
 
-  let expr self e = begin match e.exp_desc with
+  let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply(exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> []);
@@ -353,7 +379,7 @@ let collect_references =                          (* Tast_mapper *)
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
           {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
-      when id1 = id2 && !(!style_flag.sub4) && (not !underscore || (Ident.name id1).[0] <> '_') ->
+      when id1 = id2 && !(!style_flag.sub4) && check_underscore (Ident.name id1) ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | _ -> () end;
     super.expr self e
@@ -365,6 +391,7 @@ let collect_references =                          (* Tast_mapper *)
   {super with structure_item; expr; pat}
 
 
+(* Checks the nature of the file *)
 let kind fn =
   if Filename.check_suffix fn ".cmi" then
     let base = Filename.chop_suffix fn ".cmi" in
@@ -386,6 +413,7 @@ let regabs fn =
   current_src := fn;
   Hashtbl.add abspath (Filename.basename fn) fn
 
+(* Useful when the `--exclude-directory' option is used *)
 let exclude_dir, is_excluded_dir =
   let tbl = Hashtbl.create 10 in
   let rec split_path s =
@@ -409,6 +437,7 @@ let exclude_dir, is_excluded_dir =
   let is_excluded_dir s = Hashtbl.mem tbl (normalize_path s) in
   exclude_dir, is_excluded_dir
 
+(* Starting point *)
 let rec load_file fn =
   match kind fn with
   | `Iface src ->
@@ -434,27 +463,28 @@ let rec load_file fn =
         try Some (read_cmt fn)
         with _ -> bad_files := fn :: !bad_files; None
       in
+
+      (* Used if the cmt is valid. Associates the two value dependencies *)
+      let assoc (vd1, vd2) =
+        let vd1 = vd1.Types.val_loc in
+        let vd2 = vd2.Types.val_loc in
+        let is_implem s = Str.string_match (Str.regexp ".*\\.m\\(f\\|l\\)$") s 0 in
+        if is_implem vd1.Location.loc_start.pos_fname
+            && is_implem vd2.Location.loc_start.pos_fname then begin (* if both are .ml/.mf *)
+          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
+          Hashtbl.add corres vd1 vd2
+        end
+        else
+          Hashtbl.add corres vd2 vd1
+      in
+
       begin match cmt with
         | None -> ()
         | Some cmt -> match cmt.cmt_annots with
-            | Implementation x ->
-                ignore (collect_references.structure collect_references x);
-                List.iter
-                  (fun (vd1, vd2) ->
-                    let vd1 = vd1.Types.val_loc in
-                    let vd2 = vd2.Types.val_loc in
-                    let is_implem s = Str.string_match (Str.regexp ".*\\.m\\(f\\|l\\)$") s 0 in
-                    if is_implem vd1.Location.loc_start.pos_fname
-                        && is_implem vd2.Location.loc_start.pos_fname then begin
-                      Hashtbl.add references vd1
-                        (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
-                      Hashtbl.add corres vd1 vd2
-                    end
-                    else
-                      Hashtbl.add corres vd2 vd1
-                  )
-                  cmt.cmt_value_dependencies
-            | _ -> ()  (* todo: support partial_implementation? *)
+          | Implementation x ->
+              ignore (collect_references.structure collect_references x);
+              List.iter assoc cmt.cmt_value_dependencies
+          | _ -> ()  (* todo: support partial_implementation? *)
       end
 
   | `Dir ->
@@ -467,6 +497,9 @@ let rec load_file fn =
   | `Ignore -> ()
 
 
+                (********   REPORTING   ********)
+
+(* Prepare the list of opt_args for report *)
 let analyse_opt_args () =
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
@@ -492,7 +525,7 @@ let analyse_opt_args () =
   in
 
   List.iter analyse !opt_args;
-  List.iter
+  List.iter                   (* Remove call sites accounted more than once for the same element *)
     (fun (_, _, slot) ->
       slot.with_val     <- List.sort_uniq compare slot.with_val;
       slot.without_val  <- List.sort_uniq compare slot.without_val)
@@ -500,7 +533,7 @@ let analyse_opt_args () =
   !all
 
 
-(* Helpers for the following reports *)
+        (**** Helpers for the following reports ****)
 
 (* Absolute path *)
 let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
@@ -522,6 +555,7 @@ let pretty_print_call () = let ghost = ref false in (* static *)function
       if not !ghost then print_endline "        |~ ghost";
       ghost := true
 
+(* Base pattern for reports *)
 let report s ?(extra = "Called") l nb_call pretty_print reporter =
   if l <> [] then begin
     section ~sub:(nb_call <> 0)
@@ -533,9 +567,8 @@ let report s ?(extra = "Called") l nb_call pretty_print reporter =
   end;
   if nb_call < !flexibility then reporter (nb_call+1)
   else if !flexibility > 0 then
-    (print_newline(); print_endline "Nothing else to report in this section" |> separator)
+    (print_newline (); print_endline "Nothing else to report in this section" |> separator)
   else if l <> [] then separator ()
-
 
 
 let report_opt_args s l =
@@ -570,7 +603,7 @@ let report_opt_args s l =
       print_newline ();
       if !(!opt_flag.call) && ratio <> 1. then begin
         List.iter (pretty_print_call ()) slot;
-        if nb_call <> 0 then print_newline()
+        if nb_call <> 0 then print_newline ()
       end
     in
 
@@ -614,7 +647,7 @@ let report_unused_exported () =
       print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
         if !(!exported_flag.call) then begin
           List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
-          if nb_call <> 0 then print_newline()
+          if nb_call <> 0 then print_newline ()
         end
     in
 
@@ -640,7 +673,7 @@ let report_unused () =
             (fun loc1 loc2 -> compare loc1.Location.loc_start loc2.Location.loc_start)
             node.func.call_sites;
           if (List.length node.func.call_sites = nb_call) && not (exportable node)
-                && (not !underscore || node.name.[0] <> '_') then node::l
+                && check_underscore node.name then node::l
             else l)
         vd_nodes []
       |> List.fast_sort (fun n1 n2 ->
@@ -655,7 +688,7 @@ let report_unused () =
         print_newline ();
         if !(!unused_flag.call) then begin
           List.iter (pretty_print_call ()) node.func.call_sites;
-          if nb_call <> 0 then print_newline()
+          if nb_call <> 0 then print_newline ()
         end
     in
 
@@ -690,6 +723,7 @@ let set_all fn =
   Printf.eprintf "Scanning files...\n%!";
   load_file fn
 
+(* Option parsing and processing *)
 let parse () =
   let update_all b () =
     style_flag := {(make_flag b) with call = !style_flag.call};
@@ -699,7 +733,7 @@ let parse () =
   in
 
   let update_flag b flag s =
-    let updt = (* to avoid to much repetition in code *)
+    let updt =        (* to avoid to much repetition in pattern matching; subsection flags updaters *)
       [ (fun () -> !flag.sub1 := b);
         (fun () -> !flag.sub2 := b);
         (fun () -> !flag.sub3 := b);
@@ -719,6 +753,8 @@ let parse () =
     in aux @@ Str.split (Str.regexp "\\+") s
   in
 
+  (* any extra argument can be accepted by any option using some
+   * although it doesn't necessary affects the results (e.g. -O 3+4) *)
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
 

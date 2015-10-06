@@ -1,4 +1,4 @@
-(******** Identification ********)
+                (********   IDENTIFICATION  ********)
 
 (* Extract an element from a string *)
 let get_element ?(f = Str.search_forward) ~regexp ?(start = 0) line =
@@ -10,7 +10,7 @@ let get_element ?(f = Str.search_forward) ~regexp ?(start = 0) line =
 
 (* Extract abs_path from current line *)
 let get_path =
-  get_element ~regexp:"\./.*[</].*.mli?"
+  get_element ~regexp:"\\./.*[</].*.mli?"
 
 (* Extract line number name from current line *)
 let get_pos line =
@@ -29,7 +29,8 @@ let sec_start = sec_part ~regexp:" *=+"
 let sec_end = sec_part ~regexp:"-+"
 
 
-(******** Error messages ********)
+                (********   ERROR HANDLING   ********)
+
 let errors = ref 0 (* Nb FP/FN *)
 
 let error ?(why = "unknown reason") ~where () =
@@ -41,23 +42,26 @@ let error ?(why = "unknown reason") ~where () =
   prerr_string "\x1b[0m"
   |> prerr_newline
 
-(******** Processing ********)
+                (********   ATTRIBUTES   ********)
 
-let total = ref 0 (* Nb tests *)
+let total = ref 0               (* nb tests *)
 
-let comp = ref "" (* Line to compare with *)
-let nextl = ref "" (* Line to verify *)
+let comp = ref ""               (* line to compare with *)
+let nextl = ref ""              (* line to verify *)
 
 let fnames = ref []
-let dir = ref "" (* Directory to find expected outputs *)
-let res = ref (open_in_gen [Open_creat] 777 "trash.out") (* Output file computed from analysis on ../examples *)
+let dir = ref ""                (* directory to find expected outputs *)
+let res = ref (open_in_gen [Open_creat] 777 "trash.out")  (* output file computed from analysis on ../examples *)
 
-let fn = ref None (* Filename that should currently be processed *)
-let in_file = ref !res (* File fn *)
-let old_fn = ref None (* Previous filename processed *)
+let fn = ref None               (* filename that should currently be processed *)
+let in_file = ref !res          (* file fn *)
+let old_fn = ref None           (* previous filename processed *)
 
-let extend = ref "" (* section specific extension *)
+let extend = ref ""             (* section specific extension *)
 
+                (********   HELPERS   ********)
+
+(* Prints all unreported lines from file *)
 let rec empty file =
   try
     let where = input_line file in
@@ -65,6 +69,7 @@ let rec empty file =
     empty file
   with End_of_file -> close_in file
 
+(* Empty all files until one respect the condition *)
 let rec empty_fnames ?(regexp = ".*") threshold = function
   | e::l ->
       if get_element ~regexp ~start:0 e < threshold then (
@@ -73,43 +78,50 @@ let rec empty_fnames ?(regexp = ".*") threshold = function
       else l
   | _ -> []
 
-  (**** Checkers ****)
+let is_trash diff eq =
+  let tmp = open_in "trash.out" in
+  if !in_file <> tmp then (close_in tmp; diff)
+  else eq
 
+        (**** Checkers ****)
+
+(* Filename *)
 let rec check_fn name line =
-  let ok =
-    match !fn with
-      | None -> begin match !old_fn with
-          | Some str when str = name ->
-              decr total;
-              error ~why:"Should not be detected" ~where:line ();
-              nextl := "";
-              false
-          | _ -> fn := Some name;
-              if (try Filename.chop_extension name >= Filename.chop_extension (List.hd !fnames) with _ -> false) then
-                fnames := empty_fnames name !fnames;
-              try
-                close_in !in_file;
-                in_file := open_in @@ !dir ^ name;
-                true
-              with _ ->
-                error ~why:"File not found or cannot be opened."
-                      ~where:(name) ();
-                fn := None;
-                nextl := "";
-                false end
+
+  let ok = match !fn with
+    | None -> begin match !old_fn with
       | Some str when str = name ->
-          let tmp = open_in "trash.out" in
-          if not (!in_file = tmp) then (close_in tmp; true)
-          else (error ~where:line (); false)
-      | _ ->
-          if in_channel_length !in_file - 1 <= pos_in !in_file then true
-          else begin
-            empty !in_file;
-            old_fn := !fn;
+          decr total;
+          error ~why:"Should not be detected" ~where:line ();
+          nextl := "";
+          false
+      | _ -> fn := Some name;
+          if (try Filename.chop_extension name >= Filename.chop_extension (List.hd !fnames) with _ -> false) then
+                fnames := empty_fnames name !fnames;
+          try
+            close_in !in_file;
+            in_file := open_in @@ !dir ^ name;
+            true
+          with _ ->
+            error ~why:"File not found or cannot be opened."
+                  ~where:(name) ();
             fn := None;
+            nextl := "";
             false
-          end
+      end
+    | Some str when str = name ->
+        let tmp = open_in "trash.out" in
+        is_trash true false
+    | _ ->
+        if in_channel_length !in_file - 1 <= pos_in !in_file then true
+        else begin
+          empty !in_file;
+          old_fn := !fn;
+          fn := None;
+          false
+        end
   in
+
   if ok then
     try
       input_line !in_file
@@ -146,7 +158,7 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     if !nextl = "" then (nextl := input_line !res; section ~fn ~pos ~value ~info ())
     else if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
     else if sec_end !nextl then
-      (let tmp = open_in "trash.out" in if !in_file <> tmp then (close_in tmp; empty !in_file);
+      (let tmp = open_in "trash.out" in if !in_file <> tmp then is_trash (empty !in_file) ();
       print_string !nextl; print_string "\n\n\n"; nextl := "")
     else begin
       incr total;
@@ -162,38 +174,38 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
       end
   with End_of_file ->
     let tmp = open_in "trash.out" in
-    if !in_file <> tmp then (close_in tmp; empty !in_file)
+    if !in_file <> tmp then is_trash (empty !in_file) ()
 
 let rec sel_section () =
   fn := None; old_fn := None;
   nextl := ""; comp := "";
   try
     match (input_line !res) with
-        ">> UNUSED EXPORTED VALUES:" ->
+        ".> UNUSED EXPORTED VALUES:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mli" !fnames
             with _ -> ());
             print_string "UNUSED EXPORTED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
-      | ">> UNUSED VALUES:" ->
+      | ".> UNUSED VALUES:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".ml" !fnames
             with _ -> ());
             print_string "UNUSED VALUES:\n";
             print_string "=======================" |> print_newline
             |> section |> sel_section
-      | ">> OPTIONAL ARGUMENTS: ALWAYS:" ->
+      | ".> OPTIONAL ARGUMENTS: ALWAYS:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopta" !fnames
             with _ -> ());
             print_string "OPTIONAL ARGUMENTS: ALWAYS:\n";
             print_string "===========================" |> print_newline; (extend := "opta")
             |> section ~value:true ~info:false |> sel_section
-      | ">> OPTIONAL ARGUMENTS: NEVER:" ->
+      | ".> OPTIONAL ARGUMENTS: NEVER:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mloptn" !fnames
             with _ -> ());
             print_string "OPTIONAL ARGUMENTS: NEVER:\n";
             print_string "==========================" |> print_newline; (extend := "optn")
             |> section ~value:true ~info:false |> sel_section
-      | ">> CODING STYLE:" ->
+      | ".> CODING STYLE:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames
             with _ -> ());
             print_string "CODING STYLE:\n";
