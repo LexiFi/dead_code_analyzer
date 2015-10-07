@@ -565,7 +565,7 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if extra <> "Called" && !(!flex_flag.extra) then
+        else if !(!flex_flag.extra) || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else Printf.sprintf "%s: at least %d%% of the time" s (100 - nb_call * 10));
     List.iter pretty_print l;
@@ -603,7 +603,7 @@ let report_opt_args s l =
 
     let pretty_print = fun (loc, lab, slot, ratio, total) ->
       if change @@ abs loc then print_newline ();
-      prloc loc; print_string lab;
+      prloc loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
         if !(!opt_flag.extra) then print_string "  Exceptions:"
