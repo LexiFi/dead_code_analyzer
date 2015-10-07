@@ -469,7 +469,8 @@ let rec load_file fn = match kind fn with
           Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         end
-        else if not (is_implem vd1.Location.loc_start.pos_fname || is_implem vd2.Location.loc_start.pos_fname) then begin
+        else if not (is_implem vd1.Location.loc_start.pos_fname
+            || is_implem vd2.Location.loc_start.pos_fname) then begin
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> []);
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         end

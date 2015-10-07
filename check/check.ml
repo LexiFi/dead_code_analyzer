@@ -109,9 +109,7 @@ let rec check_fn name line =
             nextl := "";
             false
       end
-    | Some str when str = name ->
-        let tmp = open_in "trash.out" in
-        is_trash true false
+    | Some str when str = name -> is_trash true false
     | _ ->
         if in_channel_length !in_file - 1 <= pos_in !in_file then true
         else begin
@@ -172,9 +170,7 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
         end
         |> section ~fn ~pos ~value ~info
       end
-  with End_of_file ->
-    let tmp = open_in "trash.out" in
-    if !in_file <> tmp then is_trash (empty !in_file) ()
+  with End_of_file -> is_trash (empty !in_file) ()
 
 let rec sel_section () =
   fn := None; old_fn := None;
