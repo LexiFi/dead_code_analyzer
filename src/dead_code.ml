@@ -582,7 +582,6 @@ let report_opt_args s l =
         (fun (_, _, slot, ratio, _) -> let ratio = 100 - int_of_float (ratio *. 100.) in
           if !(!flex_flag.extra) then
             ratio >= !(!flex_flag.sub2) && List.length slot = nb_call
-            && (s = "NEVER" && !(!opt_flag.sub2) || s <> "NEVER" && !(!opt_flag.sub1))
           else ratio >= 100 - nb_call * 10 && ratio < 100 - nb_call * 10 + 10)
       @@ List.map
         (fun (loc, lab, slot) ->
@@ -713,7 +712,7 @@ let parse () =
     let rec aux l =
       match l with
         | ("1" as e)::l | ("2" as e)::l | ("3" as e)::l | ("4" as e)::l ->
-            List.nth updt (int_of_string e) @@ ();
+            List.nth updt (int_of_string e - 1) @@ ();
             aux l
         | "all"::l -> flag := {(make_flag b) with extra = !flag.extra};
             aux l
@@ -802,8 +801,8 @@ let () =
 
     if (status_flag !exported_flag)  then report_unused_exported ();
     if (status_flag !opt_flag)       then begin let tmp = analyse_opt_args () in
-                                          report_opt_args "ALWAYS" tmp;
-                                          report_opt_args "NEVER" tmp end;
+                if !(!opt_flag.sub1) then report_opt_args "ALWAYS" tmp;
+                if !(!opt_flag.sub2) then report_opt_args "NEVER" tmp end;
     if (status_flag !style_flag)     then report_style ();
 
     if !bad_files <> [] then begin
