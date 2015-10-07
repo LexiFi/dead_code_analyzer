@@ -26,7 +26,7 @@ let sec_part ~regexp line =
   Str.string_match (Str.regexp regexp) line 0
 
 let sec_start = sec_part ~regexp:" *=+"
-let sec_end = sec_part ~regexp:"-+"
+let sec_end = sec_part ~regexp:"-+\\|\\(Nothing else to report in this section\\)"
 
 
                 (********   ERROR HANDLING   ********)
