@@ -1,7 +1,6 @@
-#FIX
-- Conditional branching
-- Partial application as argument
-- Construct patterns and expressions (ex: ref)
+#Fix
+- Function needed to match type of ungiven module signature
+- Implementation without given interface needs to export all its values
 
 #Testing
 - \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)      (currently testing on OPAM)
