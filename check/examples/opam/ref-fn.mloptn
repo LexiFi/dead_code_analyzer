@@ -1,2 +1,2 @@
-./examples/opam/ref-fn.ml:1: a
-./examples/opam/ref-fn.ml:1: b
+./examples/opam/ref-fn.ml:1: ?a
+./examples/opam/ref-fn.ml:1: ?b

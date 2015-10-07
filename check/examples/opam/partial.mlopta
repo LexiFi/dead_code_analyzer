@@ -1,2 +1,2 @@
-./examples/opam/partial.ml:1: a
-./examples/opam/partial.ml:1: b
+./examples/opam/partial.ml:1: ?a
+./examples/opam/partial.ml:1: ?b
