@@ -1,10 +1,10 @@
-#FIX
-- Conditional branching
-- Partial application as argument
-- Construct patterns and expressions (ex: ref)
+#Fix
+- Clean code!!
+
 
 #Testing
-- \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)      (currently testing on OPAM)
+- \[ \] Test on big projects (OPAM, js_of_ocaml, coq, ...)
+	+ \[X\] OPAM: exported values: no FP
 - \[X\] Test suite
 	+ \[X\] Detect FP
 	+ \[X\] Detect FN
