@@ -2,11 +2,11 @@
 (*  Copyright (C) 2014-2015 LexiFi SAS. All rights reserved.               *)
 (***************************************************************************)
 
-(** Dead code anlyzing tool. It detects unused values and unused exported values by default.
+(** Dead code anlyzing tool. It only reports unused exported values by default.
  * Options can enable reporting of optional arguments always/never used as bad style of code.
  * In addition to selecting which reports are to be displayed, the limit of authorized
  * occurences needed to be reported can be selected (default is 0).
- * It assumes .mli/.mfi are compiled with -keep-locs and .ml/.mf are compiled with -bin-annot.
+ * It assumes .mli are compiled with -keep-locs and .ml are compiled with -bin-annot.
  *)
 
 open Types
@@ -28,11 +28,9 @@ let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; call 
 
 (* opt_flag = {sub1: ALWAYS; sub2: NEVER; call: show callsites; _}
  * style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; _}
- * unused_flag = {sub1: all; call: show callsites; _}
  * exported_flag = {sub1: all; _} *)
 let opt_flag = ref @@ make_flag false
 and style_flag = ref @@ make_flag false
-and unused_flag = ref @@ {(make_flag true) with call=ref false}
 and exported_flag = ref @@ make_flag true
 
 (* Is one of the subsections to print? *)
@@ -107,7 +105,6 @@ let prloc ?fn (loc : Location.t) = begin match fn with
 type func_info =
   {
     mutable opt_args: string list;
-    mutable need: int;                  (* nb of mandatory arguments *)
     mutable call_sites: Location.t list;
   }
 
@@ -140,7 +137,7 @@ let rec repr ?(cond = (fun _ -> false)) n =
 
 (* repr specialization to get the next node corresponding to a function *)
 let next_fn_node n =
-  repr ~cond:(fun n -> n.func.opt_args <> [] || n.func.need > 0) n.ptr
+  repr ~cond:(fun n -> n.func.opt_args <> []) n.ptr
 
 (* Get or create a vd_node corresponding to the location *)
 let vd_node ?(name = "_unknown_") loc =
@@ -149,7 +146,7 @@ let vd_node ?(name = "_unknown_") loc =
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
     let implem = Filename.check_suffix fn ".mf" || Filename.check_suffix fn ".ml"  in
-    let rec r = {name; loc; ptr = r; implem; func = {opt_args = []; need = 0; call_sites = []}} in
+    let rec r = {name; loc; ptr = r; implem; func = {opt_args = []; call_sites = []}} in
     if name <> "_unknown_" then
       Hashtbl.add vd_nodes loc r;
     r
@@ -285,7 +282,7 @@ let rec build_node_args node expr = match expr.exp_desc with
         | Asttypes.Optional s ->
             node.func.opt_args <- s::node.func.opt_args;
             build_node_args node exp
-        | _ -> node.func.need <- node.func.need + 1 end
+        | _ -> () end
   | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
       treat_args loc2 args;
       merge_locs ~search:next_fn_node node.loc loc2
@@ -395,13 +392,11 @@ let collect_references =                          (* Tast_mapper *)
 let kind fn =
   if Filename.check_suffix fn ".cmi" then
     let base = Filename.chop_suffix fn ".cmi" in
-    if Sys.file_exists (base ^ ".mfi")              then  `Iface (base ^ ".mfi")
-    else if Sys.file_exists (base ^ ".mli")         then  `Iface (base ^ ".mli")
+    if Sys.file_exists (base ^ ".mli")              then  `Iface (base ^ ".mli")
     else                  (* default *)                   `Ignore
   else if Filename.check_suffix fn ".cmt" then
     let base = Filename.chop_suffix fn ".cmt" in
-    if Sys.file_exists (base ^ ".mf")               then  `Implem (base ^ ".mf")
-    else if Sys.file_exists (base ^ ".ml")          then  `Implem (base ^ ".ml")
+    if Sys.file_exists (base ^ ".ml")               then  `Implem (base ^ ".ml")
     else                  (* default *)                   `Ignore
   else if (try Sys.is_directory fn with _ -> false) then  `Dir
   else                    (* default *)                   `Ignore
@@ -437,22 +432,23 @@ let exclude_dir, is_excluded_dir =
   let is_excluded_dir s = Hashtbl.mem tbl (normalize_path s) in
   exclude_dir, is_excluded_dir
 
+let read_interface fn src = let open Cmi_format in
+  try
+    regabs src;
+    let u = unit fn in
+    List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u) (read_cmi fn).cmi_sign
+  with Cmi_format.Error (Wrong_version_interface _) ->
+    (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
+    bad_files := fn :: !bad_files
+
 (* Starting point *)
-let rec load_file fn =
-  match kind fn with
+let rec load_file fn = match kind fn with
   | `Iface src ->
       (* only consider module with an explicit interface *)
       let open Cmi_format in
       last_loc := Location.none;
       if !verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      begin try
-        regabs src;
-        let u = unit fn in
-        List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u) (read_cmi fn).cmi_sign
-      with Cmi_format.Error (Wrong_version_interface _) ->
-        (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
-        bad_files := fn :: !bad_files
-      end
+      read_interface fn src
 
   | `Implem src ->
       let open Cmt_format in
@@ -478,6 +474,9 @@ let rec load_file fn =
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
       in
 
+      let base = Filename.chop_suffix src ".ml" in
+      if not (Sys.file_exists (base ^ ".mli")) then
+        read_interface (base ^ ".cmi") src;
       begin match cmt with
         | None -> ()
         | Some cmt -> match cmt.cmt_annots with
@@ -658,47 +657,6 @@ let report_unused_exported () =
   in report_unused_exported 0
 
 
-let report_unused () =
-  let rec report_unused nb_call =
-    let exportable node =
-      List.exists
-        (fun (_, _, loc) ->
-          loc = node.loc || Hashtbl.mem corres node.loc
-          || try List.mem node.loc (Hashtbl.find corres loc) with Not_found -> false)
-        !vds
-    in
-    let l =
-      Hashtbl.fold
-        (fun _ node l ->
-          node.func.call_sites <- List.sort_uniq
-            (fun loc1 loc2 -> compare loc1.Location.loc_start loc2.Location.loc_start)
-            node.func.call_sites;
-          if (List.length node.func.call_sites = nb_call) && not (exportable node)
-                && check_underscore node.name then node::l
-            else l)
-        vd_nodes []
-      |> List.fast_sort (fun n1 n2 ->
-          let cmp = compare (abs n1.loc) (abs n2.loc) in
-          if cmp = 0 then compare n1 n2 else cmp)
-    in
-
-    let change = dir @@ (try abs (List.hd l).loc with _ -> "_none_") in
-    let pretty_print =fun node ->
-      if change @@ abs node.loc then print_newline ();
-      prloc node.loc; print_string node.name;
-        print_newline ();
-        if !(!unused_flag.call) then begin
-          List.iter (pretty_print_call ()) node.func.call_sites;
-          if nb_call <> 0 then print_newline ()
-        end
-    in
-
-    let s = if nb_call > 0 then "ALMOST UNUSED VALUES" else "UNUSED VALUES" in
-    report s l nb_call pretty_print report_unused
-
-  in report_unused 0
-
-
 let report_style () =
   if !style <> [] then begin
     section "CODING STYLE";
@@ -720,7 +678,6 @@ let report_style () =
 let set_all fn =
   opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
   exported_flag := {!exported_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
-  unused_flag := {!unused_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
   Printf.eprintf "Scanning files...\n%!";
   load_file fn
 
@@ -729,7 +686,6 @@ let parse () =
   let update_all b () =
     style_flag := {(make_flag b) with call = !style_flag.call};
       exported_flag := {(make_flag b) with call = !exported_flag.call};
-      unused_flag := {(make_flag b) with call = !unused_flag.call};
       opt_flag := {(make_flag b) with call = !opt_flag.call}
   in
 
@@ -797,12 +753,6 @@ let parse () =
           \t+3: use sequence\n\
           \t+4: useless binding\n\
           \t+all: 1+2+3+4";
-
-      "-u", Unit (fun () -> !unused_flag.sub1 := false), " Disable unused values warnings";
-      "-U", String (update_flag true unused_flag),
-        " Enable unused values warnings. Options (can be used together):\n\
-          \t+all: Enable warnings\n\
-          \t+call-site: show call sites";
     ]
     set_all
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
@@ -813,7 +763,6 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
-    if (status_flag !unused_flag)    then report_unused ();
     if (status_flag !exported_flag)  then report_unused_exported ();
     if (status_flag !opt_flag)       then begin let tmp = analyse_opt_args () in
                                           report_opt_args "ALWAYS" tmp;
