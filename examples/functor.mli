@@ -10,3 +10,5 @@ end
 module N: sig
   val g: int -> bool
 end
+
+module Unused: Set.S

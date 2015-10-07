@@ -162,7 +162,7 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
       print_string !nextl; print_string "\n\n\n"; nextl := "")
     else begin
       incr total;
-      comp := if fn && !comp = "" then (get_path !nextl ^ !extend |> check_fn) !nextl else !comp;
+      comp := if fn && !comp = "" then ((Filename.chop_extension @@ get_path !nextl) ^ !extend |> check_fn) !nextl else !comp;
         begin
           if not fn || !comp <> "" then
             (if not ((pos && not @@ check_pos !comp @@ get_pos !nextl)
@@ -185,31 +185,25 @@ let rec sel_section () =
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mli" !fnames
             with _ -> ());
             print_string "UNUSED EXPORTED VALUES:\n";
-            print_string "=======================" |> print_newline
-            |> section |> sel_section
-      | ".> UNUSED VALUES:" ->
-            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".ml" !fnames
-            with _ -> ());
-            print_string "UNUSED VALUES:\n";
-            print_string "=======================" |> print_newline
+            print_string "=======================" |> print_newline; (extend := ".mli")
             |> section |> sel_section
       | ".> OPTIONAL ARGUMENTS: ALWAYS:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopta" !fnames
             with _ -> ());
             print_string "OPTIONAL ARGUMENTS: ALWAYS:\n";
-            print_string "===========================" |> print_newline; (extend := "opta")
+            print_string "===========================" |> print_newline; (extend := ".mlopta")
             |> section ~value:true ~info:false |> sel_section
       | ".> OPTIONAL ARGUMENTS: NEVER:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mloptn" !fnames
             with _ -> ());
             print_string "OPTIONAL ARGUMENTS: NEVER:\n";
-            print_string "==========================" |> print_newline; (extend := "optn")
+            print_string "==========================" |> print_newline; (extend := ".mloptn")
             |> section ~value:true ~info:false |> sel_section
       | ".> CODING STYLE:" ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames
             with _ -> ());
             print_string "CODING STYLE:\n";
-            print_string "=============" |> print_newline; (extend := "style")
+            print_string "=============" |> print_newline; (extend := ".mlstyle")
             |> section |> sel_section
       | _ -> sel_section ()
   with End_of_file -> ()
