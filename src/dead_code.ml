@@ -145,7 +145,7 @@ let vd_node ?(name = "_unknown_") loc =
   try (Hashtbl.find vd_nodes loc)
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
-    let implem = Filename.check_suffix fn ".mf" || Filename.check_suffix fn ".ml"  in
+    let implem = Filename.check_suffix fn ".ml"  in
     let rec r = {name; loc; ptr = r; implem; func = {opt_args = []; call_sites = []}} in
     if name <> "_unknown_" then
       Hashtbl.add vd_nodes loc r;
@@ -445,7 +445,6 @@ let read_interface fn src = let open Cmi_format in
 let rec load_file fn = match kind fn with
   | `Iface src ->
       (* only consider module with an explicit interface *)
-      let open Cmi_format in
       last_loc := Location.none;
       if !verbose then Printf.eprintf "Scanning %s\n%!" fn;
       read_interface fn src
@@ -464,9 +463,9 @@ let rec load_file fn = match kind fn with
       let assoc (vd1, vd2) =
         let vd1 = vd1.Types.val_loc in
         let vd2 = vd2.Types.val_loc in
-        let is_implem s = Str.string_match (Str.regexp ".*\\.m\\(f\\|l\\)$") s 0 in
+        let is_implem s = Str.string_match (Str.regexp ".*\\.ml$") s 0 in
         if is_implem vd1.Location.loc_start.pos_fname
-            && is_implem vd2.Location.loc_start.pos_fname then begin (* if both are .ml/.mf *)
+            && is_implem vd2.Location.loc_start.pos_fname then begin (* if both are .ml *)
           Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         end
