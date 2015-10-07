@@ -14,21 +14,21 @@ open Typedtree
 
 
                 (********   FLAGS   ********)
-type flags =
+type ('a, 'b) flags =
   {
-    sub1: bool ref;
-    sub2: bool ref;
-    sub3: bool ref;
-    sub4: bool ref;
-    call: bool ref;
+    sub1: 'a ref;
+    sub2: 'a ref;
+    sub3: 'a ref;
+    sub4: 'a ref;
+    extra: 'b ref;
   }
 
 
-let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; call = ref b}
+let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; extra = ref b}
 
-(* opt_flag = {sub1: ALWAYS; sub2: NEVER; call: show callsites; _}
+(* opt_flag = {sub1: ALWAYS; sub2: NEVER; extra: show callsites; _}
  * style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; _}
- * exported_flag = {sub1: all; _} *)
+ * exported_flag = {sub1: all; extra: show callsites; _} *)
 let opt_flag = ref @@ make_flag false
 and style_flag = ref @@ make_flag false
 and exported_flag = ref @@ make_flag true
@@ -43,8 +43,10 @@ let set_verbose () = verbose := true
 let underscore = ref false
 let set_underscore () = underscore := true
 
-let flexibility = ref 0
-let set_flexibility x = flexibility := x
+(* flex_flag =
+ *  { sub1: nb occurences; sub2: percent;
+ *    extra: intersect? (f -> only percent) (use for opt_args); _} *)
+let flex_flag = ref {sub1 = ref 0; sub2 = ref 100; sub3 = ref 0; sub4 = ref 0; extra = ref true}
 
 
                 (********   ATTRIBUTES   ********)
@@ -559,26 +561,29 @@ let pretty_print_call () = let ghost = ref false in (* static *)function
       ghost := true
 
 (* Base pattern for reports *)
-let report s ?(extra = "Called") l nb_call pretty_print reporter =
-  if l <> [] then begin
+let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
+  if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else Printf.sprintf "%s: %s %d time(s)" s extra nb_call);
-        List.iter pretty_print l;
-    if nb_call < !flexibility then
-      print_endline "--------" |> print_newline |> print_newline
+        else if extra <> "Called" && !(!flex_flag.extra) then
+          Printf.sprintf "%s: %s %d time(s)" s extra nb_call
+        else Printf.sprintf "%s: at least %d%% of the time" s (100 - nb_call * 10));
+    List.iter pretty_print l;
+    if continue nb_call then
+      (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
   end;
-  if nb_call < !flexibility then reporter (nb_call+1)
-  else if !flexibility > 0 then
-    (print_newline (); print_endline "Nothing else to report in this section" |> separator)
-  else if l <> [] then separator ()
+  if continue nb_call then reporter (nb_call + 1)
+  else (print_newline (); print_endline "Nothing else to report in this section" |> separator)
 
 
 let report_opt_args s l =
   let rec report_opt_args nb_call =
     let l = List.filter
-        (fun (_, _, slot, ratio, _) -> ratio <> 1. && List.length slot = nb_call
-        && (s = "NEVER" && !(!opt_flag.sub2) || s <> "NEVER" && !(!opt_flag.sub1)))
+        (fun (_, _, slot, ratio, _) -> let ratio = 100 - int_of_float (ratio *. 100.) in
+          if !(!flex_flag.extra) then
+            ratio >= !(!flex_flag.sub2) && List.length slot = nb_call
+            && (s = "NEVER" && !(!opt_flag.sub2) || s <> "NEVER" && !(!opt_flag.sub1))
+          else ratio >= 100 - nb_call * 10 && ratio < 100 - nb_call * 10 + 10)
       @@ List.map
         (fun (loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
@@ -600,21 +605,25 @@ let report_opt_args s l =
       if change @@ abs loc then print_newline ();
       prloc loc; print_string lab;
       if ratio <> 0. then begin
-        print_string " ("; print_float (100. -. 100. *. ratio); Printf.printf "%% out of %d call(s))" total;
-        if !(!opt_flag.call) then print_string "  Exceptions:"
+        Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
+        if !(!opt_flag.extra) then print_string "  Exceptions:"
       end;
       print_newline ();
-      if !(!opt_flag.call) && ratio <> 1. then begin
+      if !(!opt_flag.extra) && ratio <> 1. then begin
         List.iter (pretty_print_call ()) slot;
         if nb_call <> 0 then print_newline ()
       end
     in
 
+    let continue nb_call =
+      !(!flex_flag.extra) && nb_call < !(!flex_flag.sub1)
+      || not !(!flex_flag.extra) && 100 - nb_call * 10 > !(!flex_flag.sub2)
+    in
     let s =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
       else "OPTIONAL ARGUMENTS: ") ^ s
     in
-    report s ~extra:"Except" l nb_call pretty_print report_opt_args;
+    report s ~extra:"Except" l continue nb_call pretty_print report_opt_args;
 
   in report_opt_args 0
 
@@ -649,14 +658,15 @@ let report_unused_exported () =
       if change fn then print_newline ();
       prloc ~fn loc;
       print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
-        if !(!exported_flag.call) then begin
+        if !(!exported_flag.extra) then begin
           List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
           if nb_call <> 0 then print_newline ()
         end
     in
 
+    let continue nb_call = nb_call < !(!flex_flag.sub1) in
     let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
-    report s l nb_call pretty_print report_unused_exported
+    report s l continue nb_call pretty_print report_unused_exported
 
   in report_unused_exported 0
 
@@ -688,9 +698,9 @@ let set_all fn =
 (* Option parsing and processing *)
 let parse () =
   let update_all b () =
-    style_flag := {(make_flag b) with call = !style_flag.call};
-      exported_flag := {(make_flag b) with call = !exported_flag.call};
-      opt_flag := {(make_flag b) with call = !opt_flag.call}
+    style_flag := {(make_flag b) with extra = !style_flag.extra};
+      exported_flag := {(make_flag b) with extra = !exported_flag.extra};
+      opt_flag := {(make_flag b) with extra = !opt_flag.extra}
   in
 
   let update_flag b flag s =
@@ -703,12 +713,29 @@ let parse () =
     let rec aux l =
       match l with
         | ("1" as e)::l | ("2" as e)::l | ("3" as e)::l | ("4" as e)::l ->
-            List.nth updt (int_of_string e) @@ (); aux l
-        | "all"::l -> flag := {(make_flag b) with call = !flag.call};
+            List.nth updt (int_of_string e) @@ ();
             aux l
-        | "call-site"::l -> !flag.call := b;
+        | "all"::l -> flag := {(make_flag b) with extra = !flag.extra};
+            aux l
+        | "call-site"::l -> !flag.extra := b;
             aux l
         | ""::l -> aux l
+        | s::_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
+        | [] -> ()
+    in aux @@ Str.split (Str.regexp "\\+") s
+  in
+  let update_flex s =
+    let rec aux l =
+      match l with
+        | ("true" as e)::l | ("false" as e)::l ->
+            !flex_flag.extra := bool_of_string e;
+            aux l
+        | s::l when Str.string_match (Str.regexp "^[0-9]+%$") s 0 ->
+            !flex_flag.sub2 := int_of_string (String.sub s 0 (String.length s - 1));
+            aux l
+        | s::l when Str.string_match (Str.regexp "^[0-9]+$") s 0 ->
+            !flex_flag.sub1 := int_of_string  s;
+            aux l
         | s::_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
         | [] -> ()
     in aux @@ Str.split (Str.regexp "\\+") s
@@ -724,7 +751,13 @@ let parse () =
       "--verbose", Unit set_verbose, " Verbose mode (ie., show scanned files)";
       "-v", Unit set_verbose, " Verbose mode (ie., show scanned files)";
 
-      "--flexibility", Int set_flexibility, "<integer> Number max of exceptions to still be considered in the category";
+      "--flexibility", String update_flex,
+        " Reports values that are almost in a category.\n\t\t \
+          Options (can be used together; single quoted values are regexps):\n\
+          \t+'[[:digit:]]+': Maximum number of exceptions. Default is 0\n\
+          \t+'[[:digit:]]+%': Minimum percentage of valid cases (for optional arguments). Default is 1\n\
+          \t+false: Optional arguments have to respect the percentage only\n\
+          \t+true: Optional arguments have to respect both constraints. Default behaviour";
 
       "-a", Unit (update_all false), " Disable all warnings";
       "--nothing", Unit (update_all false), " Disable all warnings";
