@@ -181,7 +181,7 @@ let rec treat_args ?(anon = false) val_loc args =
     let treat lab expr =
       let has_val = match expr with
         | Some e -> begin match e.exp_desc with
-          | Texp_construct(_, {cstr_name="None"; _}, _) -> false
+          | Texp_construct (_, {cstr_name="None"; _}, _) -> false
           | _ -> true end
         | None -> anon
       in
@@ -228,7 +228,7 @@ and check_args call_site e =
             c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
         treat_args call_site args
 
-    | Texp_apply ({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, args) ->
+    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args) ->
         treat_args val_loc args;
         if not val_loc.Location.loc_ghost then begin
           let node = vd_node val_loc in
@@ -239,7 +239,7 @@ and check_args call_site e =
     | Texp_let (* Partial application as argument may cut in two parts:
                 * let _ = partial in implicit opt_args elimination *)
         ( _,
-          [{vb_expr={exp_desc=Texp_apply({exp_desc=Texp_ident(_, _, {val_loc; _}); _}, _); _}; _}],
+          [{vb_expr={exp_desc=Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, _); _}; _}],
           { exp_desc=Texp_function (_,
               [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
                 c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
@@ -261,7 +261,7 @@ let rec treat_exp exp args = match exp.exp_desc with
   | Texp_match (_, l1, l2, _) ->
       List.iter (fun {c_rhs=exp; _} -> treat_exp exp args) l1;
       List.iter (fun {c_rhs=exp; _} -> treat_exp exp args) l2
-  | Texp_apply(exp, in_args) ->
+  | Texp_apply (exp, in_args) ->
       treat_exp exp (in_args @ args)
   | _ -> ()
 
@@ -278,17 +278,17 @@ let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
 
 (* Construct the 'opt_args' list of func in node *)
 let rec build_node_args node expr = match expr.exp_desc with
-  | Texp_function (lab, [{c_lhs={pat_desc=Tpat_var(_, _); pat_type; _}; c_rhs=exp; _}], _) ->
+  | Texp_function (lab, [{c_lhs={pat_desc=Tpat_var (_, _); pat_type; _}; c_rhs=exp; _}], _) ->
       check_type pat_type expr.exp_loc;
       begin match lab with
         | Asttypes.Optional s ->
             node.func.opt_args <- s::node.func.opt_args;
             build_node_args node exp
         | _ -> () end
-  | Texp_apply({exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _}, args) ->
+  | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args) ->
       treat_args loc2 args;
       merge_locs ~search:next_fn_node node.loc loc2
-  | Texp_ident(_, _, {val_loc=loc2; _}) ->
+  | Texp_ident (_, _, {val_loc=loc2; _}) ->
       merge_locs ~search:next_fn_node node.loc loc2
   | _ -> ()
 
@@ -321,13 +321,13 @@ let is_unit t = match (Ctype.repr t).desc with
 (* Binding in Tstr_value *)
 let value_binding = function
   | {
-      vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
-      vb_expr={exp_desc=Texp_ident(_, _, {val_loc=loc2; _}); _};
+      vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
+      vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
       _
     } ->
       merge_locs ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
   | {
-      vb_pat={pat_desc=Tpat_var(id, {loc=loc1; _}); _};
+      vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr=exp;
       _
     } when not loc1.loc_ghost ->
@@ -365,7 +365,7 @@ let collect_references =                          (* Tast_mapper *)
   in
 
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
-    | Texp_apply(exp, args) -> treat_exp exp args
+    | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> []);
         let node = vd_node val_loc in
@@ -463,19 +463,15 @@ let rec load_file fn = match kind fn with
 
       (* Used if the cmt is valid. Associates the two value dependencies *)
       let assoc (vd1, vd2) =
+        let merge vd1 vd2 =
+          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
+          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
+        in
         let vd1 = vd1.Types.val_loc in
         let vd2 = vd2.Types.val_loc in
         let is_implem s = Str.string_match (Str.regexp ".*\\.ml$") s 0 in
-        if is_implem vd1.Location.loc_start.pos_fname
-            && is_implem vd2.Location.loc_start.pos_fname then begin (* if both are .ml *)
-          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
-          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
-        end
-        else if not (is_implem vd1.Location.loc_start.pos_fname
-            || is_implem vd2.Location.loc_start.pos_fname) then begin
-          Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> []);
-          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
-        end
+        if is_implem vd1.Location.loc_start.pos_fname = is_implem vd2.Location.loc_start.pos_fname then
+              merge vd1 vd2
         else
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
       in
@@ -547,15 +543,14 @@ let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
 
 (* Check directory change *)
 let dir first =
-  let prev = ref @@ Filename.dirname first (* static *)
+  let prev = ref @@ Filename.dirname first
   in fun s -> let s = Filename.dirname s in
     !prev <> s && (prev := s; true)
 
 (* Print call site *)
-let pretty_print_call () = let ghost = ref false in (* static *)function
+let pretty_print_call () = let ghost = ref false in function
   | loc when not loc.Location.loc_ghost ->
-      print_string "         "; prloc loc;
-      (fun (_, _, c) -> print_int c |> print_newline) @@ Location.get_pos_info loc.loc_start
+      print_string "         "; prloc loc |> print_newline
   | _ ->
       if not !ghost then print_endline "        |~ ghost";
       ghost := true
@@ -568,7 +563,7 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
         else if !(!flex_flag.extra) || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else Printf.sprintf "%s: at least %d%% of the time" s (100 - nb_call * 10));
-    List.iter pretty_print l;
+  List.iter pretty_print l;
     if continue nb_call then
       (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
   end;
@@ -630,21 +625,24 @@ let report_opt_args s l =
 let report_unused_exported () =
   let rec report_unused_exported nb_call =
     let l =
-      List.fold_left
-        (fun acc (fn, path, loc) ->
-          let l = ref [] in
-          let test loc =
-            Hashtbl.mem references loc
-            && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
-          in
-          match not (test loc || (let loc = Hashtbl.find corres loc in
-                  List.fold_left (fun res node -> res || test node) false loc))
+      let tbl = Hashtbl.create 256 in
+      let folder = fun acc (fn, path, loc) ->
+        let l = ref [] in
+        let test loc =
+          Hashtbl.mem references loc
+          && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
+        in
+        Hashtbl.add tbl (fn, path, loc)
+        @@ begin match not (test loc || (let loc = Hashtbl.find corres loc in
+                List.fold_left (fun res node -> res || test node) false loc))
                 && List.length !l = nb_call with
             | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
             | exception Not_found -> acc
             | true -> (fn, path, loc, !l)::acc
-            | false -> acc)
-        [] !vds
+            | false -> acc end;
+        Hashtbl.find tbl (fn, path, loc)
+      in
+      List.fold_left (fun acc vd -> try Hashtbl.find tbl vd with Not_found -> folder acc vd) [] !vds
       |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
           compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
     in
@@ -656,11 +654,13 @@ let report_unused_exported () =
     let pretty_print = fun (fn, path, loc, call_sites) ->
       if change fn then print_newline ();
       prloc ~fn loc;
-      print_endline (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
-        if !(!exported_flag.extra) then begin
-          List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
-          if nb_call <> 0 then print_newline ()
-        end
+      print_string (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
+      if call_sites <> [] && !(!opt_flag.extra) then print_string "  Call sites:";
+      print_newline ();
+      if !(!exported_flag.extra) then begin
+        List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
+        if nb_call <> 0 then print_newline ()
+      end
     in
 
     let continue nb_call = nb_call < !(!flex_flag.sub1) in

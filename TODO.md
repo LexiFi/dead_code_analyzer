@@ -4,7 +4,7 @@
 
 #Testing
 - \[ \] Test on big projects
-	+ \[X\] flow: exported values: no FP (nothing reported!)
+	+ \[X\] js_of_ocaml: exported values: no FP
 	+ \[X\] OPAM: exported values: no FP
 	+ \[X\] OPAM: opt args never used: no FP
 - \[X\] Test suite
