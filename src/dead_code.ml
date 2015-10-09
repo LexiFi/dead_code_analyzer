@@ -31,7 +31,7 @@ let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; extra
  * exported_flag = {sub1: all; extra: show callsites; _} *)
 let opt_flag = ref @@ make_flag false
 and style_flag = ref @@ make_flag false
-and exported_flag = ref @@ make_flag true
+and exported_flag = ref @@ {(make_flag true) with extra = ref false}
 
 (* Is one of the subsections to print? *)
 let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.sub4)
@@ -71,15 +71,14 @@ let check_underscore name = not !underscore || name.[0] <> '_'
 
 (* Section printer:
  * section:     `.> SECTION: '
- *              `  ========='
+ *              `==========='
  * subsection:  `.>->  SUBSECTION: '
- *              `    ~~~~~~~~~~~~~' *)
+ *              `~~~~~~~~~~~~~~~~~' *)
 let section ?(sub = false) s =
-  Printf.printf "%s %s:\n%s%s\n"
+  Printf.printf "%s %s:\n%s\n"
     (if sub then ".>-> " else ".>")
     s
-    (if sub then "    " else "  ")
-    (String.make ((if sub then 2 else 1) + String.length s + 1) (if sub then '~' else '='))
+    (String.make ((if sub then 5 else 2) + String.length s + 1) (if sub then '~' else '='))
 
 (* End of section *)
 let separator () =
@@ -655,7 +654,7 @@ let report_unused_exported () =
       if change fn then print_newline ();
       prloc ~fn loc;
       print_string (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
-      if call_sites <> [] && !(!opt_flag.extra) then print_string "  Call sites:";
+      if call_sites <> [] && !(!exported_flag.extra) then print_string "    Call sites:";
       print_newline ();
       if !(!exported_flag.extra) then begin
         List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
