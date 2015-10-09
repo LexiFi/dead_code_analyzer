@@ -90,10 +90,9 @@ let prloc ?fn (loc : Location.t) = begin match fn with
       print_string (Filename.dirname s ^ "/" ^ loc.loc_start.pos_fname)
   | _ -> begin match Hashtbl.find abspath loc.loc_start.pos_fname with
     | s -> print_string s
-    | exception Not_found ->
-        print_string @@ Printf.sprintf "!!UNKNOWN<%s%s>!!"
-          loc.loc_start.pos_fname
-          (match fn with None -> "" | Some s -> " // " ^ s)
+    | exception Not_found -> match fn with
+      | None -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
+      | Some s -> print_string s
     end
   end;
   print_char ':';
@@ -103,17 +102,11 @@ let prloc ?fn (loc : Location.t) = begin match fn with
 
                 (********   TYPES   *********)
 
-type func_info =
-  {
-    mutable opt_args: string list;
-    mutable call_sites: Location.t list;
-  }
-
 type vd_node =
   {
     loc: Location.t;
     name: string;
-    func: func_info;
+    mutable opt_args: string list;
     mutable ptr: vd_node;               (* points to itself if not a binding to another known value *)
     implem: bool;
   }
@@ -138,7 +131,7 @@ let rec repr ?(cond = (fun _ -> false)) n =
 
 (* repr specialization to get the next node corresponding to a function *)
 let next_fn_node n =
-  repr ~cond:(fun n -> n.func.opt_args <> []) n.ptr
+  repr ~cond:(fun n -> n.opt_args <> []) n.ptr
 
 (* Get or create a vd_node corresponding to the location *)
 let vd_node ?(name = "_unknown_") loc =
@@ -146,8 +139,8 @@ let vd_node ?(name = "_unknown_") loc =
   try (Hashtbl.find vd_nodes loc)
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
-    let implem = Filename.check_suffix fn ".ml"  in
-    let rec r = {name; loc; ptr = r; implem; func = {opt_args = []; call_sites = []}} in
+    let implem = Filename.check_suffix fn ".ml" in
+    let rec r = {name; loc; ptr = r; implem; opt_args = []} in
     if name <> "_unknown_" then
       Hashtbl.add vd_nodes loc r;
     r
@@ -179,10 +172,9 @@ let rec treat_args ?(anon = false) val_loc args =
 
     let treat lab expr =
       let has_val = match expr with
-        | Some e -> begin match e.exp_desc with
-          | Texp_construct (_, {cstr_name="None"; _}, _) -> false
-          | _ -> true end
         | None -> anon
+        | Some {exp_desc=Texp_construct (_, {cstr_name="None"; _}, _); _} -> false
+        | _ -> true
       in
       let occur = ref @@
         try Hashtbl.find tbl lab + 1
@@ -190,9 +182,9 @@ let rec treat_args ?(anon = false) val_loc args =
       in
       let count x l = List.length @@ List.find_all (( = ) x) l in
       let rec locate loc =
-        let count = if loc == loc.ptr then 0 else count lab loc.func.opt_args in
+        let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
         if loc == loc.ptr || count >= !occur then loc
-        else  (occur := !occur - count; locate @@ next_fn_node loc)
+        else (occur := !occur - count; locate @@ next_fn_node loc)
       in
       if check_underscore lab then
         opt_args :=
@@ -217,11 +209,6 @@ and check_args call_site e =
     else            (* default *)         call_site
   in match e.exp_desc with
 
-    | Texp_ident (_, _, {val_loc; _}) ->
-        if not val_loc.Location.loc_ghost then
-          let node = vd_node val_loc in
-          node.func.call_sites <- call_site :: node.func.call_sites
-
     | Texp_function (_,
           [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
             c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
@@ -229,11 +216,8 @@ and check_args call_site e =
 
     | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args) ->
         treat_args val_loc args;
-        if not val_loc.Location.loc_ghost then begin
-          let node = vd_node val_loc in
-          node.func.call_sites <- call_site :: node.func.call_sites;
+        if not val_loc.Location.loc_ghost then
           last_loc := val_loc
-        end
 
     | Texp_let (* Partial application as argument may cut in two parts:
                 * let _ = partial in implicit opt_args elimination *)
@@ -281,7 +265,7 @@ let rec build_node_args node expr = match expr.exp_desc with
       check_type pat_type expr.exp_loc;
       begin match lab with
         | Asttypes.Optional s ->
-            node.func.opt_args <- s::node.func.opt_args;
+            node.opt_args <- s::node.opt_args;
             build_node_args node exp
         | _ -> () end
   | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args) ->
@@ -366,13 +350,10 @@ let collect_references =                          (* Tast_mapper *)
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> []);
-        let node = vd_node val_loc in
-        node.func.call_sites <- e.exp_loc :: node.func.call_sites
-    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) ->
-        begin match vb_pat.pat_desc with
-          | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
-          | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
+        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> [])
+    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) -> begin match vb_pat.pat_desc with
+        | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
+        | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
@@ -394,6 +375,7 @@ let kind fn =
   if Filename.check_suffix fn ".cmi" then
     let base = Filename.chop_suffix fn ".cmi" in
     if Sys.file_exists (base ^ ".mli")              then  `Iface (base ^ ".mli")
+    else if Sys.file_exists (base ^ ".ml")          then  `Iface (base ^ ".ml")
     else                  (* default *)                   `Ignore
   else if Filename.check_suffix fn ".cmt" then
     let base = Filename.chop_suffix fn ".cmt" in
@@ -403,7 +385,7 @@ let kind fn =
   else                    (* default *)                   `Ignore
 
 
-(* Map a local filename to an absolute path.  This currently assumes that there are never
+(* Map a local filename to an absolute path. This currently assumes that there are never
  * two files with the same basename. *)
 let regabs fn =
   current_src := fn;
@@ -466,25 +448,19 @@ let rec load_file fn = match kind fn with
           Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         in
-        let vd1 = vd1.Types.val_loc in
-        let vd2 = vd2.Types.val_loc in
+        let vd1 = vd1.Types.val_loc and vd2 = vd2.Types.val_loc in
         let is_implem s = Str.string_match (Str.regexp ".*\\.ml$") s 0 in
         if is_implem vd1.Location.loc_start.pos_fname = is_implem vd2.Location.loc_start.pos_fname then
-              merge vd1 vd2
+          merge vd1 vd2
         else
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
       in
 
-      let base = Filename.chop_suffix src ".ml" in
-      if not (Sys.file_exists (base ^ ".mli")) then
-        read_interface (base ^ ".cmi") src;
       begin match cmt with
-        | None -> ()
-        | Some cmt -> match cmt.cmt_annots with
-          | Implementation x ->
-              ignore (collect_references.structure collect_references x);
-              List.iter assoc cmt.cmt_value_dependencies
-          | _ -> ()  (* todo: support partial_implementation? *)
+        | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
+            ignore (collect_references.structure collect_references x);
+            List.iter assoc cmt_value_dependencies
+        | _ -> ()  (* todo: support partial_implementation? *)
       end
 
   | `Dir ->
@@ -506,7 +482,7 @@ let analyse_opt_args () =
 
   let analyse = fun (loc, lab, has_val, callsite) ->
     let loc =
-      let node = if loc.func.opt_args = [] then next_fn_node loc else loc in
+      let node = if loc.opt_args = [] then next_fn_node loc else loc in
       try let loc = List.hd @@ Hashtbl.find corres node.loc in
         if not loc.loc_ghost then vd_node ~name:node.name loc
         else node
@@ -546,12 +522,19 @@ let dir first =
   in fun s -> let s = Filename.dirname s in
     !prev <> s && (prev := s; true)
 
+(* Faster than 'List.length l = len' when len < List.length l; same speed otherwise*)
+let rec check_length len = function
+  | [] -> len = 0
+  | _::l when len > 0 -> check_length (len - 1) l
+  | _ -> false
+
 (* Print call site *)
 let pretty_print_call () = let ghost = ref false in function
+  | {Location.loc_ghost=true; _} when !ghost -> ()
   | loc when not loc.Location.loc_ghost ->
       print_string "         "; prloc loc |> print_newline
-  | _ ->
-      if not !ghost then print_endline "        |~ ghost";
+  | _ ->          (* first ghost met *)
+      print_endline "        |~ ghost";
       ghost := true
 
 (* Base pattern for reports *)
@@ -562,7 +545,7 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
         else if !(!flex_flag.extra) || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else Printf.sprintf "%s: at least %d%% of the time" s (100 - nb_call * 10));
-  List.iter pretty_print l;
+    List.iter pretty_print l;
     if continue nb_call then
       (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
   end;
@@ -575,7 +558,7 @@ let report_opt_args s l =
     let l = List.filter
         (fun (_, _, slot, ratio, _) -> let ratio = 100 - int_of_float (ratio *. 100.) in
           if !(!flex_flag.extra) then
-            ratio >= !(!flex_flag.sub2) && List.length slot = nb_call
+            ratio >= !(!flex_flag.sub2) && check_length nb_call slot
           else ratio >= 100 - nb_call * 10 && ratio < 100 - nb_call * 10 + 10)
       @@ List.map
         (fun (loc, lab, slot) ->
@@ -624,24 +607,21 @@ let report_opt_args s l =
 let report_unused_exported () =
   let rec report_unused_exported nb_call =
     let l =
-      let tbl = Hashtbl.create 256 in
       let folder = fun acc (fn, path, loc) ->
         let l = ref [] in
         let test loc =
           Hashtbl.mem references loc
-          && List.length @@ (l := Hashtbl.find references loc; !l) <> nb_call
+          && not @@ check_length nb_call @@ (l := Hashtbl.find references loc; !l)
         in
-        Hashtbl.add tbl (fn, path, loc)
-        @@ begin match not (test loc || (let loc = Hashtbl.find corres loc in
-                List.fold_left (fun res node -> res || test node) false loc))
-                && List.length !l = nb_call with
-            | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
-            | exception Not_found -> acc
-            | true -> (fn, path, loc, !l)::acc
-            | false -> acc end;
-        Hashtbl.find tbl (fn, path, loc)
+        match not (test loc || (let loc = Hashtbl.find corres loc in
+              List.fold_left (fun res node -> res || test node) false loc))
+              && check_length nb_call !l with
+          | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
+          | exception Not_found -> acc
+          | true -> (fn, path, loc, !l)::acc
+          | false -> acc
       in
-      List.fold_left (fun acc vd -> try Hashtbl.find tbl vd with Not_found -> folder acc vd) [] !vds
+      List.fold_left folder [] !vds
       |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
           compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
     in
@@ -657,7 +637,7 @@ let report_unused_exported () =
       if call_sites <> [] && !(!exported_flag.extra) then print_string "    Call sites:";
       print_newline ();
       if !(!exported_flag.extra) then begin
-        List.iter (pretty_print_call ()) @@ List.sort_uniq compare call_sites;
+        List.iter (pretty_print_call ()) call_sites;
         if nb_call <> 0 then print_newline ()
       end
     in
@@ -732,7 +712,7 @@ let parse () =
             !flex_flag.sub2 := int_of_string (String.sub s 0 (String.length s - 1));
             aux l
         | s::l when Str.string_match (Str.regexp "^[0-9]+$") s 0 ->
-            !flex_flag.sub1 := int_of_string  s;
+            !flex_flag.sub1 := int_of_string s;
             aux l
         | s::_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
         | [] -> ()

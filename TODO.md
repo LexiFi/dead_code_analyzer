@@ -11,7 +11,6 @@
 	+ \[X\] Detect FP
 	+ \[X\] Detect FN
 	+ \[X\] Add some color and info (stats, ...)
-- \[ \] Use different versions of OCaml (currently testing with 4.03.0+trunk)
 
 
 #Note
