@@ -156,7 +156,7 @@ let rec section ?(fn = true) ?(pos = true) ?(value = false) ?(info = true) () =
     if !nextl = "" then (nextl := input_line !res; section ~fn ~pos ~value ~info ())
     else if sec_start !nextl then (nextl := ""; comp := ""; section ~fn ~pos ~value ~info ())
     else if sec_end !nextl then
-      (let tmp = open_in "trash.out" in if !in_file <> tmp then is_trash (empty !in_file) ();
+      (is_trash (empty !in_file) ();
       print_string !nextl; print_string "\n\n\n"; nextl := "")
     else begin
       incr total;
