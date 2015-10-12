@@ -1,4 +1,5 @@
 ./examples/dir/fn-arg.ml:1: ?a
+./examples/dir/fn-arg.ml:1: ?b
 ./examples/dir/fn-arg.ml:3: ?b
 ./examples/dir/fn-arg.ml:7: ?a
 ./examples/dir/fn-arg.ml:7: ?b
