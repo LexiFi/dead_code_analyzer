@@ -1,7 +1,0 @@
-./examples/opam/fn-arg.ml:1: ?a
-./examples/opam/fn-arg.ml:3: ?b
-./examples/opam/fn-arg.ml:7: ?a
-./examples/opam/fn-arg.ml:9: ?c
-./examples/opam/fn-arg.ml:9: ?b
-./examples/opam/fn-arg.ml:11: ?b
-./examples/opam/fn-arg.ml:11: ?b
