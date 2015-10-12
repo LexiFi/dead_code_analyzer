@@ -207,6 +207,14 @@ and check_args call_site e =
   let call_site =
     if call_site.Location.loc_ghost then  e.exp_loc
     else            (* default *)         call_site
+  in
+  (* Optional arguments used top match a signature are considered used *)
+  let rec get_sig_args args typ = match typ.desc with
+    | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
+        get_sig_args ((arg, Some {e with exp_desc=Texp_constant (Asttypes.Const_int 0)}, Optional)::args) t
+    | Tlink t -> get_sig_args args t
+    | _ -> args
+
   in match e.exp_desc with
 
     | Texp_function (_,
@@ -215,9 +223,12 @@ and check_args call_site e =
         treat_args call_site args
 
     | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args) ->
-        treat_args val_loc args;
+        treat_args val_loc (get_sig_args args e.exp_type);
         if not val_loc.Location.loc_ghost then
           last_loc := val_loc
+
+    | Texp_ident (_, _, {val_loc; _}) ->
+        treat_args val_loc (get_sig_args [] e.exp_type)
 
     | Texp_let (* Partial application as argument may cut in two parts:
                 * let _ = partial in implicit opt_args elimination *)
@@ -261,7 +272,7 @@ let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
 
 (* Construct the 'opt_args' list of func in node *)
 let rec build_node_args node expr = match expr.exp_desc with
-  | Texp_function (lab, [{c_lhs={pat_desc=Tpat_var (_, _); pat_type; _}; c_rhs=exp; _}], _) ->
+  | Texp_function (lab, [{c_lhs={pat_type; _}; c_rhs=exp; _}], _) ->
       check_type pat_type expr.exp_loc;
       begin match lab with
         | Asttypes.Optional s ->
