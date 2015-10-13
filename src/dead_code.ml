@@ -555,8 +555,14 @@ let rec load_file fn = match kind fn with
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         in
         let vd1 = vd1.Types.val_loc and vd2 = vd2.Types.val_loc in
-        let is_implem s = Filename.check_suffix s ".ml" in
-        if is_implem vd1.Location.loc_start.pos_fname = is_implem vd2.Location.loc_start.pos_fname then
+        let is_implem fn = Filename.check_suffix fn ".ml" in
+        let has_iface fn =
+          try Sys.file_exists (Filename.chop_extension (Hashtbl.find abspath fn) ^".mli")
+          with Not_found -> false
+        in
+        if is_implem vd1.Location.loc_start.pos_fname = is_implem vd2.Location.loc_start.pos_fname
+            || not (has_iface vd1.Location.loc_start.pos_fname
+              && has_iface vd2.Location.loc_start.pos_fname) then
           merge vd1 vd2
         else
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
