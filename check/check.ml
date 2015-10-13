@@ -14,7 +14,7 @@ let get_path =
 
 (* Extract line number name from current line *)
 let get_pos line =
-  let pos = get_element ~regexp:":[0-9]*:" ~f:Str.search_backward ~start:(String.length line - 1) line in
+  let pos = get_element ~regexp:":[0-9]*:" line in
   int_of_string (if pos <> "" then String.sub pos 1 @@ String.length pos - 2
   else pos)
 

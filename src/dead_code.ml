@@ -14,27 +14,126 @@ open Typedtree
 
 
                 (********   FLAGS   ********)
-type ('a, 'b) flags =
+
+let list_of_opt str =
+  let rec split acc pos len =
+    if pos = 0 then (str.[pos] = '+', String.sub str (pos + 1) len) :: acc
+    else if str.[pos] <> '+' && str.[pos] <> '-' then split acc (pos - 1) (len + 1)
+    else split ((str.[pos] = '+', String.sub str (pos + 1) len) :: acc) (pos - 1) 0
+  in split [] (String.length str - 1) 0
+
+
+type flexibility = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
+let flexibility = ref
   {
-    sub1: 'a ref;
-    sub2: 'a ref;
-    sub3: 'a ref;
-    sub4: 'a ref;
-    extra: 'b ref;
+    exceptions = 0;
+    percentage = 1.;
+    optional = `Percent
   }
 
+let update_flexibility s =
+  let rec aux l = match l with
+    | (_, "both")::l ->
+        flexibility := {!flexibility with optional = `Both};
+        aux l
+    | (_, "percent")::l ->
+        flexibility := {!flexibility with optional = `Percent};
+        aux l
+    | (_, s)::l -> begin try
+          begin try flexibility := {!flexibility with exceptions = int_of_string s}
+          with Failure _ -> flexibility := {!flexibility with percentage = float_of_string s} end;
+          if !flexibility.exceptions < 0 then
+            raise (Arg.Bad ("--flexibility: number of exceptions must be >= 0"))
+          else if !flexibility.percentage > 1. || !flexibility.percentage < 0. then
+            raise (Arg.Bad ("--flexibility: percentage must be >= 0.0 and <= 1.0"))
+          else aux l
+        with Failure _ -> raise (Arg.Bad ("--flexibility: unknown option: " ^ s)) end;
+    | [] -> ()
+  in aux (list_of_opt s)
 
-let make_flag b = {sub1 = ref b; sub2 = ref b; sub3 = ref b; sub4 = ref b; extra = ref b}
 
-(* opt_flag = {sub1: ALWAYS; sub2: NEVER; extra: show callsites; _}
- * style_flag = {sub1: opt arg in arg; sub2: unit pattern; sub3: use sequence; sub4: useless binding; _}
- * exported_flag = {sub1: all; extra: show callsites; _} *)
-let opt_flag = ref @@ make_flag false
-and style_flag = ref @@ make_flag false
-and exported_flag = ref @@ {(make_flag true) with extra = ref false}
+type opt_flag = {always: bool; never: bool; call_sites: bool}
+let opt_flag = ref
+  {
+    always = false;
+    never = false;
+    call_sites = false
+  }
 
-(* Is one of the subsections to print? *)
-let status_flag flag = !(flag.sub1) || !(flag.sub2) || !(flag.sub3) || !(flag.sub4)
+let update_opt_flag s =
+  let rec aux = function
+    | (b, "always")::l -> opt_flag := {!opt_flag with always = b};
+        aux l
+    | (b, "never")::l -> opt_flag := {!opt_flag with never = b};
+        aux l
+    | (b, "calls")::l -> opt_flag := {!opt_flag with call_sites = b};
+        aux l
+    | (b, "all")::l -> opt_flag := {!opt_flag with never = b; always = b};
+        aux l
+    | (_, "")::l -> aux l
+    | (_, s)::_ -> raise (Arg.Bad ("-O: unknown option: " ^ s))
+    | [] -> ()
+  in aux (list_of_opt s)
+
+
+type style_flag = {opt_arg: bool; unit_pat: bool; seq: bool; binding: bool}
+let style_flag = ref
+  {
+    opt_arg = false;
+    unit_pat = false;
+    seq = false;
+    binding = false;
+  }
+
+let update_style_flag s =
+  let rec aux = function
+    | (b, "opt")::l -> style_flag := {!style_flag with opt_arg = b};
+        aux l
+    | (b, "unit")::l -> style_flag := {!style_flag with unit_pat = b};
+        aux l
+    | (b, "seq")::l -> style_flag := {!style_flag with seq = b};
+        aux l
+    | (b, "bind")::l -> style_flag := {!style_flag with binding = b};
+        aux l
+    | (b, "all")::l -> style_flag := {unit_pat = b; opt_arg = b; seq = b; binding = b};
+        aux l
+    | (_, "")::l -> aux l
+    | (_, s)::_ -> raise (Arg.Bad ("-S: unknown option: " ^ s))
+    | [] -> ()
+  in aux (list_of_opt s)
+
+
+type exported_flag = {print: bool; call_sites: bool}
+let exported_flag = ref
+  {
+    print = true;
+    call_sites = false;
+  }
+
+let update_exported_flag s =
+  let rec aux = function
+    | (b, "all")::l -> exported_flag := {!exported_flag with print = b};
+        aux l
+    | (b, "calls")::l -> opt_flag := {!opt_flag with call_sites = b};
+        aux l
+    | (_, "")::l -> aux l
+    | (_, s)::_ -> raise (Arg.Bad ("-S: unknown option: " ^ s))
+    | [] -> ()
+  in aux (list_of_opt s)
+
+
+let update_call_sites s =
+  let rec aux l = match l with
+    | (b, "E")::l -> exported_flag := {!exported_flag with call_sites = b}; aux l
+    | (b, "O")::l -> opt_flag := {!opt_flag with call_sites = b}; aux l
+    | (b, "all")::l ->
+        exported_flag := {!exported_flag with call_sites = b};
+        opt_flag := {!opt_flag with call_sites = b};
+        aux l
+    | (_, s)::_ -> raise (Arg.Bad ("--call-sites: unknown option: " ^ s))
+    | [] -> ()
+  in aux (list_of_opt s)
+
 
 let verbose = ref false
 let set_verbose () = verbose := true
@@ -42,11 +141,6 @@ let set_verbose () = verbose := true
 (* Print name starting with '_' *)
 let underscore = ref false
 let set_underscore () = underscore := true
-
-(* flex_flag =
- *  { sub1: nb occurences; sub2: percent;
- *    extra: intersect? (f -> only percent) (use for opt_args); _} *)
-let flex_flag = ref {sub1 = ref 0; sub2 = ref 100; sub3 = ref 0; sub4 = ref 0; extra = ref true}
 
 
                 (********   ATTRIBUTES   ********)
@@ -196,7 +290,7 @@ let rec treat_args ?(anon = false) val_loc args =
 
     List.iter
       (function
-        | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) && status_flag !opt_flag ->
+        | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) ->
           treat lab expr
         | _ -> ())
       args
@@ -261,7 +355,7 @@ let rec treat_exp exp args = match exp.exp_desc with
 
 
 (* Look for bad style typing *)
-let rec check_type t loc = if !(!style_flag.sub1) then match t.desc with
+let rec check_type t loc = if !style_flag.opt_arg then match t.desc with
   | Tlink t -> check_type t loc
   | Tarrow (lab, _, t, _) -> begin match lab with
     | Optional lab when check_underscore lab ->
@@ -349,7 +443,7 @@ let collect_references =                          (* Tast_mapper *)
 
   let pat self p =                                (* look for unit pattern *)
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
-    begin if is_unit p.pat_type && !(!style_flag.sub2) then match p.pat_desc with
+    begin if is_unit p.pat_type && !style_flag.unit_pat then match p.pat_desc with
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
       | Tpat_var (_, {txt; loc = _})-> if check_underscore txt then u txt
@@ -362,14 +456,14 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> [])
-    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !(!style_flag.sub3) -> begin match vb_pat.pat_desc with
+    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !style_flag.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
           {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
-      when id1 = id2 && !(!style_flag.sub4) && check_underscore (Ident.name id1) ->
+      when id1 = id2 && !style_flag.binding && check_underscore (Ident.name id1) ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | _ -> () end;
     super.expr self e
@@ -430,7 +524,8 @@ let read_interface fn src = let open Cmi_format in
   try
     regabs src;
     let u = unit fn in
-    List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u) (read_cmi fn).cmi_sign
+    if !exported_flag.print then
+      List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u) (read_cmi fn).cmi_sign
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
     bad_files := fn :: !bad_files
@@ -460,7 +555,7 @@ let rec load_file fn = match kind fn with
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
         in
         let vd1 = vd1.Types.val_loc and vd2 = vd2.Types.val_loc in
-        let is_implem s = Str.string_match (Str.regexp ".*\\.ml$") s 0 in
+        let is_implem s = Filename.check_suffix s ".ml" in
         if is_implem vd1.Location.loc_start.pos_fname = is_implem vd2.Location.loc_start.pos_fname then
           merge vd1 vd2
         else
@@ -548,14 +643,16 @@ let pretty_print_call () = let ghost = ref false in function
       print_endline "        |~ ghost";
       ghost := true
 
+let percent base = 1. -. (float_of_int base) *. (1. -. !flexibility.percentage) /. 10.
+
 (* Base pattern for reports *)
 let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if !(!flex_flag.extra) || extra = "Called" then
+        else if !flexibility.optional = `Both || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
-        else Printf.sprintf "%s: at least %d%% of the time" s (100 - nb_call * 10));
+        else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent nb_call));
     List.iter pretty_print l;
     if continue nb_call then
       (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
@@ -567,16 +664,16 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
 let report_opt_args s l =
   let rec report_opt_args nb_call =
     let l = List.filter
-        (fun (_, _, slot, ratio, _) -> let ratio = 100 - int_of_float (ratio *. 100.) in
-          if !(!flex_flag.extra) then
-            ratio >= !(!flex_flag.sub2) && check_length nb_call slot
-          else ratio >= 100 - nb_call * 10 && ratio < 100 - nb_call * 10 + 10)
+        (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
+          if !flexibility.optional = `Both then
+            ratio >= !flexibility.percentage && check_length nb_call slot
+          else ratio >= percent nb_call
+            && (!flexibility.percentage >= 1. || ratio < (percent (nb_call - 1))))
       @@ List.map
         (fun (loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
-          let flen = float_of_int @@ List.length l in
           let total = List.length slot.with_val + List.length slot.without_val in
-          let ratio = flen /. float_of_int total
+          let ratio = float_of_int (List.length l) /. float_of_int total
           in (loc, lab, l, ratio, total))
         l
       |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
@@ -593,18 +690,18 @@ let report_opt_args s l =
       prloc loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
-        if !(!opt_flag.extra) then print_string "  Exceptions:"
+        if !opt_flag.call_sites then print_string "  Exceptions:"
       end;
       print_newline ();
-      if !(!opt_flag.extra) && ratio <> 1. then begin
+      if !opt_flag.call_sites && ratio <> 1. then begin
         List.iter (pretty_print_call ()) slot;
         if nb_call <> 0 then print_newline ()
       end
     in
 
     let continue nb_call =
-      !(!flex_flag.extra) && nb_call < !(!flex_flag.sub1)
-      || not !(!flex_flag.extra) && 100 - nb_call * 10 > !(!flex_flag.sub2)
+      !flexibility.optional = `Both && nb_call < !flexibility.exceptions
+      || !flexibility.optional = `Percent && percent nb_call > !flexibility.percentage
     in
     let s =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
@@ -645,15 +742,15 @@ let report_unused_exported () =
       if change fn then print_newline ();
       prloc ~fn loc;
       print_string (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
-      if call_sites <> [] && !(!exported_flag.extra) then print_string "    Call sites:";
+      if call_sites <> [] && !exported_flag.call_sites then print_string "    Call sites:";
       print_newline ();
-      if !(!exported_flag.extra) then begin
+      if !exported_flag.call_sites then begin
         List.iter (pretty_print_call ()) call_sites;
         if nb_call <> 0 then print_newline ()
       end
     in
 
-    let continue nb_call = nb_call < !(!flex_flag.sub1) in
+    let continue nb_call = nb_call < !flexibility.exceptions in
     let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
     report s l continue nb_call pretty_print report_unused_exported
 
@@ -677,57 +774,13 @@ let report_style () =
   end
 
 
-(* Init *)
-let set_all fn =
-  opt_flag := {!opt_flag with sub3 = ref false; sub4 = ref false};
-  exported_flag := {!exported_flag with sub2 = ref false; sub3 = ref false; sub4 = ref false};
-  Printf.eprintf "Scanning files...\n%!";
-  load_file fn
 
 (* Option parsing and processing *)
 let parse () =
   let update_all b () =
-    style_flag := {(make_flag b) with extra = !style_flag.extra};
-      exported_flag := {(make_flag b) with extra = !exported_flag.extra};
-      opt_flag := {(make_flag b) with extra = !opt_flag.extra}
-  in
-
-  let update_flag b flag s =
-    let updt =        (* to avoid to much repetition in pattern matching; subsection flags updaters *)
-      [ (fun () -> !flag.sub1 := b);
-        (fun () -> !flag.sub2 := b);
-        (fun () -> !flag.sub3 := b);
-        (fun () -> !flag.sub4 := b)]
-    in
-    let rec aux l =
-      match l with
-        | ("1" as e)::l | ("2" as e)::l | ("3" as e)::l | ("4" as e)::l ->
-            List.nth updt (int_of_string e - 1) @@ ();
-            aux l
-        | "all"::l -> flag := {(make_flag b) with extra = !flag.extra};
-            aux l
-        | "call-site"::l -> !flag.extra := b;
-            aux l
-        | ""::l -> aux l
-        | s::_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
-        | [] -> ()
-    in aux @@ Str.split (Str.regexp "\\+") s
-  in
-  let update_flex s =
-    let rec aux l =
-      match l with
-        | ("true" as e)::l | ("false" as e)::l ->
-            !flex_flag.extra := bool_of_string e;
-            aux l
-        | s::l when Str.string_match (Str.regexp "^[0-9]+%$") s 0 ->
-            !flex_flag.sub2 := int_of_string (String.sub s 0 (String.length s - 1));
-            aux l
-        | s::l when Str.string_match (Str.regexp "^[0-9]+$") s 0 ->
-            !flex_flag.sub1 := int_of_string s;
-            aux l
-        | s::_ -> raise @@ Arg.Bad ("unknwon option: " ^ s)
-        | [] -> ()
-    in aux @@ Str.split (Str.regexp "\\+") s
+    update_style_flag (b ^ "all");
+    update_exported_flag (b ^ "all");
+    update_opt_flag (b ^ "all")
   in
 
   (* any extra argument can be accepted by any option using some
@@ -740,47 +793,56 @@ let parse () =
       "--verbose", Unit set_verbose, " Verbose mode (ie., show scanned files)";
       "-v", Unit set_verbose, " Verbose mode (ie., show scanned files)";
 
-      "--flexibility", String update_flex,
-        " Reports values that are almost in a category.\n\t\t \
-          Options (can be used together; single quoted values are regexps):\n\
-          \t+'[[:digit:]]+': Maximum number of exceptions. Default is 0\n\
-          \t+'[[:digit:]]+%': Minimum percentage of valid cases (for optional arguments). Default is 1\n\
-          \t+false: Optional arguments have to respect the percentage only\n\
-          \t+true: Optional arguments have to respect both constraints. Default behaviour";
+      "--flexibility", String update_flexibility,
+        " Reports values that are almost in a category.\n    \
+          Delimiters '+' and '-' can both be used.\n    \
+          Options (can be used together):\n\
+          \t<integer>: Maximum number of exceptions. Default is 0.\n\
+          \t<float>: Minimum percentage (between 0.0 and 1.0) of valid cases (for optional arguments). Default is 1.0.\n\
+          \tpercent: Optional arguments have to respect the percentage only. Default behaviour\n\
+          \tboth: Optional arguments have to respect both constraints";
 
-      "-a", Unit (update_all false), " Disable all warnings";
-      "--nothing", Unit (update_all false), " Disable all warnings";
-      "-A", Unit (update_all true), " Enable all warnings";
-      "--all", Unit (update_all true), " Enable all warnings";
+      "--call-sites", String update_call_sites,
+        " Reports call sites for exceptions in the given category (only useful when used with the flexibility option).\n    \
+        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+          Options (can be used together):\n\
+          \tE: Equivalent to -E +calls.\n\
+          \tO: Equivalent to -O +calls.\n\
+          \tall: O & E";
 
-      "-e", Unit (fun () -> !exported_flag.sub1 := false), " Disable unused exported values warnings";
-      "-E", String (update_flag true exported_flag),
-        " Enable unused exported values warnings. Options (can be used together):\n\
-          \t+all: Enable warnings\n\
-          \t+call-site: show call sites";
+      "-a", Unit (update_all "-"), " Disable all warnings";
+      "--nothing", Unit (update_all "-"), " Disable all warnings";
+      "-A", Unit (update_all "+"), " Enable all warnings";
+      "--all", Unit (update_all "+"), " Enable all warnings";
 
-      "-o", String (update_flag false opt_flag),
-        " Disable optional arguments warnings. Options:\n\
-          \tSee -O";
-      "-O", String (update_flag true opt_flag),
-        " Enable optional arguments warnings. Options (can be used together):\n\
-          \t+1: ALWAYS\n\
-          \t+2: NEVER\n\
-          \t+all: 1+2\n\
-          \t+call-site: show call sites";
+      "-E", String (update_exported_flag),
+        " Enable/Disable unused exported values warnings.\n    \
+        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+        Options (can be used together):\n\
+          \tall\n\
+          \tcalls: show call sites";
 
-      "-s", String (update_flag false style_flag),
-        " Disable coding style warnings. Options:\n\
-          \tSee -S";
-      "-S", String (update_flag true style_flag),
-        " Enable coding style warnings. Options (can be used together):\n\
-          \t+1: optional arg in arg\n\
-          \t+2: unit pattern\n\
-          \t+3: use sequence\n\
-          \t+4: useless binding\n\
-          \t+all: 1+2+3+4";
+      "-O", String (update_opt_flag),
+        " Enable/Disable optional arguments warnings.\n    \
+        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+        Options (can be used together):\n\
+          \talways\n\
+          \tnever\n\
+          \tall: always & never\n\
+          \tcalls: show call sites";
+
+      "-S", String (update_style_flag),
+        " Enable/Disable coding style warnings.\n    \
+        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+        Options (can be used together):\n\
+          \tbind: useless binding\n\
+          \topt: optional arg in arg\n\
+          \tseq: use sequence\n\
+          \tunit: unit pattern\n\
+          \tall: bind & opt & seq & unit";
     ]
-    set_all
+    (Printf.eprintf "Scanning files...\n%!";
+    load_file)
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
 
 
@@ -789,11 +851,11 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
-    if (status_flag !exported_flag)  then report_unused_exported ();
-    if (status_flag !opt_flag)       then begin let tmp = analyse_opt_args () in
-                if !(!opt_flag.sub1) then report_opt_args "ALWAYS" tmp;
-                if !(!opt_flag.sub2) then report_opt_args "NEVER" tmp end;
-    if (status_flag !style_flag)     then report_style ();
+    if !exported_flag.print                 then  report_unused_exported ();
+    if !opt_flag.always || !opt_flag.never  then  begin let tmp = analyse_opt_args () in
+                if !opt_flag.always         then  report_opt_args "ALWAYS" tmp;
+                if !opt_flag.never          then  report_opt_args "NEVER" tmp end;
+    report_style ();
 
     if !bad_files <> [] then begin
       let oc = open_out_bin "remove_bad_files.sh" in
