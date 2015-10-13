@@ -593,13 +593,6 @@ let analyse_opt_args () =
   let tbl = Hashtbl.create 256 in
 
   let analyse = fun (loc, lab, has_val, callsite) ->
-    let loc =
-      let node = if loc.opt_args = [] then next_fn_node loc else loc in
-      try let loc = List.hd @@ Hashtbl.find corres node.loc in
-        if not loc.loc_ghost then vd_node ~name:node.name loc
-        else node
-      with Not_found -> node
-    in
     let slot =
       try Hashtbl.find tbl (loc.loc, lab)
       with Not_found ->
