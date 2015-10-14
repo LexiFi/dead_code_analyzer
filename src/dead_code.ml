@@ -479,12 +479,12 @@ let collect_references =                          (* Tast_mapper *)
 let kind fn =
   if Filename.check_suffix fn ".cmi" then
     let base = Filename.chop_suffix fn ".cmi" in
-    if Sys.file_exists (base ^ ".mli")              then  `Iface (base ^ ".mli")
+    if      Sys.file_exists (base ^ ".mli")         then  `Iface (base ^ ".mli")
     else if Sys.file_exists (base ^ ".ml")          then  `Iface (base ^ ".ml")
     else                  (* default *)                   `Ignore
   else if Filename.check_suffix fn ".cmt" then
     let base = Filename.chop_suffix fn ".cmt" in
-    if Sys.file_exists (base ^ ".ml")               then  `Implem (base ^ ".ml")
+    if      Sys.file_exists (base ^ ".ml")          then  `Implem (base ^ ".ml")
     else                  (* default *)                   `Ignore
   else if (try Sys.is_directory fn with _ -> false) then  `Dir
   else                    (* default *)                   `Ignore
@@ -550,20 +550,18 @@ let rec load_file fn = match kind fn with
 
       (* Used if the cmt is valid. Associates the two value dependencies *)
       let assoc (vd1, vd2) =
-        let merge vd1 vd2 =
-          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
-          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
-        in
         let vd1 = vd1.Types.val_loc and vd2 = vd2.Types.val_loc in
+        let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
-          try Sys.file_exists (Filename.chop_extension (Hashtbl.find abspath fn) ^".mli")
+          Filename.check_suffix fn ".mli"
+          || try Sys.file_exists (Filename.chop_extension (Hashtbl.find abspath fn) ^".mli")
           with Not_found -> false
         in
-        if is_implem vd1.Location.loc_start.pos_fname = is_implem vd2.Location.loc_start.pos_fname
-            || not (has_iface vd1.Location.loc_start.pos_fname
-              && has_iface vd2.Location.loc_start.pos_fname) then
-          merge vd1 vd2
+        if is_implem fn1 && is_implem fn2 || not (is_implem fn1 && has_iface fn1) then begin
+          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
+          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
+        end
         else
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
       in
