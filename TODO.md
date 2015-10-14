@@ -16,7 +16,7 @@
 
 
 #Note
-- The 'UNUSED EXPORTED VALUES' section may has FN; may have FP (none known).
+- The 'UNUSED EXPORTED VALUES' section has FN; may have FP (none known).
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP (due to 'ref' usage).
 - The 'CODING STYLE' section may have both FN and FP (none known).
 
