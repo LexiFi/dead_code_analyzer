@@ -455,7 +455,7 @@ let collect_references =                          (* Tast_mapper *)
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references e.exp_loc with Not_found -> [])
+        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !style_flag.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end

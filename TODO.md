@@ -5,9 +5,9 @@
 
 #Testing
 - \[ \] Test on big projects
-	+ \[X\] js_of_ocaml: exported values: 571 values; no FP
+	+ \[X\] js_of_ocaml: exported values: 560 values; no FP
 	+ \[X\] js_of_ocaml: opt args never used: no FP
-	+ \[X\] OPAM: exported values: 235 values reported; no FP
+	+ \[X\] OPAM: exported values: 240 values reported; no FP
 	+ \[X\] OPAM: opt args never used: no FP
 - \[X\] Test suite
 	+ \[X\] Detect FP

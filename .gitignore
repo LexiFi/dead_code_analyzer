@@ -11,5 +11,6 @@
 *.cmxs
 *.exe
 *.o
+*.swo
 *.swp
 *.out
