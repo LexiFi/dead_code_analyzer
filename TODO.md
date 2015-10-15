@@ -5,9 +5,9 @@
 
 #Testing
 - \[ \] Test on big projects
-	+ \[X\] js_of_ocaml: exported values: 640 values; no FP
+	+ \[X\] js_of_ocaml: exported values: 571 values; no FP
 	+ \[X\] js_of_ocaml: opt args never used: no FP
-	+ \[X\] OPAM: exported values: 234 values reported; no FP; 32 FN detected
+	+ \[X\] OPAM: exported values: 235 values reported; no FP
 	+ \[X\] OPAM: opt args never used: no FP
 - \[X\] Test suite
 	+ \[X\] Detect FP
@@ -16,8 +16,8 @@
 
 
 #Note
-- The 'UNUSED EXPORTED VALUES' section has FN; may have FP (none known).
+- The 'UNUSED EXPORTED VALUES' section may have both FN and FP (none known).
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP (due to 'ref' usage).
 - The 'CODING STYLE' section may have both FN and FP (none known).
 
-ratio: *95.74%* succesful (over 94 expected results)
+ratio: *96.81%* succesful (over 94 expected results)

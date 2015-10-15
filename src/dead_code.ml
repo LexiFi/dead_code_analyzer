@@ -555,12 +555,16 @@ let rec load_file fn = match kind fn with
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
           Filename.check_suffix fn ".mli"
-          || try Sys.file_exists (Filename.chop_extension (Hashtbl.find abspath fn) ^".mli")
+          || try Sys.file_exists (Filename.chop_extension (Hashtbl.find abspath fn) ^ ".mli")
           with Not_found -> false
         in
-        if is_implem fn1 && is_implem fn2 || not (is_implem fn1 && has_iface fn1) then begin
-          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd2 with Not_found -> []);
-          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> [])
+        if is_implem fn1 && is_implem fn2 then
+          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd1 with Not_found -> [])
+        else if not (is_implem fn1 && has_iface fn1) then begin
+          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> []);
+          Hashtbl.add references vd1 @@ List.sort_uniq compare
+            ((try Hashtbl.find references vd1 with Not_found -> [])
+            @ try Hashtbl.find references vd2 with Not_found -> [])
         end
         else
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
@@ -569,7 +573,7 @@ let rec load_file fn = match kind fn with
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
-            List.iter assoc cmt_value_dependencies
+            List.iter assoc (List.rev cmt_value_dependencies)
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 
