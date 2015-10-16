@@ -1,8 +1,28 @@
-type t =
+type t0 =
   {
-    mutable f: (?a:int -> ?b:int -> unit -> unit)
+    unused: char;
+    mutable f: (?a:int -> ?b:int -> unit -> unit);
   }
 
-let r = {f = fun ?a ?b c -> c}
+type t =
+  {
+    unused: char;
+    mutable f: (?a:int -> ?b:int -> unit -> unit);
+  }
+
+let r:t =
+  {
+    unused = '_';
+    f = fun ?a ?b c -> c;
+  }
 
 let () = r.f ~a:0 ()
+
+type t2 =
+  {
+    r: t
+  }
+
+let r = {r = r}
+
+let () = r.r.f ~a:0 ()
