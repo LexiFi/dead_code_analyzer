@@ -316,7 +316,8 @@ and check_args call_site e =
             c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
         treat_args call_site args
 
-    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args) ->
+    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
+    | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
         treat_args val_loc (get_sig_args args e.exp_type);
         if not val_loc.Location.loc_ghost then
           last_loc := val_loc
@@ -339,7 +340,8 @@ and check_args call_site e =
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
-  | Texp_ident (_, _, {Types.val_loc; _}) ->
+  | Texp_ident (_, _, {Types.val_loc; _})
+  | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
       treat_args ~anon:true val_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
@@ -373,7 +375,8 @@ let rec build_node_args node expr = match expr.exp_desc with
             node.opt_args <- s::node.opt_args;
             build_node_args node exp
         | _ -> () end
-  | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args) ->
+  | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args)
+  | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=loc2; _}); _}, args) ->
       treat_args loc2 args;
       merge_locs ~search:next_fn_node node.loc loc2
   | Texp_ident (_, _, {val_loc=loc2; _}) ->
@@ -381,24 +384,39 @@ let rec build_node_args node expr = match expr.exp_desc with
   | _ -> ()
 
 
-let rec sign = function
-  | Mty_signature sg -> sg
-  | Mty_functor (_, _, t) -> sign t
-  | Mty_ident _ | Mty_alias _ -> []
 
-let rec collect_export path u = function
-  | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-      (* a .cmi file can contain locations from other files.
-        For instance:
-            module M : Set.S with type elt = int
-        will create value definitions whose location is in set.mli
-      *)
-      if u = unit val_loc.Location.loc_start.Lexing.pos_fname
-          && check_underscore (Ident.name id) then
-        vds := (!current_src, id :: path, val_loc) :: !vds
-  | Sig_module (id, {Types.md_type = t; _}, _)
-  | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
-  | _ -> ()
+
+
+let rec collect_export path u signature =
+
+  let export path id loc =
+    if u = unit loc.Location.loc_start.Lexing.pos_fname
+        && check_underscore (Ident.name id) then
+          vds := (!current_src, id :: path, loc) :: !vds
+  in
+  let collect_export_type export = function
+    | Type_record (l, _) -> List.iter (fun {Types.ld_id; ld_loc; _} -> export ld_id ld_loc) l
+    | _ -> ()
+  in
+  let rec sign = function
+    | Mty_signature sg -> sg
+    | Mty_functor (_, _, t) -> sign t
+    | Mty_ident _ | Mty_alias _ -> []
+  in
+
+  match signature with
+    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+        (* a .cmi file can contain locations from other files.
+          For instance:
+              module M : Set.S with type elt = int
+          will create value definitions whose location is in set.mli
+        *)
+        export path id val_loc
+    | Sig_type (id, {Types.type_loc; Types.type_kind}, _) ->
+          collect_export_type (export (id::path)) type_kind
+    | Sig_module (id, {Types.md_type = t; _}, _)
+    | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
+    | _ -> ()
 
 
 let is_unit t = match (Ctype.repr t).desc with
@@ -407,13 +425,24 @@ let is_unit t = match (Ctype.repr t).desc with
 
 
 (* Binding in Tstr_value *)
-let value_binding = function
+let rec value_binding = function
   | {
       vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
       _
     } ->
       merge_locs ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
+  | {
+      vb_pat={pat_desc=Tpat_var (_, loc); _} as pat;
+      vb_expr={exp_desc=Texp_record (l, _); _};
+      _
+    } as binding ->
+      List.iter
+        (fun (_, lab, e) -> value_binding {binding with
+          vb_pat={pat with pat_desc=Tpat_var
+            (Ident.create lab.lbl_name, loc)};
+          vb_expr=e})
+        l
   | {
       vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr=exp;
@@ -454,7 +483,8 @@ let collect_references =                          (* Tast_mapper *)
 
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply (exp, args) -> treat_exp exp args
-    | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+    | Texp_ident (_, _, {Types.val_loc; _}) | Texp_field (_, _, {lbl_loc=val_loc; _})
+      when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !style_flag.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
