@@ -1,3 +1,3 @@
-./examples/record.ml:3: t0.unused
-./examples/record.ml:4: t0.f
-./examples/record.ml:9: t.unused
+./examples/record.mli:3: t0.unused
+./examples/record.mli:4: t0.f
+./examples/record.mli:9: t.unused
