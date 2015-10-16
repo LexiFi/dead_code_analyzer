@@ -150,6 +150,7 @@ let bad_files = ref []
 
 let vds = ref []                        (* all exported value declarations *)
 let references = Hashtbl.create 256     (* all value references *)
+let fields = Hashtbl.create 256         (* link from field paths and nodes *)
 let corres = Hashtbl.create 256         (* link from dec to def *)
 
 let style = ref []                      (* patterns of type unit which are not () *)
@@ -340,9 +341,33 @@ and check_args call_site e =
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
-  | Texp_ident (_, _, {Types.val_loc; _})
-  | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
+  | Texp_ident (_, _, {Types.val_loc; _}) ->
       treat_args ~anon:true val_loc args
+  | Texp_field (e, id, lab) ->
+      let path =
+        let (e, id, lab) = let rec deep (e, id, lab) = match e.exp_desc with
+          | Texp_field (e, id, lab) -> deep (e, id, lab)
+          | _ -> (e, id, lab)
+        in deep (e, id, lab) in
+        String.capitalize_ascii Filename.(chop_extension (basename !current_src))
+        :: (let rec typ = function
+          | Tvar _ -> "Tvar"
+          | Tarrow _ -> "Tarrow"
+          | Ttuple _ -> "Ttuple"
+          | Tconstr (p, _, _) -> Path.name p
+          | Tobject _ -> "Tobject"
+          | Tfield _ -> "Tfield"
+          | Tnil _ -> "Tnil"
+          | Tlink t ->  typ t.desc
+          | Tsubst _ -> "Tsubst"
+          | Tvariant _ -> "Tvariant"
+          | Tunivar _ -> "Tunivar"
+          | Tpoly _ -> "Tpoly"
+          | Tpackage _ -> "Tpackage" in typ e.exp_type.desc)
+        :: Longident.flatten id.Asttypes.txt
+      in
+      Hashtbl.add fields path lab.lbl_loc;
+      treat_args ~anon:true lab.lbl_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
       begin match exp_else with
@@ -384,41 +409,6 @@ let rec build_node_args node expr = match expr.exp_desc with
   | _ -> ()
 
 
-
-
-
-let rec collect_export path u signature =
-
-  let export path id loc =
-    if u = unit loc.Location.loc_start.Lexing.pos_fname
-        && check_underscore (Ident.name id) then
-          vds := (!current_src, id :: path, loc) :: !vds
-  in
-  let collect_export_type export = function
-    | Type_record (l, _) -> List.iter (fun {Types.ld_id; ld_loc; _} -> export ld_id ld_loc) l
-    | _ -> ()
-  in
-  let rec sign = function
-    | Mty_signature sg -> sg
-    | Mty_functor (_, _, t) -> sign t
-    | Mty_ident _ | Mty_alias _ -> []
-  in
-
-  match signature with
-    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-        (* a .cmi file can contain locations from other files.
-          For instance:
-              module M : Set.S with type elt = int
-          will create value definitions whose location is in set.mli
-        *)
-        export path id val_loc
-    | Sig_type (id, {Types.type_loc; Types.type_kind}, _) ->
-          collect_export_type (export (id::path)) type_kind
-    | Sig_module (id, {Types.md_type = t; _}, _)
-    | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
-    | _ -> ()
-
-
 let is_unit t = match (Ctype.repr t).desc with
   | Tconstr (p, [], _) -> Path.same p Predef.path_unit
   | _ -> false
@@ -438,11 +428,12 @@ let rec value_binding = function
       _
     } as binding ->
       List.iter
-        (fun (_, lab, e) -> value_binding {binding with
-          vb_pat={pat with pat_desc=Tpat_var
-            (Ident.create lab.lbl_name, loc)};
-          vb_expr=e})
-        l
+        (fun (id, lab, e) ->
+          value_binding {binding with
+            vb_pat={pat with pat_desc=Tpat_var
+              (Ident.create lab.lbl_name, {loc=lab.lbl_loc; txt=lab.lbl_name})};
+            vb_expr=e})
+        l;
   | {
       vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr=exp;
@@ -503,6 +494,41 @@ let collect_references =                          (* Tast_mapper *)
   let pat = wrap pat (fun x -> x.pat_loc) in
   let structure_item = wrap structure_item (fun x -> x.str_loc) in
   {super with structure_item; expr; pat}
+
+
+
+let rec collect_export path u signature =
+
+  let export path id loc =
+    if u = unit loc.Location.loc_start.Lexing.pos_fname
+        && check_underscore (Ident.name id) then
+          vds := (!current_src, id :: path, loc) :: !vds
+  in
+  let collect_export_type export = function
+    | Type_record (l, _) -> List.iter (fun {Types.ld_id; ld_loc; _} -> export ld_id ld_loc) l
+    | _ -> ()
+  in
+  let rec sign = function
+    | Mty_signature sg -> sg
+    | Mty_functor (_, _, t) -> sign t
+    | Mty_ident _ | Mty_alias _ -> []
+  in
+
+  match signature with
+    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+        (* a .cmi file can contain locations from other files.
+          For instance:
+              module M : Set.S with type elt = int
+          will create value definitions whose location is in set.mli
+        *)
+        export path id val_loc
+    | Sig_type (id, {Types.type_kind}, _) ->
+          collect_export_type (export (id::path)) type_kind
+    | Sig_module (id, {Types.md_type = t; _}, _)
+    | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
+    | _ -> ()
+
+
 
 
 (* Checks the nature of the file *)
@@ -603,14 +629,27 @@ let rec load_file fn = match kind fn with
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
-            List.iter assoc (List.rev cmt_value_dependencies)
+            List.iter assoc (List.rev cmt_value_dependencies);
+            Hashtbl.iter
+              (fun path loc -> try
+                let rec prerr_list = function e::l -> prerr_string e; prerr_char '.'; prerr_list l | [] -> prerr_newline() in
+                let (_, _, iloc) = List.find
+                  (fun (_, p, _) ->
+                    let tmp = List.rev_map (fun id -> id.Ident.name) p
+                    in prerr_list tmp; prerr_list path; prerr_newline();
+                    tmp = path) !vds in
+        let prerr_loc loc = (fun (f, l, _) -> prerr_string f; prerr_int l; prerr_newline()) @@ Location.get_pos_info loc.Location.loc_start in
+        prerr_loc loc; prerr_loc iloc; prerr_newline();
+                Hashtbl.find references loc |> Hashtbl.add references iloc
+                with Not_found -> ())
+              fields
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 
   | `Dir ->
       if not (is_excluded_dir fn) then
         Array.iter
-          (fun s -> if s <> ".svn" then load_file (fn ^ "/" ^ s))
+          (fun s -> load_file (fn ^ "/" ^ s))
           (Sys.readdir fn)
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 

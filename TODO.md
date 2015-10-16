@@ -1,5 +1,6 @@
 #Fix
 - Stop assuming each basename should be unique
+- Clean output
 - Clean code!!
 
 
@@ -20,4 +21,4 @@
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP (due to 'ref' usage).
 - The 'CODING STYLE' section may have both FN and FP (none known).
 
-ratio: *96.81%* succesful (over 94 expected results)
+ratio: *97.06%* succesful (over 102 expected results)
