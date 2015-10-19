@@ -341,33 +341,9 @@ and check_args call_site e =
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
-  | Texp_ident (_, _, {Types.val_loc; _}) ->
+  | Texp_ident (_, _, {Types.val_loc; _})
+  | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
       treat_args ~anon:true val_loc args
-  | Texp_field (e, id, lab) ->
-      let path =
-        let (e, id, lab) = let rec deep (e, id, lab) = match e.exp_desc with
-          | Texp_field (e, id, lab) -> deep (e, id, lab)
-          | _ -> (e, id, lab)
-        in deep (e, id, lab) in
-        String.capitalize_ascii Filename.(chop_extension (basename !current_src))
-        :: (let rec typ = function
-          | Tvar _ -> "Tvar"
-          | Tarrow _ -> "Tarrow"
-          | Ttuple _ -> "Ttuple"
-          | Tconstr (p, _, _) -> Path.name p
-          | Tobject _ -> "Tobject"
-          | Tfield _ -> "Tfield"
-          | Tnil _ -> "Tnil"
-          | Tlink t ->  typ t.desc
-          | Tsubst _ -> "Tsubst"
-          | Tvariant _ -> "Tvariant"
-          | Tunivar _ -> "Tunivar"
-          | Tpoly _ -> "Tpoly"
-          | Tpackage _ -> "Tpackage" in typ e.exp_type.desc)
-        :: Longident.flatten id.Asttypes.txt
-      in
-      Hashtbl.add fields path lab.lbl_loc;
-      treat_args ~anon:true lab.lbl_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
       begin match exp_else with
@@ -423,12 +399,12 @@ let rec value_binding = function
     } ->
       merge_locs ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
   | {
-      vb_pat={pat_desc=Tpat_var (_, loc); _} as pat;
+      vb_pat={pat_desc=Tpat_var _; _} as pat;
       vb_expr={exp_desc=Texp_record (l, _); _};
       _
     } as binding ->
       List.iter
-        (fun (id, lab, e) ->
+        (fun (_, lab, e) ->
           value_binding {binding with
             vb_pat={pat with pat_desc=Tpat_var
               (Ident.create lab.lbl_name, {loc=lab.lbl_loc; txt=lab.lbl_name})};
@@ -461,22 +437,47 @@ let collect_references =                          (* Tast_mapper *)
     super.structure_item self i
   in
 
-  let pat self p =                                (* look for unit pattern *)
+  let pat self p =
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
-    begin if is_unit p.pat_type && !style_flag.unit_pat then match p.pat_desc with
+    begin if is_unit p.pat_type && !style_flag.unit_pat then match p.pat_desc with (* look for unit pattern *)
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
-      | Tpat_var (_, {txt; loc = _})-> if check_underscore txt then u txt
+      | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
       | Tpat_any -> if not !underscore then u "_"
       | _ -> u "" end;
+    begin match p.pat_desc with
+      | Tpat_record (l, _) ->
+          List.iter
+            (fun (_, lab, _) -> Hashtbl.add references lab.lbl_loc
+              (p.pat_loc :: try Hashtbl.find references lab.lbl_loc with Not_found -> []))
+            l
+      | _ -> () end;
     super.pat self p
   in
 
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply (exp, args) -> treat_exp exp args
-    | Texp_ident (_, _, {Types.val_loc; _}) | Texp_field (_, _, {lbl_loc=val_loc; _})
+    | Texp_ident (_, _, {Types.val_loc; _})
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
+    | Texp_field (e, id, lab) when not lab.lbl_loc.Location.loc_ghost ->
+        let path =
+          let e, id = let rec deep (e, id) = match e.exp_desc with
+            | Texp_field (e, id, _) -> deep (e, id)
+            | _ -> e, id
+          in deep (e, id) in
+          let l = Longident.flatten id.Asttypes.txt in
+          begin
+            if List.length l = 1 then String.capitalize_ascii (unit !current_src) :: []
+            else List.rev l |> List.tl |> List.rev
+          end @ (let rec typ = function
+            | Tconstr (p, _, _) -> Path.name p
+            | Tlink t ->  typ t.desc
+            | _ -> "_none_" in typ e.exp_type.desc
+            :: (List.rev l |> List.hd) :: [])
+        in
+        Hashtbl.add fields path lab.lbl_loc;
+        Hashtbl.add references lab.lbl_loc (e.exp_loc :: try Hashtbl.find references lab.lbl_loc with Not_found -> [])
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !style_flag.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
@@ -500,7 +501,7 @@ let collect_references =                          (* Tast_mapper *)
 let rec collect_export path u signature =
 
   let export path id loc =
-    if u = unit loc.Location.loc_start.Lexing.pos_fname
+    if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
         && check_underscore (Ident.name id) then
           vds := (!current_src, id :: path, loc) :: !vds
   in
@@ -632,14 +633,10 @@ let rec load_file fn = match kind fn with
             List.iter assoc (List.rev cmt_value_dependencies);
             Hashtbl.iter
               (fun path loc -> try
-                let rec prerr_list = function e::l -> prerr_string e; prerr_char '.'; prerr_list l | [] -> prerr_newline() in
                 let (_, _, iloc) = List.find
                   (fun (_, p, _) ->
-                    let tmp = List.rev_map (fun id -> id.Ident.name) p
-                    in prerr_list tmp; prerr_list path; prerr_newline();
-                    tmp = path) !vds in
-        let prerr_loc loc = (fun (f, l, _) -> prerr_string f; prerr_int l; prerr_newline()) @@ Location.get_pos_info loc.Location.loc_start in
-        prerr_loc loc; prerr_loc iloc; prerr_newline();
+                    List.rev_map (fun id -> id.Ident.name) p = path)
+                  !vds in
                 Hashtbl.find references loc |> Hashtbl.add references iloc
                 with Not_found -> ())
               fields
