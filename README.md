@@ -6,9 +6,7 @@ Dead-code analyzer for OCaml (and more)
 This tool scans a compiled OCaml project and reports various warnings
 about suspicious code:
 
- - Values not exported and never used.
-
- - Values exported by .mli files but never used in any other module.
+ - Exported values never used.
    (The declaration can be dropped from the interface, and then from
    the implementation if there is no internal use -- which will be reportef
    by standard OCaml warnings).

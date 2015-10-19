@@ -26,3 +26,10 @@ type t2 =
 let r = {r = r}
 
 let () = r.r.f ~a:0 ()
+
+module X=struct
+  type t =
+    {
+      unused: char;
+    }
+end
