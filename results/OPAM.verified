@@ -182,6 +182,7 @@ opam/src/format/opamFormula.mli:169: of_disjunction
 opam/src/format/opamPackage.mli:76: versions_of_packages
 opam/src/format/opamPackage.mli:33: Name.compare
 opam/src/format/opamParser.mli:21: value
+opam/src/format/opamTypes.mli:397: file.file_format
 opam/src/format/opamTypesBase.mli:30: download_file
 opam/src/format/opamTypesBase.mli:49: guess_version_control
 opam/src/format/opamTypesBase.mli:60: map_atomic_action
@@ -223,6 +224,7 @@ opam/src/state/opamPath.mli:66: archives_dir
 opam/src/state/opamPath.mli:242: Switch.doc_dir
 opam/src/state/opamPath.mli:248: Switch.etc_dir
 opam/src/state/opamSolution.mli:62: atom_of_package
+opam/src/state/opamState.mli:24: Types.t.partial
 opam/src/state/opamState.mli:107: with_switch
 opam/src/state/opamState.mli:189: descr_opt
 opam/src/state/opamState.mli:192: files
@@ -246,6 +248,7 @@ opam/src/tools/opam_admin_top.mli:34: iter_packages
 opam/src/tools/opam_admin_top.mli:45: iter_compilers_gen
 opam/src/tools/opam_admin_top.mli:56: filter_compilers
 opam/src/tools/opam_admin_top.mli:58: iter_compilers
+opam/src/tools/opam_installer.ml:33: commands.mkdir
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------

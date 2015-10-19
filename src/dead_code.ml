@@ -391,7 +391,7 @@ let is_unit t = match (Ctype.repr t).desc with
 
 
 (* Binding in Tstr_value *)
-let rec value_binding = function
+let value_binding = function
   | {
       vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
@@ -399,23 +399,27 @@ let rec value_binding = function
     } ->
       merge_locs ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
   | {
-      vb_pat={pat_desc=Tpat_var _; _} as pat;
-      vb_expr={exp_desc=Texp_record (l, _); _};
-      _
-    } as binding ->
-      List.iter
-        (fun (_, lab, e) ->
-          value_binding {binding with
-            vb_pat={pat with pat_desc=Tpat_var
-              (Ident.create lab.lbl_name, {loc=lab.lbl_loc; txt=lab.lbl_name})};
-            vb_expr=e})
-        l;
-  | {
       vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr=exp;
       _
     } when not loc1.loc_ghost ->
       build_node_args (vd_node ~name:(Ident.name id) loc1) exp
+  | _ -> ()
+
+let mods = ref [] (* module path *)
+
+(* declarations Tstr_type *)
+let ttype typ = match typ.typ_kind with
+  | Ttype_record l ->
+      List.iter
+        (fun lab ->
+          let path = lab.ld_name.Asttypes.txt
+          :: typ.typ_name.Asttypes.txt :: !mods
+          @ (String.capitalize_ascii (unit !current_src):: [])
+          in
+          (try Hashtbl.add corres (Hashtbl.find fields path) (lab.Typedtree.ld_loc :: [])
+          with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc))
+        l
   | _ -> ()
 
 
@@ -433,8 +437,14 @@ let collect_references =                          (* Tast_mapper *)
 
   let structure_item self i = begin match i.str_desc with
     | Tstr_value (_, l) -> List.iter value_binding l
+    | Tstr_type  (_, l) -> List.iter ttype l
+    | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
     | _ -> () end;
-    super.structure_item self i
+    let res = super.structure_item self i in
+    begin match i.str_desc with
+    | Tstr_module _ -> mods := List.tl !mods
+    | _ -> () end;
+    res
   in
 
   let pat self p =
@@ -458,26 +468,9 @@ let collect_references =                          (* Tast_mapper *)
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _})
+    | Texp_field (_, _, {lbl_loc=val_loc; _})
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
-    | Texp_field (e, id, lab) when not lab.lbl_loc.Location.loc_ghost ->
-        let path =
-          let e, id = let rec deep (e, id) = match e.exp_desc with
-            | Texp_field (e, id, _) -> deep (e, id)
-            | _ -> e, id
-          in deep (e, id) in
-          let l = Longident.flatten id.Asttypes.txt in
-          begin
-            if List.length l = 1 then String.capitalize_ascii (unit !current_src) :: []
-            else List.rev l |> List.tl |> List.rev
-          end @ (let rec typ = function
-            | Tconstr (p, _, _) -> Path.name p
-            | Tlink t ->  typ t.desc
-            | _ -> "_none_" in typ e.exp_type.desc
-            :: (List.rev l |> List.hd) :: [])
-        in
-        Hashtbl.add fields path lab.lbl_loc;
-        Hashtbl.add references lab.lbl_loc (e.exp_loc :: try Hashtbl.find references lab.lbl_loc with Not_found -> [])
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !style_flag.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
@@ -502,8 +495,12 @@ let rec collect_export path u signature =
 
   let export path id loc =
     if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
-        && check_underscore (Ident.name id) then
-          vds := (!current_src, id :: path, loc) :: !vds
+    && check_underscore (Ident.name id) then begin
+      vds := (!current_src, id :: path, loc) :: !vds;
+      let path = List.map (fun id -> id.Ident.name) path in
+      if String.capitalize_ascii (List.hd path) <> List.hd path then
+        Hashtbl.add fields (id.Ident.name::path) loc
+    end
   in
   let collect_export_type export = function
     | Type_record (l, _) -> List.iter (fun {Types.ld_id; ld_loc; _} -> export ld_id ld_loc) l
@@ -630,27 +627,19 @@ let rec load_file fn = match kind fn with
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
-            List.iter assoc (List.rev cmt_value_dependencies);
-            Hashtbl.iter
-              (fun path loc -> try
-                let (_, _, iloc) = List.find
-                  (fun (_, p, _) ->
-                    List.rev_map (fun id -> id.Ident.name) p = path)
-                  !vds in
-                Hashtbl.find references loc |> Hashtbl.add references iloc
-                with Not_found -> ())
-              fields
+            List.iter assoc (List.rev cmt_value_dependencies)
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 
-  | `Dir ->
-      if not (is_excluded_dir fn) then
-        Array.iter
-          (fun s -> load_file (fn ^ "/" ^ s))
-          (Sys.readdir fn)
+  | `Dir when not (is_excluded_dir fn) ->
+      let next = Sys.readdir fn in
+      Array.sort compare next;
+      Array.iter
+        (fun s -> load_file (fn ^ "/" ^ s))
+        next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 
-  | `Ignore -> ()
+  | _ -> ()
 
 
                 (********   REPORTING   ********)

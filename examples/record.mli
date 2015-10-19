@@ -14,3 +14,10 @@ type t2 =
   {
     r: t
   }
+
+module X:sig
+  type t =
+    {
+      unused: char;
+    }
+end
