@@ -1,3 +1,5 @@
+- Type binding
+
 #Fix
 - Stop assuming each basename should be unique
 - Clean output
