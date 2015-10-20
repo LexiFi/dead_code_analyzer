@@ -4,26 +4,23 @@ type t0 =
     mutable f: (?a:int -> ?b:int -> unit -> unit);
   }
 
-type t =
-  {
-    unused: char;
-    mutable f: (?a:int -> ?b:int -> unit -> unit);
-  }
-
-type t2 =
-  {
-    r: t
-  }
-
 module X:sig
   type t =
     {
       unused: char;
+      used: char;
+      mutable f: (?a:int -> ?b:int -> unit -> unit);
     }
 end
 
-type u = t0 =
+type t2 =
+  {
+    r: X.t
+  }
+
+type u = X.t =
   {
     unused: char;
+    used: char;
     mutable f: (?a:int -> ?b:int -> unit -> unit);
   }

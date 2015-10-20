@@ -1,1 +1,2 @@
-./examples/record.ml:16: unit pattern c
+./examples/record.ml:20: unit pattern c
+./examples/record.ml:45: unit pattern c

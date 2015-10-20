@@ -149,6 +149,7 @@ let abspath = Hashtbl.create 16         (* abspath: filename's basename -> absol
 let bad_files = ref []
 
 let vds = ref []                        (* all exported value declarations *)
+let type_dependencies = ref []           (* like the cmt value_dependencies but for types *)
 let references = Hashtbl.create 256     (* all value references *)
 let fields = Hashtbl.create 256         (* link from field paths and nodes *)
 let corres = Hashtbl.create 256         (* link from dec to def *)
@@ -413,14 +414,34 @@ let ttype typ = match typ.typ_kind with
   | Ttype_record l ->
       List.iter
         (fun lab ->
-          let path = lab.ld_name.Asttypes.txt
-          :: typ.typ_name.Asttypes.txt :: !mods
-          @ (String.capitalize_ascii (unit !current_src):: [])
+          let path = String.concat "." @@ List.rev @@
+            lab.ld_name.Asttypes.txt
+            :: typ.typ_name.Asttypes.txt :: !mods
+            @ (String.capitalize_ascii (unit !current_src):: [])
           in
-          (try Hashtbl.add corres (Hashtbl.find fields path) (lab.Typedtree.ld_loc :: [])
-          with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc))
+          begin try match typ.typ_manifest with
+            | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
+                let loc = Hashtbl.find fields
+                  (String.concat "." @@
+                    String.capitalize_ascii (unit !current_src)
+                    :: Longident.flatten txt
+                    @ (lab.ld_name.Asttypes.txt :: []))
+                in
+                let loc2 = Hashtbl.find fields path in
+                let _, mloc =
+                  try List.find (fun (_, l) -> l = loc) (List.rev !type_dependencies)
+                  with Not_found -> loc, loc
+                in
+                type_dependencies :=
+                  (loc2, mloc) :: (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
+            | _ -> ()
+          with _ -> () end;
+          try
+            let loc = Hashtbl.find fields path in
+            type_dependencies := (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
+          with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc)
         l
-  | _ -> ()
+    | _ -> ()
 
 
 (* Parse the AST *)
@@ -495,15 +516,22 @@ let rec collect_export path u signature =
 
   let export path id loc =
     if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
-    && check_underscore (Ident.name id) then begin
-      vds := (!current_src, id :: path, loc) :: !vds;
-      let path = List.map (fun id -> id.Ident.name) path in
-      if String.capitalize_ascii (List.hd path) <> List.hd path then
-        Hashtbl.add fields (id.Ident.name::path) loc
-    end
+    && check_underscore (Ident.name id) then
+      vds := (!current_src, id :: path, loc) :: !vds
   in
-  let collect_export_type export = function
-    | Type_record (l, _) -> List.iter (fun {Types.ld_id; ld_loc; _} -> export ld_id ld_loc) l
+  let collect_export_type path t = match t.type_kind with
+    | Type_record (l, _) ->
+        List.iter
+          (fun {Types.ld_id; ld_loc; _} ->
+            if t.type_manifest = None then
+              export path ld_id ld_loc;
+            let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (ld_id::path) in
+            if Hashtbl.mem fields path then
+              Hashtbl.add corres ld_loc
+                (let loc = Hashtbl.find fields path in
+                loc :: try Hashtbl.find corres loc with Not_found -> []);
+            Hashtbl.replace fields path ld_loc)
+          l
     | _ -> ()
   in
   let rec sign = function
@@ -520,8 +548,8 @@ let rec collect_export path u signature =
           will create value definitions whose location is in set.mli
         *)
         export path id val_loc
-    | Sig_type (id, {Types.type_kind}, _) ->
-          collect_export_type (export (id::path)) type_kind
+    | Sig_type (id, t, _) ->
+          collect_export_type (id::path) t
     | Sig_module (id, {Types.md_type = t; _}, _)
     | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
     | _ -> ()
@@ -604,7 +632,6 @@ let rec load_file fn = match kind fn with
 
       (* Used if the cmt is valid. Associates the two value dependencies *)
       let assoc (vd1, vd2) =
-        let vd1 = vd1.Types.val_loc and vd2 = vd2.Types.val_loc in
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
@@ -627,7 +654,8 @@ let rec load_file fn = match kind fn with
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
-            List.iter assoc (List.rev cmt_value_dependencies)
+            List.iter assoc (List.rev_map (fun (vd1, vd2) -> Types.(vd1.val_loc, vd2.val_loc)) cmt_value_dependencies);
+            List.iter assoc !type_dependencies
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 
