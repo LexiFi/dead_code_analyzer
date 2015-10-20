@@ -33,3 +33,9 @@ module X=struct
       unused: char;
     }
 end
+
+type u = t0 =
+  {
+    unused: char;
+    mutable f: (?a:int -> ?b:int -> unit -> unit);
+  }
