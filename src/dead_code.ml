@@ -654,7 +654,7 @@ let rec load_file fn = match kind fn with
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
-            List.iter assoc (List.rev_map (fun (vd1, vd2) -> Types.(vd1.val_loc, vd2.val_loc)) cmt_value_dependencies);
+            List.iter assoc (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
             List.iter assoc !type_dependencies
         | _ -> ()  (* todo: support partial_implementation? *)
       end
