@@ -22,7 +22,7 @@ let list_of_opt str =
       else let acc = (str.[pos] = '+', String.sub str (pos + 1) len) :: acc in
         if pos > 0 then split acc (pos - 1) 0 else acc
     in split [] (String.length str - 1) 0
-  with _ -> raise (Arg.Bad ("options' arguments Must start by a delimiter (`+' or `-')"))
+  with _ -> raise (Arg.Bad ("options' arguments must start with a delimiter (`+' or `-')"))
 
 
 type flexibility = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
@@ -119,7 +119,7 @@ let update_exported_flag s =
     | (b, "calls")::l -> opt_flag := {!opt_flag with call_sites = b};
         aux l
     | (_, "")::l -> aux l
-    | (_, s)::_ -> raise (Arg.Bad ("-S: unknown option: " ^ s))
+    | (_, s)::_ -> raise (Arg.Bad ("-E: unknown option: " ^ s))
     | [] -> ()
   in aux (list_of_opt s)
 
