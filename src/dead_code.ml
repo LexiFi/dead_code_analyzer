@@ -16,11 +16,13 @@ open Typedtree
                 (********   FLAGS   ********)
 
 let list_of_opt str =
-  let rec split acc pos len =
-    if pos = 0 then (str.[pos] = '+', String.sub str (pos + 1) len) :: acc
-    else if str.[pos] <> '+' && str.[pos] <> '-' then split acc (pos - 1) (len + 1)
-    else split ((str.[pos] = '+', String.sub str (pos + 1) len) :: acc) (pos - 1) 0
-  in split [] (String.length str - 1) 0
+  try
+    let rec split acc pos len =
+      if str.[pos] <> '+' && str.[pos] <> '-' then split acc (pos - 1) (len + 1)
+      else let acc = (str.[pos] = '+', String.sub str (pos + 1) len) :: acc in
+        if pos > 0 then split acc (pos - 1) 0 else acc
+    in split [] (String.length str - 1) 0
+  with _ -> raise (Arg.Bad ("options' arguments Must start by a delimiter (`+' or `-')"))
 
 
 type flexibility = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
@@ -414,7 +416,7 @@ let ttype typ = match typ.typ_kind with
   | Ttype_record l ->
       List.iter
         (fun lab ->
-          let path = String.concat "." @@ List.rev @@
+          let path = String.concat "." @@
             lab.ld_name.Asttypes.txt
             :: typ.typ_name.Asttypes.txt :: !mods
             @ (String.capitalize_ascii (unit !current_src):: [])
@@ -422,23 +424,19 @@ let ttype typ = match typ.typ_kind with
           begin try match typ.typ_manifest with
             | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
                 let loc = Hashtbl.find fields
-                  (String.concat "." @@
+                  (String.concat "." @@ List.rev @@
                     String.capitalize_ascii (unit !current_src)
                     :: Longident.flatten txt
                     @ (lab.ld_name.Asttypes.txt :: []))
                 in
                 let loc2 = Hashtbl.find fields path in
-                let _, mloc =
-                  try List.find (fun (_, l) -> l = loc) (List.rev !type_dependencies)
-                  with Not_found -> loc, loc
-                in
                 type_dependencies :=
-                  (loc2, mloc) :: (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
+                  (loc2, loc) :: (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
             | _ -> ()
           with _ -> () end;
           try
             let loc = Hashtbl.find fields path in
-            type_dependencies := (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
+            type_dependencies := (loc, lab.Typedtree.ld_loc) :: !type_dependencies
           with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc)
         l
     | _ -> ()
@@ -525,7 +523,7 @@ let rec collect_export path u signature =
           (fun {Types.ld_id; ld_loc; _} ->
             if t.type_manifest = None then
               export path ld_id ld_loc;
-            let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (ld_id::path) in
+            let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (ld_id::path) in
             if Hashtbl.mem fields path then
               Hashtbl.add corres ld_loc
                 (let loc = Hashtbl.find fields path in
@@ -655,7 +653,8 @@ let rec load_file fn = match kind fn with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
             List.iter assoc (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
-            List.iter assoc !type_dependencies
+            List.iter assoc !type_dependencies;
+            type_dependencies := []
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 
