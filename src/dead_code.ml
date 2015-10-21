@@ -645,8 +645,12 @@ let rec load_file fn = match kind fn with
             ((try Hashtbl.find references vd1 with Not_found -> [])
             @ try Hashtbl.find references vd2 with Not_found -> [])
         end
-        else
-          Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> [])
+        else begin
+          Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> []);
+          Hashtbl.add references vd2 @@ List.sort_uniq compare
+            ((try Hashtbl.find references vd2 with Not_found -> [])
+            @ try Hashtbl.find references vd1 with Not_found -> [])
+        end
       in
 
       begin match cmt with
