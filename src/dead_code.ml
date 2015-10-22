@@ -935,8 +935,8 @@ let report_unused_exported () =
 
 
 let report_style () =
+  section "CODING STYLE";
   if !style <> [] then begin
-    section "CODING STYLE";
     style := List.fast_sort compare !style;
     let change =
       let (fn, _, _) = List.hd !style in
@@ -947,8 +947,10 @@ let report_style () =
       prloc ~fn l;
       print_endline s)
     !style;
-    separator ()
-  end
+  end;
+  print_newline ();
+  print_endline "Nothing else to report in this section"
+  |> separator
 
 
 

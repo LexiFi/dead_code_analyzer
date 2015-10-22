@@ -1,3 +1,8 @@
+- improve types option
+- variants
+- all kind of types
+- objects
+- classes
 - second condition of 'assoc' is not precise enough (-> FN on types)
 
 #Fix
