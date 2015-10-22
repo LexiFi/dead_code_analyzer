@@ -14,135 +14,151 @@ open Typedtree
 
 
                 (********   FLAGS   ********)
+module DeadFlag = struct
 
-let list_of_opt str =
-  try
-    let rec split acc pos len =
-      if str.[pos] <> '+' && str.[pos] <> '-' then split acc (pos - 1) (len + 1)
-      else let acc = (str.[pos] = '+', String.sub str (pos + 1) len) :: acc in
-        if pos > 0 then split acc (pos - 1) 0 else acc
-    in split [] (String.length str - 1) 0
-  with _ -> raise (Arg.Bad ("options' arguments must start with a delimiter (`+' or `-')"))
-
-
-type flexibility = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
-let flexibility = ref
-  {
-    exceptions = 0;
-    percentage = 1.;
-    optional = `Percent
-  }
-
-let update_flexibility s =
-  let rec aux l = match l with
-    | (_, "both")::l ->
-        flexibility := {!flexibility with optional = `Both};
-        aux l
-    | (_, "percent")::l ->
-        flexibility := {!flexibility with optional = `Percent};
-        aux l
-    | (_, s)::l -> begin try
-          begin try flexibility := {!flexibility with exceptions = int_of_string s}
-          with Failure _ -> flexibility := {!flexibility with percentage = float_of_string s} end;
-          if !flexibility.exceptions < 0 then
-            raise (Arg.Bad ("--flexibility: number of exceptions must be >= 0"))
-          else if !flexibility.percentage > 1. || !flexibility.percentage < 0. then
-            raise (Arg.Bad ("--flexibility: percentage must be >= 0.0 and <= 1.0"))
-          else aux l
-        with Failure _ -> raise (Arg.Bad ("--flexibility: unknown option: " ^ s)) end;
-    | [] -> ()
-  in aux (list_of_opt s)
+  let list_of_opt ?(ignore = []) str =
+    try
+      let rec split acc pos len =
+        let jump =
+          try
+            List.find
+            (fun s -> pos >= String.length s && String.sub str (pos - String.length s) (String.length s) = s)
+            ignore
+          with Not_found -> ""
+        in
+        if jump <> "" then
+          split acc (pos - String.length jump - 1) (len + String.length jump + 1)
+        else if str.[pos] <> '+' && str.[pos] <> '-' then
+          split acc (pos - 1) (len + 1)
+        else let acc = (str.[pos] = '+', String.trim (String.sub str (pos + 1) len)) :: acc in
+          if pos > 0 then split acc (pos - 1) 0
+          else acc
+      in split [] (String.length str - 1) 0
+    with _ -> raise (Arg.Bad ("options' arguments must start with a delimiter (`+' or `-')"))
 
 
-type opt_flag = {always: bool; never: bool; call_sites: bool}
-let opt_flag = ref
-  {
-    always = false;
-    never = false;
-    call_sites = false
-  }
+  type flexibility = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
+  let flexibility = ref
+    {
+      exceptions = 0;
+      percentage = 1.;
+      optional = `Percent
+    }
 
-let update_opt_flag s =
-  let rec aux = function
-    | (b, "always")::l -> opt_flag := {!opt_flag with always = b};
-        aux l
-    | (b, "never")::l -> opt_flag := {!opt_flag with never = b};
-        aux l
-    | (b, "calls")::l -> opt_flag := {!opt_flag with call_sites = b};
-        aux l
-    | (b, "all")::l -> opt_flag := {!opt_flag with never = b; always = b};
-        aux l
-    | (_, "")::l -> aux l
-    | (_, s)::_ -> raise (Arg.Bad ("-O: unknown option: " ^ s))
-    | [] -> ()
-  in aux (list_of_opt s)
-
-
-type style_flag = {opt_arg: bool; unit_pat: bool; seq: bool; binding: bool}
-let style_flag = ref
-  {
-    opt_arg = false;
-    unit_pat = false;
-    seq = false;
-    binding = false;
-  }
-
-let update_style_flag s =
-  let rec aux = function
-    | (b, "opt")::l -> style_flag := {!style_flag with opt_arg = b};
-        aux l
-    | (b, "unit")::l -> style_flag := {!style_flag with unit_pat = b};
-        aux l
-    | (b, "seq")::l -> style_flag := {!style_flag with seq = b};
-        aux l
-    | (b, "bind")::l -> style_flag := {!style_flag with binding = b};
-        aux l
-    | (b, "all")::l -> style_flag := {unit_pat = b; opt_arg = b; seq = b; binding = b};
-        aux l
-    | (_, "")::l -> aux l
-    | (_, s)::_ -> raise (Arg.Bad ("-S: unknown option: " ^ s))
-    | [] -> ()
-  in aux (list_of_opt s)
+  let update_flexibility s =
+    let rec aux l = match l with
+      | (_, "both")::l ->
+          flexibility := {!flexibility with optional = `Both};
+          aux l
+      | (_, "percent")::l ->
+          flexibility := {!flexibility with optional = `Percent};
+          aux l
+      | (_, s)::l -> begin try
+            begin try flexibility := {!flexibility with exceptions = int_of_string s}
+            with Failure _ -> flexibility := {!flexibility with percentage = float_of_string s} end;
+            if !flexibility.exceptions < 0 then
+              raise (Arg.Bad ("--flexibility: number of exceptions must be >= 0"))
+            else if !flexibility.percentage > 1. || !flexibility.percentage < 0. then
+              raise (Arg.Bad ("--flexibility: percentage must be >= 0.0 and <= 1.0"))
+            else aux l
+          with Failure _ -> raise (Arg.Bad ("--flexibility: unknown option: " ^ s)) end;
+      | [] -> ()
+    in aux (list_of_opt s)
 
 
-type exported_flag = {print: bool; call_sites: bool}
-let exported_flag = ref
-  {
-    print = true;
-    call_sites = false;
-  }
+  type opt = {always: bool; never: bool; call_sites: bool}
+  let opt = ref
+    {
+      always = false;
+      never = false;
+      call_sites = false
+    }
 
-let update_exported_flag s =
-  let rec aux = function
-    | (b, "all")::l -> exported_flag := {!exported_flag with print = b};
-        aux l
-    | (b, "calls")::l -> opt_flag := {!opt_flag with call_sites = b};
-        aux l
-    | (_, "")::l -> aux l
-    | (_, s)::_ -> raise (Arg.Bad ("-E: unknown option: " ^ s))
-    | [] -> ()
-  in aux (list_of_opt s)
-
-
-let update_call_sites s =
-  let rec aux l = match l with
-    | (b, "E")::l -> exported_flag := {!exported_flag with call_sites = b}; aux l
-    | (b, "O")::l -> opt_flag := {!opt_flag with call_sites = b}; aux l
-    | (b, "all")::l ->
-        exported_flag := {!exported_flag with call_sites = b};
-        opt_flag := {!opt_flag with call_sites = b};
-        aux l
-    | (_, s)::_ -> raise (Arg.Bad ("--call-sites: unknown option: " ^ s))
-    | [] -> ()
-  in aux (list_of_opt s)
+  let update_opt s =
+    let rec aux = function
+      | (b, "always")::l -> opt := {!opt with always = b};
+          aux l
+      | (b, "never")::l -> opt := {!opt with never = b};
+          aux l
+      | (b, "calls")::l -> opt := {!opt with call_sites = b};
+          aux l
+      | (b, "all")::l -> opt := {!opt with never = b; always = b};
+          aux l
+      | (_, "")::l -> aux l
+      | (_, s)::_ -> raise (Arg.Bad ("-O: unknown option: " ^ s))
+      | [] -> ()
+    in aux (list_of_opt s)
 
 
-let verbose = ref false
-let set_verbose () = verbose := true
+  type style = {opt_arg: bool; unit_pat: bool; seq: bool; binding: bool}
+  let style = ref
+    {
+      opt_arg = false;
+      unit_pat = false;
+      seq = false;
+      binding = false;
+    }
 
-(* Print name starting with '_' *)
-let underscore = ref false
-let set_underscore () = underscore := true
+  let update_style s =
+    let rec aux = function
+      | (b, "opt")::l -> style := {!style with opt_arg = b};
+          aux l
+      | (b, "unit")::l -> style := {!style with unit_pat = b};
+          aux l
+      | (b, "seq")::l -> style := {!style with seq = b};
+          aux l
+      | (b, "bind")::l -> style := {!style with binding = b};
+          aux l
+      | (b, "all")::l -> style := {unit_pat = b; opt_arg = b; seq = b; binding = b};
+          aux l
+      | (_, "")::l -> aux l
+      | (_, s)::_ -> raise (Arg.Bad ("-S: unknown option: " ^ s))
+      | [] -> ()
+    in aux (list_of_opt s)
+
+
+  type exported = {print: bool; call_sites: bool}
+  let exported = ref
+    {
+      print = true;
+      call_sites = false;
+    }
+
+  let update_exported s =
+    let rec aux = function
+      | (b, "all")::l -> exported := {!exported with print = b};
+          aux l
+      | (b, "calls")::l -> opt := {!opt with call_sites = b};
+          aux l
+      | (_, "")::l -> aux l
+      | (_, s)::_ -> raise (Arg.Bad ("-E: unknown option: " ^ s))
+      | [] -> ()
+    in aux (list_of_opt s)
+
+
+  let update_call_sites s =
+    let rec aux l = match l with
+      | (b, "E")::l -> exported := {!exported with call_sites = b}; aux l
+      | (b, "O")::l -> opt := {!opt with call_sites = b}; aux l
+      | (b, "all")::l ->
+          exported := {!exported with call_sites = b};
+          opt := {!opt with call_sites = b};
+          aux l
+      | (_, s)::_ -> raise (Arg.Bad ("--call-sites: unknown option: " ^ s))
+      | [] -> ()
+    in aux (list_of_opt s)
+
+
+  let verbose = ref false
+  let set_verbose () = verbose := true
+
+  (* Print name starting with '_' *)
+  let underscore = ref false
+  let set_underscore () = underscore := true
+
+  let types = ref []
+  let update_types s = types := !types @ List.map (fun (_, s) -> s) (list_of_opt ~ignore:["->"] s)
+end
 
 
                 (********   ATTRIBUTES   ********)
@@ -159,13 +175,14 @@ let corres = Hashtbl.create 256         (* link from dec to def *)
 let style = ref []                      (* patterns of type unit which are not () *)
 let last_loc = ref Location.none        (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
+let mods = ref [] (* module path *)
 
 
                 (********   HELPERS   ********)
 
 let unit fn = Filename.chop_extension (Filename.basename fn)
 
-let check_underscore name = not !underscore || name.[0] <> '_'
+let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
 (* Section printer:
  * section:     `.> SECTION: '
@@ -209,7 +226,7 @@ type vd_node =
     implem: bool;
   }
 
-let opt_args = ref []
+let vd_nodes = Hashtbl.create 256
 
 type opt_arg =
   {
@@ -217,7 +234,7 @@ type opt_arg =
     mutable without_val: Location.t list;
   }
 
-let vd_nodes = Hashtbl.create 256
+let opt_args = ref []
 
 
                 (********   NODE MANIPULATION   ********)
@@ -256,97 +273,238 @@ let merge_locs ~search ?name l1 l2 =
 
                 (********   PROCESSING   ********)
 
-(* Verify the optional args calls. Treat args *)
-let rec treat_args ?(anon = false) val_loc args =
-  List.iter                               (* treat each arg's expression before all (even if ghost) *)
-    (function
-      | (_, None, _) -> ()
-      | (_, Some e, _) -> check_args val_loc e)
-    args;
-  if val_loc.Location.loc_ghost then ()   (* Ghostbuster *)
-  else begin                              (* else: `begin ... end' for aesthetics *)
-    let loc = vd_node val_loc in
-    let tbl = Hashtbl.create 256 in       (* tbl: label -> nb of occurences *)
+module DeadType = struct
 
-    let treat lab expr =
-      let has_val = match expr with
-        | None -> anon
-        | Some {exp_desc=Texp_construct (_, {cstr_name="None"; _}, _); _} -> false
-        | _ -> true
+  let collect_export export path t = match t.type_kind with
+    | Type_record (l, _) ->
+        List.iter
+          (fun {Types.ld_id; ld_loc; _} ->
+            if t.type_manifest = None then
+              export path ld_id ld_loc;
+            let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (ld_id::path) in
+            if Hashtbl.mem fields path then
+              Hashtbl.add corres ld_loc
+                (let loc = Hashtbl.find fields path in
+                loc :: try Hashtbl.find corres loc with Not_found -> []);
+            Hashtbl.replace fields path ld_loc)
+          l
+    | _ -> ()
+
+  let rec to_string typ = match typ.desc with
+    | Tvar i -> begin match i with Some id -> id | None -> "'a" end
+    | Tarrow (_, t1, t2, _) -> to_string t1 ^ " -> " ^ to_string t2
+    | Ttuple l -> begin match l with
+        | e::l ->
+            List.fold_left (fun prev typ -> prev ^ " * " ^ to_string typ) (to_string e) l
+        | [] -> "*" end
+    | Tconstr (path, l, _) ->
+        let t = match l with
+          | [] -> ""
+          | _ -> List.fold_left (fun prev typ -> prev ^ to_string typ ^ " ") "" l;
+        in
+        let name = Path.name path in
+        let len =
+          if (Path.head path).Ident.name = "Pervasives" then
+            String.length "Pervasives."
+          else 0
+        in
+        t ^ String.sub name len (String.length name - len)
+    | Tobject _ -> "Tobject _"
+    | Tfield _ -> "Tfield _"
+    | Tnil -> "Tnil"
+    | Tlink _ -> "Tlink _"
+    | Tsubst _ -> "Tsubst _"
+    | Tvariant _ -> "Tvariant _"
+    | Tunivar _ -> "Tunivar _"
+    | Tpoly _ -> "Tpoly _"
+    | Tpackage _ -> "Tpackage _"
+
+
+  let match_str typ str =
+    let typ = to_string typ in
+    let str =
+      let rec single_space s pos =
+        if pos = String.length s - 1 then String.make 1 s.[pos]
+        else if s.[pos] = ' ' && s.[pos + 1] = ' ' then single_space s (pos + 1)
+        else String.make 1 s.[pos] ^ single_space s (pos + 1)
       in
-      let occur = ref @@
-        try Hashtbl.find tbl lab + 1
-        with Not_found -> Hashtbl.add tbl lab 1; 1
-      in
-      let count x l = List.length @@ List.find_all (( = ) x) l in
-      let rec locate loc =
-        let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
-        if loc == loc.ptr || count >= !occur then loc
-        else (occur := !occur - count; locate @@ next_fn_node loc)
-      in
-      if check_underscore lab then
-        opt_args :=
-          (locate loc, lab, has_val, (match expr with
-            | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
-            | _ -> !last_loc))
-          :: !opt_args
+      single_space str 0
     in
 
-    List.iter
-      (function
-        | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) ->
-          treat lab expr
-        | _ -> ())
-      args
-  end
+    let rec get_block str pos len =
+      if pos = String.length str || str.[pos] = ' ' then
+        String.sub str (pos - len) len
+      else get_block str (pos + 1) (len + 1)
+    in
 
-(* Verify the nature of the argument to detect and treat function applications and uses *)
-and check_args call_site e =
-  let call_site =
-    if call_site.Location.loc_ghost then  e.exp_loc
-    else            (* default *)         call_site
-  in
-  (* Optional arguments used top match a signature are considered used *)
-  let rec get_sig_args args typ = match typ.desc with
-    | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
-        get_sig_args ((arg, Some {e with exp_desc=Texp_constant (Asttypes.Const_int 0)}, Optional)::args) t
-    | Tlink t -> get_sig_args args t
-    | _ -> args
+    let rec compare typ str pos1 pos2 =
+      try
+        let t = get_block typ pos1 0 in
+        let s = get_block str pos2 0 in
+        if s <> "_" && s <> t then false
+        else compare typ str (pos1 + String.length t + 1) (pos2 + String.length s + 1)
+      with _ -> (pos1 >= String.length typ) = (pos2 >= String.length str)
+    in compare typ str 0 0
 
-  in match e.exp_desc with
 
-    | Texp_function (_,
-          [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-            c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-        treat_args call_site args
-
-    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
-    | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
-        treat_args val_loc (get_sig_args args e.exp_type);
-        if not val_loc.Location.loc_ghost then
-          last_loc := val_loc
-
-    | Texp_ident (_, _, {val_loc; _}) ->
-        treat_args val_loc (get_sig_args [] e.exp_type)
-
-    | Texp_let (* Partial application as argument may cut in two parts:
-                * let _ = partial in implicit opt_args elimination *)
-        ( _,
-          [{vb_expr={exp_desc=Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, _); _}; _}],
-          { exp_desc=Texp_function (_,
-              [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-                c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
-            exp_loc={loc_ghost=true; _};_}) ->
-        treat_args ~anon:true val_loc args
-
+  (* Look for bad style typing *)
+  let rec check_style t loc = if !DeadFlag.style.opt_arg then match t.desc with
+    | Tlink t -> check_style t loc
+    | Tarrow (lab, _, t, _) -> begin match lab with
+      | Optional lab when check_underscore lab ->
+          style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
+      | _ -> check_style t loc end
     | _ -> ()
+
+
+  (* declarations Tstr_type *)
+  let tstr typ = match typ.typ_kind with
+    | Ttype_record l ->
+        List.iter
+          (fun lab ->
+            let path = String.concat "." @@
+              lab.ld_name.Asttypes.txt
+              :: typ.typ_name.Asttypes.txt :: !mods
+              @ (String.capitalize_ascii (unit !current_src):: [])
+            in
+            begin try match typ.typ_manifest with
+              | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
+                  let loc = Hashtbl.find fields
+                    (String.concat "." @@ List.rev @@
+                      String.capitalize_ascii (unit !current_src)
+                      :: Longident.flatten txt
+                      @ (lab.ld_name.Asttypes.txt :: []))
+                  in
+                  let loc2 = Hashtbl.find fields path in
+                  type_dependencies :=
+                    (loc2, loc) :: (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
+              | _ -> ()
+            with _ -> () end;
+            try
+              let loc = Hashtbl.find fields path in
+              type_dependencies := (loc, lab.Typedtree.ld_loc) :: !type_dependencies
+            with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc)
+          l
+      | _ -> ()
+
+end
+
+
+
+module DeadArg = struct
+
+  (* Verify the optional args calls. Treat args *)
+  let rec process ?(anon = false) val_loc args =
+    List.iter                               (* treat each arg's expression before all (even if ghost) *)
+      (function
+        | (_, None, _) -> ()
+        | (_, Some e, _) -> check val_loc e)
+      args;
+    if val_loc.Location.loc_ghost then ()   (* Ghostbuster *)
+    else begin                              (* else: `begin ... end' for aesthetics *)
+      let loc = vd_node val_loc in
+      let tbl = Hashtbl.create 256 in       (* tbl: label -> nb of occurences *)
+
+      let treat lab expr =
+        let has_val = match expr with
+          | None -> anon
+          | Some {exp_desc=Texp_construct (_, {cstr_name="None"; _}, _); _} -> false
+          | _ -> true
+        in
+        let occur = ref @@
+          try Hashtbl.find tbl lab + 1
+          with Not_found -> Hashtbl.add tbl lab 1; 1
+        in
+        let count x l = List.length @@ List.find_all (( = ) x) l in
+        let rec locate loc =
+          let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
+          if loc == loc.ptr || count >= !occur then loc
+          else (occur := !occur - count; locate @@ next_fn_node loc)
+        in
+        if check_underscore lab then
+          opt_args :=
+            (locate loc, lab, has_val, (match expr with
+              | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
+              | _ -> !last_loc))
+            :: !opt_args
+      in
+
+      List.iter
+        (function
+          | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) ->
+            treat lab expr
+          | _ -> ())
+        args
+    end
+
+
+  (* Verify the nature of the argument to detect and treat function applications and uses *)
+  and check call_site e =
+    let call_site =
+      if call_site.Location.loc_ghost then  e.exp_loc
+      else            (* default *)         call_site
+    in
+    (* Optional arguments used to match a signature are considered used *)
+    let rec get_sig_args args typ = match typ.desc with
+      | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
+          get_sig_args ((arg, Some {e with exp_desc=Texp_constant (Asttypes.Const_int 0)}, Optional)::args) t
+      | Tlink t -> get_sig_args args t
+      | _ -> args
+
+    in match e.exp_desc with
+
+      | Texp_function (_,
+            [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
+              c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
+          process call_site args
+
+      | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
+      | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
+          process val_loc (get_sig_args args e.exp_type);
+          if not val_loc.Location.loc_ghost then
+            last_loc := val_loc
+
+      | Texp_ident (_, _, {val_loc; _}) ->
+          process val_loc (get_sig_args [] e.exp_type)
+
+      | Texp_let (* Partial application as argument may cut in two parts:
+                  * let _ = partial in implicit opt_args elimination *)
+          ( _,
+            [{vb_expr={exp_desc=Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, _); _}; _}],
+            { exp_desc=Texp_function (_,
+                [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
+                  c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
+              exp_loc={loc_ghost=true; _};_}) ->
+          process ~anon:true val_loc args
+
+        | _ -> ()
+
+
+  (* Construct the 'opt_args' list of func in node *)
+  let rec node_build node expr = match expr.exp_desc with
+    | Texp_function (lab, [{c_lhs={pat_type; _}; c_rhs=exp; _}], _) ->
+        DeadType.check_style pat_type expr.exp_loc;
+        begin match lab with
+          | Asttypes.Optional s ->
+              node.opt_args <- s::node.opt_args;
+              node_build node exp
+          | _ -> () end
+    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args)
+    | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=loc2; _}); _}, args) ->
+        process loc2 args;
+        merge_locs ~search:next_fn_node node.loc loc2
+    | Texp_ident (_, _, {val_loc=loc2; _}) ->
+        merge_locs ~search:next_fn_node node.loc loc2
+    | _ -> ()
+
+end
 
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
   | Texp_ident (_, _, {Types.val_loc; _})
   | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
-      treat_args ~anon:true val_loc args
+      DeadArg.process ~anon:true val_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
       begin match exp_else with
@@ -360,32 +518,8 @@ let rec treat_exp exp args = match exp.exp_desc with
   | _ -> ()
 
 
-(* Look for bad style typing *)
-let rec check_type t loc = if !style_flag.opt_arg then match t.desc with
-  | Tlink t -> check_type t loc
-  | Tarrow (lab, _, t, _) -> begin match lab with
-    | Optional lab when check_underscore lab ->
-        style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
-    | _ -> check_type t loc end
-  | _ -> ()
 
 
-(* Construct the 'opt_args' list of func in node *)
-let rec build_node_args node expr = match expr.exp_desc with
-  | Texp_function (lab, [{c_lhs={pat_type; _}; c_rhs=exp; _}], _) ->
-      check_type pat_type expr.exp_loc;
-      begin match lab with
-        | Asttypes.Optional s ->
-            node.opt_args <- s::node.opt_args;
-            build_node_args node exp
-        | _ -> () end
-  | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args)
-  | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=loc2; _}); _}, args) ->
-      treat_args loc2 args;
-      merge_locs ~search:next_fn_node node.loc loc2
-  | Texp_ident (_, _, {val_loc=loc2; _}) ->
-      merge_locs ~search:next_fn_node node.loc loc2
-  | _ -> ()
 
 
 let is_unit t = match (Ctype.repr t).desc with
@@ -406,40 +540,10 @@ let value_binding = function
       vb_expr=exp;
       _
     } when not loc1.loc_ghost ->
-      build_node_args (vd_node ~name:(Ident.name id) loc1) exp
+      DeadArg.node_build (vd_node ~name:(Ident.name id) loc1) exp
   | _ -> ()
 
-let mods = ref [] (* module path *)
 
-(* declarations Tstr_type *)
-let ttype typ = match typ.typ_kind with
-  | Ttype_record l ->
-      List.iter
-        (fun lab ->
-          let path = String.concat "." @@
-            lab.ld_name.Asttypes.txt
-            :: typ.typ_name.Asttypes.txt :: !mods
-            @ (String.capitalize_ascii (unit !current_src):: [])
-          in
-          begin try match typ.typ_manifest with
-            | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
-                let loc = Hashtbl.find fields
-                  (String.concat "." @@ List.rev @@
-                    String.capitalize_ascii (unit !current_src)
-                    :: Longident.flatten txt
-                    @ (lab.ld_name.Asttypes.txt :: []))
-                in
-                let loc2 = Hashtbl.find fields path in
-                type_dependencies :=
-                  (loc2, loc) :: (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
-            | _ -> ()
-          with _ -> () end;
-          try
-            let loc = Hashtbl.find fields path in
-            type_dependencies := (loc, lab.Typedtree.ld_loc) :: !type_dependencies
-          with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc)
-        l
-    | _ -> ()
 
 
 (* Parse the AST *)
@@ -456,7 +560,7 @@ let collect_references =                          (* Tast_mapper *)
 
   let structure_item self i = begin match i.str_desc with
     | Tstr_value (_, l) -> List.iter value_binding l
-    | Tstr_type  (_, l) -> List.iter ttype l
+    | Tstr_type  (_, l) -> List.iter DeadType.tstr l
     | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
     | _ -> () end;
     let res = super.structure_item self i in
@@ -468,11 +572,11 @@ let collect_references =                          (* Tast_mapper *)
 
   let pat self p =
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
-    begin if is_unit p.pat_type && !style_flag.unit_pat then match p.pat_desc with (* look for unit pattern *)
+    begin if is_unit p.pat_type && !DeadFlag.style.unit_pat then match p.pat_desc with (* look for unit pattern *)
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
       | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
-      | Tpat_any -> if not !underscore then u "_"
+      | Tpat_any -> if not !DeadFlag.underscore then u "_"
       | _ -> u "" end;
     begin match p.pat_desc with
       | Tpat_record (l, _) ->
@@ -490,14 +594,14 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_field (_, _, {lbl_loc=val_loc; _})
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
-    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !style_flag.seq -> begin match vb_pat.pat_desc with
-        | Tpat_var (id, _) when !underscore && (Ident.name id).[0] = '_' -> ()
+    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !DeadFlag.style.seq -> begin match vb_pat.pat_desc with
+        | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
           {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
-      when id1 = id2 && !style_flag.binding && check_underscore (Ident.name id1) ->
+      when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
     | _ -> () end;
     super.expr self e
@@ -517,21 +621,6 @@ let rec collect_export path u signature =
     && check_underscore (Ident.name id) then
       vds := (!current_src, id :: path, loc) :: !vds
   in
-  let collect_export_type path t = match t.type_kind with
-    | Type_record (l, _) ->
-        List.iter
-          (fun {Types.ld_id; ld_loc; _} ->
-            if t.type_manifest = None then
-              export path ld_id ld_loc;
-            let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (ld_id::path) in
-            if Hashtbl.mem fields path then
-              Hashtbl.add corres ld_loc
-                (let loc = Hashtbl.find fields path in
-                loc :: try Hashtbl.find corres loc with Not_found -> []);
-            Hashtbl.replace fields path ld_loc)
-          l
-    | _ -> ()
-  in
   let rec sign = function
     | Mty_signature sg -> sg
     | Mty_functor (_, _, t) -> sign t
@@ -539,15 +628,16 @@ let rec collect_export path u signature =
   in
 
   match signature with
-    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+    | Sig_value (id, {Types.val_loc; Types.val_type; _}) when not val_loc.Location.loc_ghost ->
         (* a .cmi file can contain locations from other files.
           For instance:
               module M : Set.S with type elt = int
           will create value definitions whose location is in set.mli
         *)
-        export path id val_loc
+        if not (List.fold_left (fun b str -> b || DeadType.match_str val_type str) false !DeadFlag.types) then
+          export path id val_loc;
     | Sig_type (id, t, _) ->
-          collect_export_type (id::path) t
+          DeadType.collect_export export (id::path) t
     | Sig_module (id, {Types.md_type = t; _}, _)
     | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
     | _ -> ()
@@ -604,7 +694,7 @@ let read_interface fn src = let open Cmi_format in
   try
     regabs src;
     let u = unit fn in
-    if !exported_flag.print then
+    if !DeadFlag.exported.print then
       List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u) (read_cmi fn).cmi_sign
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
@@ -615,13 +705,13 @@ let rec load_file fn = match kind fn with
   | `Iface src ->
       (* only consider module with an explicit interface *)
       last_loc := Location.none;
-      if !verbose then Printf.eprintf "Scanning %s\n%!" fn;
+      if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       read_interface fn src
 
   | `Implem src ->
       let open Cmt_format in
       last_loc := Location.none;
-      if !verbose then Printf.eprintf "Scanning %s\n%!" fn;
+      if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       regabs src;
       let cmt =
         try Some (read_cmt fn)
@@ -730,14 +820,14 @@ let pretty_print_call () = let ghost = ref false in function
       print_endline "        |~ ghost";
       ghost := true
 
-let percent base = 1. -. (float_of_int base) *. (1. -. !flexibility.percentage) /. 10.
+let percent base = 1. -. (float_of_int base) *. (1. -. !DeadFlag.flexibility.percentage) /. 10.
 
 (* Base pattern for reports *)
 let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if !flexibility.optional = `Both || extra = "Called" then
+        else if !DeadFlag.flexibility.optional = `Both || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent nb_call));
     List.iter pretty_print l;
@@ -752,10 +842,10 @@ let report_opt_args s l =
   let rec report_opt_args nb_call =
     let l = List.filter
         (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
-          if !flexibility.optional = `Both then
-            ratio >= !flexibility.percentage && check_length nb_call slot
+          if !DeadFlag.flexibility.optional = `Both then
+            ratio >= !DeadFlag.flexibility.percentage && check_length nb_call slot
           else ratio >= percent nb_call
-            && (!flexibility.percentage >= 1. || ratio < (percent (nb_call - 1))))
+            && (!DeadFlag.flexibility.percentage >= 1. || ratio < (percent (nb_call - 1))))
       @@ List.map
         (fun (loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
@@ -777,18 +867,18 @@ let report_opt_args s l =
       prloc loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
-        if !opt_flag.call_sites then print_string "  Exceptions:"
+        if !DeadFlag.opt.call_sites then print_string "  Exceptions:"
       end;
       print_newline ();
-      if !opt_flag.call_sites && ratio <> 1. then begin
+      if !DeadFlag.opt.call_sites && ratio <> 1. then begin
         List.iter (pretty_print_call ()) slot;
         if nb_call <> 0 then print_newline ()
       end
     in
 
     let continue nb_call =
-      !flexibility.optional = `Both && nb_call < !flexibility.exceptions
-      || !flexibility.optional = `Percent && percent nb_call > !flexibility.percentage
+      !DeadFlag.flexibility.optional = `Both && nb_call < !DeadFlag.flexibility.exceptions
+      || !DeadFlag.flexibility.optional = `Percent && percent nb_call > !DeadFlag.flexibility.percentage
     in
     let s =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
@@ -829,15 +919,15 @@ let report_unused_exported () =
       if change fn then print_newline ();
       prloc ~fn loc;
       print_string (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
-      if call_sites <> [] && !exported_flag.call_sites then print_string "    Call sites:";
+      if call_sites <> [] && !DeadFlag.exported.call_sites then print_string "    Call sites:";
       print_newline ();
-      if !exported_flag.call_sites then begin
+      if !DeadFlag.exported.call_sites then begin
         List.iter (pretty_print_call ()) call_sites;
         if nb_call <> 0 then print_newline ()
       end
     in
 
-    let continue nb_call = nb_call < !flexibility.exceptions in
+    let continue nb_call = nb_call < !DeadFlag.flexibility.exceptions in
     let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
     report s l continue nb_call pretty_print report_unused_exported
 
@@ -865,9 +955,9 @@ let report_style () =
 (* Option parsing and processing *)
 let parse () =
   let update_all b () =
-    update_style_flag (b ^ "all");
-    update_exported_flag (b ^ "all");
-    update_opt_flag (b ^ "all")
+    DeadFlag.update_style (b ^ "all");
+    DeadFlag.update_exported (b ^ "all");
+    DeadFlag.update_opt (b ^ "all")
   in
 
   (* any extra argument can be accepted by any option using some
@@ -875,12 +965,12 @@ let parse () =
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
 
-      "--no-underscore", Unit set_underscore, " Hide names starting with an underscore";
+      "--no-underscore", Unit DeadFlag.set_underscore, " Hide names starting with an underscore";
 
-      "--verbose", Unit set_verbose, " Verbose mode (ie., show scanned files)";
-      "-v", Unit set_verbose, " Verbose mode (ie., show scanned files)";
+      "--verbose", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
+      "-v", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
 
-      "--flexibility", String update_flexibility,
+      "--flexibility", String DeadFlag.update_flexibility,
         " Reports values that are almost in a category.\n    \
           Delimiters '+' and '-' can both be used.\n    \
           Options (can be used together):\n\
@@ -889,7 +979,13 @@ let parse () =
           \tpercent: Optional arguments have to respect the percentage only. Default behaviour\n\
           \tboth: Optional arguments have to respect both constraints";
 
-      "--call-sites", String update_call_sites,
+      "--types", String DeadFlag.update_types,
+        "<type list> Ignore values of specified types.\n    \
+          Delimiters '+' and '-' can both be used.\n    \
+          <type list> types, starting with a delimiter:\n\
+          \t<type>: The type as it would be printed in the toplevel. (e.g: 'a * int -> bool list)";
+
+      "--call-sites", String DeadFlag.update_call_sites,
         " Reports call sites for exceptions in the given category (only useful when used with the flexibility option).\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
           Options (can be used together):\n\
@@ -902,14 +998,14 @@ let parse () =
       "-A", Unit (update_all "+"), " Enable all warnings";
       "--all", Unit (update_all "+"), " Enable all warnings";
 
-      "-E", String (update_exported_flag),
+      "-E", String (DeadFlag.update_exported),
         " Enable/Disable unused exported values warnings.\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
         Options (can be used together):\n\
           \tall\n\
           \tcalls: show call sites";
 
-      "-O", String (update_opt_flag),
+      "-O", String (DeadFlag.update_opt),
         " Enable/Disable optional arguments warnings.\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
         Options (can be used together):\n\
@@ -918,7 +1014,7 @@ let parse () =
           \tall: always & never\n\
           \tcalls: show call sites";
 
-      "-S", String (update_style_flag),
+      "-S", String (DeadFlag.update_style),
         " Enable/Disable coding style warnings.\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
         Options (can be used together):\n\
@@ -938,10 +1034,10 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
-    if !exported_flag.print                 then  report_unused_exported ();
-    if !opt_flag.always || !opt_flag.never  then  begin let tmp = analyse_opt_args () in
-                if !opt_flag.always         then  report_opt_args "ALWAYS" tmp;
-                if !opt_flag.never          then  report_opt_args "NEVER" tmp end;
+    if !DeadFlag.exported.print                 then  report_unused_exported ();
+    if !DeadFlag.opt.always || !DeadFlag.opt.never  then  begin let tmp = analyse_opt_args () in
+                if !DeadFlag.opt.always         then  report_opt_args "ALWAYS" tmp;
+                if !DeadFlag.opt.never          then  report_opt_args "NEVER" tmp end;
     report_style ();
 
     if !bad_files <> [] then begin
