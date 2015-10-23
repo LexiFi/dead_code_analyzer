@@ -169,7 +169,7 @@ let bad_files = ref []
 let vds = ref []                        (* all exported value declarations *)
 let type_dependencies = ref []           (* like the cmt value_dependencies but for types *)
 let references = Hashtbl.create 256     (* all value references *)
-let fields = Hashtbl.create 256         (* link from field paths and nodes *)
+let fields = Hashtbl.create 256         (* link from fields (record/variant) paths and locations *)
 let corres = Hashtbl.create 256         (* link from dec to def *)
 
 let style = ref []                      (* patterns of type unit which are not () *)
@@ -275,49 +275,61 @@ let merge_locs ~search ?name l1 l2 =
 
 module DeadType = struct
 
-  let collect_export export path t = match t.type_kind with
-    | Type_record (l, _) ->
-        List.iter
-          (fun {Types.ld_id; ld_loc; _} ->
-            if t.type_manifest = None then
-              export path ld_id ld_loc;
-            let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (ld_id::path) in
-            if Hashtbl.mem fields path then
-              Hashtbl.add corres ld_loc
-                (let loc = Hashtbl.find fields path in
-                loc :: try Hashtbl.find corres loc with Not_found -> []);
-            Hashtbl.replace fields path ld_loc)
-          l
-    | _ -> ()
+  let collect_export export path t =
+
+    let save id loc =
+      if t.type_manifest = None then
+        export path id loc;
+      let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (id::path) in
+      if Hashtbl.mem fields path then
+        Hashtbl.add corres loc
+          (let loc = Hashtbl.find fields path in
+          loc :: try Hashtbl.find corres loc with Not_found -> []);
+      Hashtbl.replace fields path loc
+    in
+
+    match t.type_kind with
+      | Type_record (l, _) ->
+          List.iter (fun {Types.ld_id; ld_loc; _} -> save ld_id ld_loc) l
+      | Type_variant l ->
+          List.iter (fun {Types.cd_id; cd_loc} -> save cd_id cd_loc) l
+      | _ -> ()
+
 
   let rec to_string typ = match typ.desc with
     | Tvar i -> begin match i with Some id -> id | None -> "'a" end
-    | Tarrow (_, t1, t2, _) -> to_string t1 ^ " -> " ^ to_string t2
+    | Tarrow (_, t1, t2, _) ->
+        begin match t1.desc with
+          | Tarrow _ -> "(" ^ to_string t1 ^ ")"
+          | _ -> to_string t1 end
+        ^ " -> " ^ to_string t2
     | Ttuple l -> begin match l with
         | e::l ->
             List.fold_left (fun prev typ -> prev ^ " * " ^ to_string typ) (to_string e) l
         | [] -> "*" end
-    | Tconstr (path, l, _) ->
-        let t = match l with
-          | [] -> ""
-          | _ -> List.fold_left (fun prev typ -> prev ^ to_string typ ^ " ") "" l;
-        in
-        let name = Path.name path in
-        let len =
-          if (Path.head path).Ident.name = "Pervasives" then
-            String.length "Pervasives."
-          else 0
-        in
-        t ^ String.sub name len (String.length name - len)
+    | Tconstr (path, l, _) -> make_name path l
     | Tobject _ -> "Tobject _"
     | Tfield _ -> "Tfield _"
     | Tnil -> "Tnil"
-    | Tlink _ -> "Tlink _"
+    | Tlink t -> to_string t
     | Tsubst _ -> "Tsubst _"
-    | Tvariant _ -> "Tvariant _"
+    | Tvariant {row_more; _} -> to_string row_more
     | Tunivar _ -> "Tunivar _"
     | Tpoly _ -> "Tpoly _"
     | Tpackage _ -> "Tpackage _"
+
+  and make_name path l =
+    let t = match l with
+      | [] -> ""
+      | _ -> List.fold_left (fun prev typ -> prev ^ to_string typ ^ " ") "" l;
+    in
+    let name = Path.name path in
+    let len =
+      if (Path.head path).Ident.name = "Pervasives" then
+        String.length "Pervasives."
+      else 0
+    in
+    t ^ String.sub name len (String.length name - len)
 
 
   let match_str typ str =
@@ -358,33 +370,38 @@ module DeadType = struct
 
 
   (* declarations Tstr_type *)
-  let tstr typ = match typ.typ_kind with
-    | Ttype_record l ->
-        List.iter
-          (fun lab ->
-            let path = String.concat "." @@
-              lab.ld_name.Asttypes.txt
-              :: typ.typ_name.Asttypes.txt :: !mods
-              @ (String.capitalize_ascii (unit !current_src):: [])
+  let tstr typ =
+
+    let assoc name loc =
+      let path = String.concat "." @@
+        name.Asttypes.txt
+        :: typ.typ_name.Asttypes.txt :: !mods
+        @ (String.capitalize_ascii (unit !current_src):: [])
+      in
+      begin try match typ.typ_manifest with
+        | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
+            let loc1 = Hashtbl.find fields
+              (String.concat "." @@ List.rev @@
+                String.capitalize_ascii (unit !current_src)
+                :: Longident.flatten txt
+                @ (name.Asttypes.txt :: []))
             in
-            begin try match typ.typ_manifest with
-              | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
-                  let loc = Hashtbl.find fields
-                    (String.concat "." @@ List.rev @@
-                      String.capitalize_ascii (unit !current_src)
-                      :: Longident.flatten txt
-                      @ (lab.ld_name.Asttypes.txt :: []))
-                  in
-                  let loc2 = Hashtbl.find fields path in
-                  type_dependencies :=
-                    (loc2, loc) :: (loc, lab.Typedtree.ld_loc) :: !type_dependencies;
-              | _ -> ()
-            with _ -> () end;
-            try
-              let loc = Hashtbl.find fields path in
-              type_dependencies := (loc, lab.Typedtree.ld_loc) :: !type_dependencies
-            with Not_found -> Hashtbl.add fields path lab.Typedtree.ld_loc)
-          l
+            let loc2 = Hashtbl.find fields path in
+            type_dependencies :=
+            (loc2, loc1) :: (loc1, loc) :: !type_dependencies;
+        | _ -> ()
+      with _ -> () end;
+      try
+        let loc1 = Hashtbl.find fields path in
+        type_dependencies := (loc1, loc) :: !type_dependencies
+      with Not_found -> Hashtbl.add fields path loc
+    in
+
+    match typ.typ_kind with
+      | Ttype_record l ->
+          List.iter (fun {Typedtree.ld_name; ld_loc; _} -> assoc ld_name ld_loc) l
+      | Ttype_variant l ->
+          List.iter (fun {cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
       | _ -> ()
 
 end
@@ -592,6 +609,7 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _})
     | Texp_field (_, _, {lbl_loc=val_loc; _})
+    | Texp_construct (_, {cstr_loc=val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !DeadFlag.style.seq -> begin match vb_pat.pat_desc with
@@ -718,7 +736,7 @@ let rec load_file fn = match kind fn with
         with _ -> bad_files := fn :: !bad_files; None
       in
 
-      (* Used if the cmt is valid. Associates the two value dependencies *)
+      (* Used if the cmt is valid. Associates the two value|type dependencies *)
       let assoc (vd1, vd2) =
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
         let is_implem fn = Filename.check_suffix fn ".ml" in
@@ -728,14 +746,15 @@ let rec load_file fn = match kind fn with
           with Not_found -> false
         in
         if is_implem fn1 && is_implem fn2 then
-          Hashtbl.add references vd1 (vd2 :: try Hashtbl.find references vd1 with Not_found -> [])
+          Hashtbl.add references vd1 @@ List.sort_uniq compare
+            (vd2 ::try Hashtbl.find references vd1 with Not_found -> [])
         else if not (is_implem fn1 && has_iface fn1) then begin
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> []);
           Hashtbl.add references vd1 @@ List.sort_uniq compare
             ((try Hashtbl.find references vd1 with Not_found -> [])
             @ try Hashtbl.find references vd2 with Not_found -> [])
         end
-        else begin
+        else if not (is_implem fn2 && has_iface fn2) then begin
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> []);
           Hashtbl.add references vd2 @@ List.sort_uniq compare
             ((try Hashtbl.find references vd2 with Not_found -> [])
