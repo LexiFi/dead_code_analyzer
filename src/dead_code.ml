@@ -278,12 +278,6 @@ module DeadType = struct
   let collect_export export path t =
 
     let save id loc =
-      let prerr_loc loc =
-        prerr_string loc.Location.loc_start.pos_fname;
-        prerr_int loc.Location.loc_start.pos_lnum;
-        prerr_newline ()
-      in
-      prerr_string (id.Ident.name ^ " "); prerr_loc loc;
       if t.type_manifest = None then
         export path id loc;
       let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (id::path) in
@@ -407,7 +401,7 @@ module DeadType = struct
       | Ttype_record l ->
           List.iter (fun {Typedtree.ld_name; ld_loc; _} -> assoc ld_name ld_loc) l
       | Ttype_variant l ->
-          List.iter (fun {cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
+          List.iter (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
       | _ -> ()
 
 end
@@ -615,6 +609,8 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _})
     | Texp_field (_, _, {lbl_loc=val_loc; _})
+      when not val_loc.Location.loc_ghost ->
+        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
     | Texp_construct (_, {cstr_loc=val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
