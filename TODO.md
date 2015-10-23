@@ -1,5 +1,4 @@
 - improve types option
-- variants
 - all kind of types
 - objects
 - classes
@@ -24,4 +23,4 @@
 - The 'OPTIONAL ARGUMENTS' section has both FN and FP (due to 'ref' usage).
 - The 'CODING STYLE' section may have both FN and FP (none known).
 
-ratio: *97.09%* succesful (over 103 expected results)
+ratio: *97.17%* succesful (over 106 expected results)
