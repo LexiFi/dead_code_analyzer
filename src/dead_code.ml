@@ -292,7 +292,7 @@ module DeadType = struct
       | Type_record (l, _) ->
           List.iter (fun {Types.ld_id; ld_loc; _} -> save ld_id ld_loc) l
       | Type_variant l ->
-          List.iter (fun {Types.cd_id; cd_loc} -> save cd_id cd_loc) l
+          List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
       | _ -> ()
 
 
