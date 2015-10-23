@@ -34,6 +34,8 @@ opam/src/core/opamConsole.mli:47: acolor_w
 opam/src/core/opamCoreConfig.mli:59: default
 opam/src/core/opamCoreConfig.mli:61: set
 opam/src/core/opamCoreConfig.mli:67: update
+opam/src/core/opamFilename.mli:89: generic_file.D
+opam/src/core/opamFilename.mli:90: generic_file.F
 opam/src/core/opamFilename.mli:38: rec_dirs
 opam/src/core/opamFilename.mli:149: with_contents
 opam/src/core/opamFilename.mli:160: link_in
@@ -54,6 +56,13 @@ opam/src/core/opamParallel.mli:61: GRAPH.Parallel.iter
 opam/src/core/opamParallel.mli:96: MakeGraph.Topological.iter
 opam/src/core/opamParallel.mli:61: MakeGraph.Parallel.iter
 opam/src/core/opamProcess.mli:131: read_lines
+opam/src/core/opamStd.mli:296: Sys.os.Linux
+opam/src/core/opamStd.mli:297: Sys.os.FreeBSD
+opam/src/core/opamStd.mli:298: Sys.os.OpenBSD
+opam/src/core/opamStd.mli:299: Sys.os.NetBSD
+opam/src/core/opamStd.mli:300: Sys.os.DragonFly
+opam/src/core/opamStd.mli:303: Sys.os.Unix
+opam/src/core/opamStd.mli:304: Sys.os.Other
 opam/src/core/opamStd.mli:50: MAP.to_json
 opam/src/core/opamStd.mli:50: ABSTRACT.Map.to_json
 opam/src/core/opamStd.mli:50: AbstractString.Map.to_json
@@ -182,6 +191,7 @@ opam/src/format/opamFormula.mli:169: of_disjunction
 opam/src/format/opamPackage.mli:76: versions_of_packages
 opam/src/format/opamPackage.mli:33: Name.compare
 opam/src/format/opamParser.mli:21: value
+opam/src/format/opamTypes.mli:271: user_action.Init
 opam/src/format/opamTypes.mli:397: file.file_format
 opam/src/format/opamTypesBase.mli:30: download_file
 opam/src/format/opamTypesBase.mli:49: guess_version_control
@@ -190,6 +200,8 @@ opam/src/format/opamTypesBase.mli:61: map_highlevel_action
 opam/src/format/opamTypesBase.mli:62: map_concrete_action
 opam/src/format/opamTypesBase.mli:67: full_action_contents
 opam/src/format/opamTypesBase.mli:73: string_of_upload
+opam/src/format/opamVariable.mli:26: variable_contents.B
+opam/src/format/opamVariable.mli:27: variable_contents.S
 
 opam/src/repository/opamLocal.mli:26: rsync_file
 opam/src/repository/opamRepository.mli:85: pull_url_and_fix_digest

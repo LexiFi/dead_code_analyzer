@@ -278,6 +278,12 @@ module DeadType = struct
   let collect_export export path t =
 
     let save id loc =
+      let prerr_loc loc =
+        prerr_string loc.Location.loc_start.pos_fname;
+        prerr_int loc.Location.loc_start.pos_lnum;
+        prerr_newline ()
+      in
+      prerr_string (id.Ident.name ^ " "); prerr_loc loc;
       if t.type_manifest = None then
         export path id loc;
       let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (id::path) in
@@ -746,15 +752,14 @@ let rec load_file fn = match kind fn with
           with Not_found -> false
         in
         if is_implem fn1 && is_implem fn2 then
-          Hashtbl.add references vd1 @@ List.sort_uniq compare
-            (vd2 ::try Hashtbl.find references vd1 with Not_found -> [])
+          Hashtbl.add references vd1 (vd2 ::try Hashtbl.find references vd1 with Not_found -> [])
         else if not (is_implem fn1 && has_iface fn1) then begin
           Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> []);
           Hashtbl.add references vd1 @@ List.sort_uniq compare
             ((try Hashtbl.find references vd1 with Not_found -> [])
             @ try Hashtbl.find references vd2 with Not_found -> [])
         end
-        else if not (is_implem fn2 && has_iface fn2) then begin
+        else begin
           Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> []);
           Hashtbl.add references vd2 @@ List.sort_uniq compare
             ((try Hashtbl.find references vd2 with Not_found -> [])
