@@ -1,3 +1,4 @@
+*.3o
 *.a
 *.annot
 *.byt
@@ -9,7 +10,9 @@
 *.cmx
 *.cmxa
 *.cmxs
+*.css
 *.exe
+*.html
 *.o
 *.swo
 *.swp

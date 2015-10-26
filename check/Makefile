@@ -9,11 +9,11 @@ TARGET=res.out
 DEADFLAGS=-A
 
 all: check.byt$(EXE)
-	../src/dead_code.byt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)
+	../src/deadCode.byt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)
 	./check.byt$(EXE) . $(TARGET)
 
 opt: check.opt$(EXE)
-	../src/dead_code.opt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)
+	../src/deadCode.opt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)
 	./check.opt$(EXE) . $(TARGET)
 
 check.byt$(EXE): $(SRC)

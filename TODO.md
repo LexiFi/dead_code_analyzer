@@ -2,7 +2,7 @@
 - all kind of types
 - objects
 - classes
-- second condition of 'assoc' is not precise enough (-> FN on types)
+- 'assoc' is not precise enough (-> FN on types)
 
 #Fix
 - Stop assuming each basename should be unique

@@ -1,5 +1,5 @@
-# dead_code_analyzer
-Dead-code analyzer for OCaml (and more)
+# dead code analyzer
+Dead-code analyzer for OCaml
 
 ## Overview
 
@@ -8,7 +8,7 @@ about suspicious code:
 
  - Exported values never used.
    (The declaration can be dropped from the interface, and then from
-   the implementation if there is no internal use -- which will be reportef
+   the implementation if there is no internal use -- which will be reported
    by standard OCaml warnings).
 
  - Optional arguments for which either all call sites or none of them
@@ -22,10 +22,9 @@ about suspicious code:
 
 
 The tool assumes that .mli files are compiled with -keep-locs and .ml
-files with -bin-annot.  Exported values are collected by reading .cmi
-files (obtained from explicit .mli interfaces).  References to such
-values are collected by reading typed trees from .cmt files (obtained
-by compiling .ml implementations with -bin-annot).
+files with -bin-annot.  Exported values are collected by reading .cmi or .cmt
+files (depending on the existence of an explicit .mli interfaces).
+References to such values are collected by reading typed trees from .cmt files
 
 ## Status
 
