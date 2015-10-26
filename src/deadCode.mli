@@ -16,22 +16,22 @@
 
   - Record fields not read.
       e.g. {[
-        type t = {used: int; unused: bool}
-        let r = {used = 0; unused = false}
-        let x = {r with unused = true}
-        let () = ignore x.used
+        type t = {foo: int; bar: bool}
+        let r = {foo = 0; bar = false}
+        let x = {r with bar = true}
+        let () = ignore x.foo
       ]}
-      Here, [t.unused] will be reported.
+      Here, [t.bar] will be reported.
 
   - Variant constructors never constructed.
       e.g. {[
-        type 'a option = Some of 'a | None
-        let x = None
+        type 'a option = Foo | Bar
+        let x = Foo
         let () = match x with
-          | Some _ -> ()
+          | Bar -> ()
           | _ -> ()
       ]}
-      Here, [t.Some] will be reported as it is never built.
+      Here, [t.Bar] will be reported as it is never built.
 
   - Values never accessed.
       e.g. {[
@@ -193,16 +193,16 @@ module DeadFlag : sig
     (** Ignores values of certain types. *)
 end
 
-
+(** type_expr manipulation *)
 module DeadType : sig
-    val to_string : Types.type_expr -> string
-      (** [to_string typ] converts [typ] to its string representation in the toplevel *)
-    val match_str : Types.type_expr -> string -> bool
-      (** [match_str typ str] checks if a [typ] matches [str].
-        [str] must be formated as the toplevel representation representation of the expected type. *)
-    val check_style : Types.type_expr -> Location.t -> unit
-      (** Look for bad style typing. (i.e. Argument expecting an optional argument) *)
-  end
+  val to_string : Types.type_expr -> string
+    (** [to_string typ] converts [typ] to its string representation in the toplevel *)
+  val match_str : Types.type_expr -> string -> bool
+    (** [match_str typ str] checks if a [typ] matches [str].
+      [str] must be formated as the toplevel representation representation of the expected type. *)
+  val check_style : Types.type_expr -> Location.t -> unit
+    (** Look for bad style typing. (i.e. Argument expecting an optional argument) *)
+end
 
 
 (** {2 Pretty Printing} *)
@@ -241,43 +241,21 @@ val merge_locs :
   ?add:bool -> Location.t -> Location.t -> unit
   (** [merge_locs ~search ?add loc1 loc2] as [search (vd_node ?add n1)] pointing to [search n2] *)
 
-val treat_exp :
-  Typedtree.expression ->
-  (Asttypes.arg_label * Typedtree.expression option * Typedtree.optional) list ->
-  unit
-val is_unit : Types.type_expr -> bool
-val value_binding : Typedtree.value_binding -> unit
 
-(** Run through the ast. *)
+val analyze_opt_args : unit -> (Location.t * string * opt_arg) list
+  (** Process information about optional arguments for later reporting. *)
+
+
 val collect_references : Tast_mapper.mapper
+  (** Run through the ast. *)
 
-(**. *)
 val collect_export : Ident.t list -> string -> Types.signature_item -> unit
+  (** [collect_export path name signature] process the [signature] to find the value to export.
+    [path] is the current module-path. [name] is the current filename's basename without extension *)
 
 
-val kind :
-  string -> [> `Dir | `Iface of string | `Ignore | `Implem of string ]
-val regabs : string -> unit
 val exclude_dir : string -> unit
 val is_excluded_dir : string -> bool
-val read_interface : string -> string -> unit
 
-(** Do the necessary collects on a file depending on its nature. *)
 val load_file : string -> unit
-
-(** Process information about optional arguments for later reporting. *)
-val analyze_opt_args : unit -> (Location.t * string * opt_arg) list
-
-
-val abs : Location.t -> string
-val dir : string -> string -> bool
-val percent : int -> float
-val report :
-  string ->
-  ?extra:string ->
-  'a list -> (int -> bool) -> int -> ('a -> unit) -> (int -> unit) -> unit
-
-
-
-
-val parse : unit -> unit
+  (** Do the necessary collects on a file depending on its nature. *)

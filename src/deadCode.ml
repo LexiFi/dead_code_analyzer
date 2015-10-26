@@ -254,7 +254,6 @@ let vd_node ?(add = false) loc =
   assert (not loc.Location.loc_ghost);
   try (Hashtbl.find vd_nodes loc)
   with Not_found ->
-    let fn = loc.Location.loc_start.Lexing.pos_fname in
     let rec r = {loc; ptr = r; opt_args = []} in
     if add then
       Hashtbl.add vd_nodes loc r;
@@ -404,6 +403,11 @@ module DeadType = struct
           List.iter (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
       | _ -> ()
 
+
+  let is_unit t = match (Ctype.repr t).desc with
+    | Tconstr (p, [], _) -> Path.same p Predef.path_unit
+    | _ -> false
+
 end
 
 
@@ -539,21 +543,18 @@ let rec treat_exp exp args = match exp.exp_desc with
 
 
 
-let is_unit t = match (Ctype.repr t).desc with
-  | Tconstr (p, [], _) -> Path.same p Predef.path_unit
-  | _ -> false
 
 
 (* Binding in Tstr_value *)
 let value_binding = function
   | {
-      vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
+      vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
       vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
       _
     } ->
       merge_locs ~search:next_fn_node ~add:true loc1 loc2
   | {
-      vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
+      vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
       vb_expr=exp;
       _
     } when not loc1.loc_ghost ->
@@ -589,7 +590,7 @@ let collect_references =                          (* Tast_mapper *)
 
   let pat self p =
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
-    begin if is_unit p.pat_type && !DeadFlag.style.unit_pat then match p.pat_desc with (* look for unit pattern *)
+    begin if DeadType.is_unit p.pat_type && !DeadFlag.style.unit_pat then match p.pat_desc with (* look for unit pattern *)
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
       | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
@@ -614,7 +615,7 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_construct (_, {cstr_loc=val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
-    | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !DeadFlag.style.seq -> begin match vb_pat.pat_desc with
+    | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
     | Texp_let (
