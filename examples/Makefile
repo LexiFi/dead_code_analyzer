@@ -10,7 +10,7 @@ SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
 all:
 	$(OCAMLC) -c $(SRC)
 	make -C dir
-	../src/dead_code.byt $(DEADFLAGS) .
+	../src/deadCode.byt $(DEADFLAGS) .
 
 build:
 	$(OCAMLC) -c $(SRC)

@@ -1,14 +1,22 @@
-.PHONY: all opt clean examples check
+.PHONY: all opt doc man clean examples check
 
 all:
-	cd src && make all
+	make -C src all
 
 opt:
-	cd src && make opt
+	make -C src opt
+
+doc:
+	make -C doc all
+
+man:
+	make -C man all
 
 clean:
-	cd src && make clean
-	cd examples && make clean
+	make -C src clean
+	make -C doc clean
+	make -C man clean
+	make -C examples clean
 	make -C check clean
 
 check:
@@ -18,4 +26,4 @@ check:
 
 
 examples: all
-	cd examples && make all
+	make -C examples all

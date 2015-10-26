@@ -37,31 +37,31 @@ module DeadFlag = struct
     with _ -> raise (Arg.Bad ("options' arguments must start with a delimiter (`+' or `-')"))
 
 
-  type flexibility = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
-  let flexibility = ref
+  type threshold = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
+  let threshold = ref
     {
       exceptions = 0;
       percentage = 1.;
       optional = `Percent
     }
 
-  let update_flexibility s =
+  let update_threshold s =
     let rec aux l = match l with
       | (_, "both")::l ->
-          flexibility := {!flexibility with optional = `Both};
+          threshold := {!threshold with optional = `Both};
           aux l
       | (_, "percent")::l ->
-          flexibility := {!flexibility with optional = `Percent};
+          threshold := {!threshold with optional = `Percent};
           aux l
       | (_, s)::l -> begin try
-            begin try flexibility := {!flexibility with exceptions = int_of_string s}
-            with Failure _ -> flexibility := {!flexibility with percentage = float_of_string s} end;
-            if !flexibility.exceptions < 0 then
-              raise (Arg.Bad ("--flexibility: number of exceptions must be >= 0"))
-            else if !flexibility.percentage > 1. || !flexibility.percentage < 0. then
-              raise (Arg.Bad ("--flexibility: percentage must be >= 0.0 and <= 1.0"))
+            begin try threshold := {!threshold with exceptions = int_of_string s}
+            with Failure _ -> threshold := {!threshold with percentage = float_of_string s} end;
+            if !threshold.exceptions < 0 then
+              raise (Arg.Bad ("--threshold: number of exceptions must be >= 0"))
+            else if !threshold.percentage > 1. || !threshold.percentage < 0. then
+              raise (Arg.Bad ("--threshold: percentage must be >= 0.0 and <= 1.0"))
             else aux l
-          with Failure _ -> raise (Arg.Bad ("--flexibility: unknown option: " ^ s)) end;
+          with Failure _ -> raise (Arg.Bad ("--threshold: unknown option: " ^ s)) end;
       | [] -> ()
     in aux (list_of_opt s)
 
@@ -166,7 +166,7 @@ end
 let abspath = Hashtbl.create 16         (* abspath: filename's basename -> absolute path *)
 let bad_files = ref []
 
-let vds = ref []                        (* all exported value declarations *)
+let decs = ref []                        (* all exported value declarations *)
 let type_dependencies = ref []           (* like the cmt value_dependencies but for types *)
 let references = Hashtbl.create 256     (* all value references *)
 let fields = Hashtbl.create 256         (* link from fields (record/variant) paths and locations *)
@@ -184,19 +184,22 @@ let unit fn = Filename.chop_extension (Filename.basename fn)
 
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
+let hashtbl_find_list hashtbl key = try Hashtbl.find hashtbl key with Not_found -> []
+
 (* Section printer:
  * section:     `.> SECTION: '
  *              `==========='
  * subsection:  `.>->  SUBSECTION: '
  *              `~~~~~~~~~~~~~~~~~' *)
-let section ?(sub = false) s =
+let section ?(sub = false) title =
   Printf.printf "%s %s:\n%s\n"
     (if sub then ".>-> " else ".>")
-    s
-    (String.make ((if sub then 5 else 2) + String.length s + 1) (if sub then '~' else '='))
+    title
+    (String.make ((if sub then 5 else 2) + String.length title + 1) (if sub then '~' else '='))
 
 (* End of section *)
 let separator () =
+  print_endline "Nothing else to report in this section";
   Printf.printf "%s\n\n\n" (String.make 80 '-')
 
 (* Location printer: `filename:line: ' *)
@@ -220,10 +223,8 @@ let prloc ?fn (loc : Location.t) = begin match fn with
 type vd_node =
   {
     loc: Location.t;
-    name: string;
     mutable opt_args: string list;
     mutable ptr: vd_node;               (* points to itself if not a binding to another known value *)
-    implem: bool;
   }
 
 let vd_nodes = Hashtbl.create 256
@@ -249,14 +250,13 @@ let next_fn_node n =
   repr ~cond:(fun n -> n.opt_args <> []) n.ptr
 
 (* Get or create a vd_node corresponding to the location *)
-let vd_node ?(name = "_unknown_") loc =
+let vd_node ?(add = false) loc =
   assert (not loc.Location.loc_ghost);
   try (Hashtbl.find vd_nodes loc)
   with Not_found ->
     let fn = loc.Location.loc_start.Lexing.pos_fname in
-    let implem = Filename.check_suffix fn ".ml" in
-    let rec r = {name; loc; ptr = r; implem; opt_args = []} in
-    if name <> "_unknown_" then
+    let rec r = {loc; ptr = r; opt_args = []} in
+    if add then
       Hashtbl.add vd_nodes loc r;
     r
 
@@ -266,9 +266,9 @@ let merge_nodes ~search n1 n2 =
   n1.ptr <- n2
 
 (* Locations l1 and l2 are part of a binding from one to another *)
-let merge_locs ~search ?name l1 l2 =
+let merge_locs ~search ?add l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    merge_nodes ~search (vd_node ?name l1) (vd_node l2)
+    merge_nodes ~search (vd_node ?add l1) (vd_node l2)
 
 
                 (********   PROCESSING   ********)
@@ -284,7 +284,7 @@ module DeadType = struct
       if Hashtbl.mem fields path then
         Hashtbl.add corres loc
           (let loc = Hashtbl.find fields path in
-          loc :: try Hashtbl.find corres loc with Not_found -> []);
+          loc :: hashtbl_find_list corres loc);
       Hashtbl.replace fields path loc
     in
 
@@ -551,13 +551,13 @@ let value_binding = function
       vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
       _
     } ->
-      merge_locs ~search:next_fn_node ~name:(Ident.name id) loc1 loc2
+      merge_locs ~search:next_fn_node ~add:true loc1 loc2
   | {
       vb_pat={pat_desc=Tpat_var (id, {loc=loc1; _}); _};
       vb_expr=exp;
       _
     } when not loc1.loc_ghost ->
-      DeadArg.node_build (vd_node ~name:(Ident.name id) loc1) exp
+      DeadArg.node_build (vd_node ~add:true loc1) exp
   | _ -> ()
 
 
@@ -599,7 +599,7 @@ let collect_references =                          (* Tast_mapper *)
       | Tpat_record (l, _) ->
           List.iter
             (fun (_, lab, _) -> Hashtbl.add references lab.lbl_loc
-              (p.pat_loc :: try Hashtbl.find references lab.lbl_loc with Not_found -> []))
+              (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
             l
       | _ -> () end;
     super.pat self p
@@ -610,10 +610,10 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_ident (_, _, {Types.val_loc; _})
     | Texp_field (_, _, {lbl_loc=val_loc; _})
       when not val_loc.Location.loc_ghost ->
-        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
+        Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
     | Texp_construct (_, {cstr_loc=val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
-        Hashtbl.add references val_loc (e.exp_loc :: try Hashtbl.find references val_loc with Not_found -> [])
+        Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
     | Texp_let (_, [{vb_pat; _}], _) when is_unit vb_pat.pat_type && !DeadFlag.style.seq -> begin match vb_pat.pat_desc with
         | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
         | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
@@ -639,7 +639,7 @@ let rec collect_export path u signature =
   let export path id loc =
     if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
     && check_underscore (Ident.name id) then
-      vds := (!current_src, id :: path, loc) :: !vds
+      decs := (!current_src, id :: path, loc) :: !decs
   in
   let rec sign = function
     | Mty_signature sg -> sg
@@ -748,18 +748,18 @@ let rec load_file fn = match kind fn with
           with Not_found -> false
         in
         if is_implem fn1 && is_implem fn2 then
-          Hashtbl.add references vd1 (vd2 ::try Hashtbl.find references vd1 with Not_found -> [])
+          Hashtbl.add references vd1 (vd2 ::hashtbl_find_list references vd1)
         else if not (is_implem fn1 && has_iface fn1) then begin
-          Hashtbl.add corres vd1 (vd2 :: try Hashtbl.find corres vd1 with Not_found -> []);
+          Hashtbl.add corres vd1 (vd2 :: hashtbl_find_list corres vd1);
           Hashtbl.add references vd1 @@ List.sort_uniq compare
-            ((try Hashtbl.find references vd1 with Not_found -> [])
-            @ try Hashtbl.find references vd2 with Not_found -> [])
+            ((hashtbl_find_list references vd1)
+            @ hashtbl_find_list references vd2)
         end
         else begin
-          Hashtbl.add corres vd2 (vd1 :: try Hashtbl.find corres vd2 with Not_found -> []);
+          Hashtbl.add corres vd2 (vd1 :: hashtbl_find_list corres vd2);
           Hashtbl.add references vd2 @@ List.sort_uniq compare
-            ((try Hashtbl.find references vd2 with Not_found -> [])
-            @ try Hashtbl.find references vd1 with Not_found -> [])
+            ((hashtbl_find_list references vd2)
+            @ hashtbl_find_list references vd1)
         end
       in
 
@@ -786,11 +786,11 @@ let rec load_file fn = match kind fn with
                 (********   REPORTING   ********)
 
 (* Prepare the list of opt_args for report *)
-let analyse_opt_args () =
+let analyze_opt_args () =
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
 
-  let analyse = fun (loc, lab, has_val, callsite) ->
+  let analyze = fun (loc, lab, has_val, callsite) ->
     let slot =
       try Hashtbl.find tbl (loc.loc, lab)
       with Not_found ->
@@ -803,7 +803,7 @@ let analyse_opt_args () =
     else slot.without_val <- callsite :: slot.without_val
   in
 
-  List.iter analyse !opt_args;
+  List.iter analyze !opt_args;
   List.iter                   (* Remove call sites accounted more than once for the same element *)
     (fun (_, _, slot) ->
       slot.with_val     <- List.sort_uniq compare slot.with_val;
@@ -840,14 +840,14 @@ let pretty_print_call () = let ghost = ref false in function
       print_endline "        |~ ghost";
       ghost := true
 
-let percent base = 1. -. (float_of_int base) *. (1. -. !DeadFlag.flexibility.percentage) /. 10.
+let percent base = 1. -. (float_of_int base) *. (1. -. !DeadFlag.threshold.percentage) /. 10.
 
 (* Base pattern for reports *)
 let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if !DeadFlag.flexibility.optional = `Both || extra = "Called" then
+        else if !DeadFlag.threshold.optional = `Both || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent nb_call));
     List.iter pretty_print l;
@@ -855,17 +855,17 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
       (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
   end;
   if continue nb_call then reporter (nb_call + 1)
-  else (print_newline (); print_endline "Nothing else to report in this section" |> separator)
+  else (print_newline () |> separator)
 
 
 let report_opt_args s l =
   let rec report_opt_args nb_call =
     let l = List.filter
         (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
-          if !DeadFlag.flexibility.optional = `Both then
-            ratio >= !DeadFlag.flexibility.percentage && check_length nb_call slot
+          if !DeadFlag.threshold.optional = `Both then
+            ratio >= !DeadFlag.threshold.percentage && check_length nb_call slot
           else ratio >= percent nb_call
-            && (!DeadFlag.flexibility.percentage >= 1. || ratio < (percent (nb_call - 1))))
+            && (!DeadFlag.threshold.percentage >= 1. || ratio < (percent (nb_call - 1))))
       @@ List.map
         (fun (loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
@@ -897,8 +897,8 @@ let report_opt_args s l =
     in
 
     let continue nb_call =
-      !DeadFlag.flexibility.optional = `Both && nb_call < !DeadFlag.flexibility.exceptions
-      || !DeadFlag.flexibility.optional = `Percent && percent nb_call > !DeadFlag.flexibility.percentage
+      !DeadFlag.threshold.optional = `Both && nb_call < !DeadFlag.threshold.exceptions
+      || !DeadFlag.threshold.optional = `Percent && percent nb_call > !DeadFlag.threshold.percentage
     in
     let s =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
@@ -916,7 +916,7 @@ let report_unused_exported () =
         let l = ref [] in
         let test loc =
           Hashtbl.mem references loc
-          && not @@ check_length nb_call @@ (l := Hashtbl.find references loc; !l)
+          && not (check_length nb_call (l := Hashtbl.find references loc; !l))
         in
         match not (test loc || (let loc = Hashtbl.find corres loc in
               List.fold_left (fun res node -> res || test node) false loc))
@@ -926,7 +926,7 @@ let report_unused_exported () =
           | true -> (fn, path, loc, !l)::acc
           | false -> acc
       in
-      List.fold_left folder [] !vds
+      List.fold_left folder [] !decs
       |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
           compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
     in
@@ -947,7 +947,7 @@ let report_unused_exported () =
       end
     in
 
-    let continue nb_call = nb_call < !DeadFlag.flexibility.exceptions in
+    let continue nb_call = nb_call < !DeadFlag.threshold.exceptions in
     let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
     report s l continue nb_call pretty_print report_unused_exported
 
@@ -968,8 +968,7 @@ let report_style () =
       print_endline s)
     !style;
   end;
-  print_newline ();
-  print_endline "Nothing else to report in this section"
+  print_newline ()
   |> separator
 
 
@@ -990,10 +989,10 @@ let parse () =
       "--no-underscore", Unit DeadFlag.set_underscore, " Hide names starting with an underscore";
 
       "--verbose", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
-      "-v", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
+      "-v", Unit DeadFlag.set_verbose, " See --verbose";
 
-      "--flexibility", String DeadFlag.update_flexibility,
-        " Reports values that are almost in a category.\n    \
+      "--threshold", String DeadFlag.update_threshold,
+        " Report values that are almost in a category.\n    \
           Delimiters '+' and '-' can both be used.\n    \
           Options (can be used together):\n\
           \t<integer>: Maximum number of exceptions. Default is 0.\n\
@@ -1002,23 +1001,23 @@ let parse () =
           \tboth: Optional arguments have to respect both constraints";
 
       "--types", String DeadFlag.update_types,
-        "<type list> Ignore values of specified types.\n    \
+        "<type list>  Ignore values of specified types.\n    \
           Delimiters '+' and '-' can both be used.\n    \
           <type list> types, starting with a delimiter:\n\
           \t<type>: The type as it would be printed in the toplevel. (e.g: 'a * int -> bool list)";
 
       "--call-sites", String DeadFlag.update_call_sites,
-        " Reports call sites for exceptions in the given category (only useful when used with the flexibility option).\n    \
+        " Reports call sites for exceptions in the given category (only useful when used with the threshold option).\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
           Options (can be used together):\n\
           \tE: Equivalent to -E +calls.\n\
           \tO: Equivalent to -O +calls.\n\
           \tall: O & E";
 
-      "-a", Unit (update_all "-"), " Disable all warnings";
       "--nothing", Unit (update_all "-"), " Disable all warnings";
-      "-A", Unit (update_all "+"), " Enable all warnings";
+      "-a", Unit (update_all "-"), " See --nothing";
       "--all", Unit (update_all "+"), " Enable all warnings";
+      "-A", Unit (update_all "+"), " See --all";
 
       "-E", String (DeadFlag.update_exported),
         " Enable/Disable unused exported values warnings.\n    \
@@ -1057,10 +1056,11 @@ let () =
     Printf.eprintf " [DONE]\n\n%!";
 
     if !DeadFlag.exported.print                 then  report_unused_exported ();
-    if !DeadFlag.opt.always || !DeadFlag.opt.never  then  begin let tmp = analyse_opt_args () in
+    if DeadFlag.(!opt.always || !opt.never)     then  begin let tmp = analyze_opt_args () in
                 if !DeadFlag.opt.always         then  report_opt_args "ALWAYS" tmp;
                 if !DeadFlag.opt.never          then  report_opt_args "NEVER" tmp end;
-    report_style ();
+    if !DeadFlag.style.opt_arg || !DeadFlag.style.unit_pat
+    || !DeadFlag.style.seq || !DeadFlag.style.binding            then  report_style ();
 
     if !bad_files <> [] then begin
       let oc = open_out_bin "remove_bad_files.sh" in
