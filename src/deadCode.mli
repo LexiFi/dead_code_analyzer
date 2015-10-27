@@ -252,10 +252,3 @@ val collect_references : Tast_mapper.mapper
 val collect_export : Ident.t list -> string -> Types.signature_item -> unit
   (** [collect_export path name signature] process the [signature] to find the value to export.
     [path] is the current module-path. [name] is the current filename's basename without extension *)
-
-
-val exclude_dir : string -> unit
-val is_excluded_dir : string -> bool
-
-val load_file : string -> unit
-  (** Do the necessary collects on a file depending on its nature. *)
