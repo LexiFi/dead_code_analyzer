@@ -3,7 +3,7 @@ include $(shell ocamlc -where)/Makefile.config
 SRCS=deadCode.mli deadCode.ml
 LIBS=ocamlcommon.cma
 
-COMPFLAGS=-w +A-4-9-40-42-50 -I +compiler-libs -bin-annot -keep-locs
+COMPFLAGS=-w +A-4-9-40-42 -I +compiler-libs -bin-annot -keep-locs
 OCAMLC=ocamlc $(COMPFLAGS)
 OCAMLOPT=ocamlopt $(COMPFLAGS)
 

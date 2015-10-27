@@ -122,6 +122,7 @@ and [?b] in the almost always used subsection.
 
 val bad_files : string list ref
   (** Files which could not be read correctly *)
+
 val type_dependencies : (Location.t * Location.t) list ref
   (** Like the cmt value_dependencies but for types. *)
 
@@ -197,9 +198,11 @@ end
 module DeadType : sig
   val to_string : Types.type_expr -> string
     (** [to_string typ] converts [typ] to its string representation in the toplevel *)
+
   val match_str : Types.type_expr -> string -> bool
     (** [match_str typ str] checks if a [typ] matches [str].
       [str] must be formated as the toplevel representation representation of the expected type. *)
+
   val check_style : Types.type_expr -> Location.t -> unit
     (** Look for bad style typing. (i.e. Argument expecting an optional argument) *)
 end
@@ -209,17 +212,22 @@ end
 
 val section : ?sub:bool -> string -> unit
   (** Formats and prints (sub)section title. *)
+
 val separator : unit -> unit
   (** Prints the end of section delimiter. *)
+
 val report_unused_exported : unit -> unit
   (** Prints the "EXPORTED UNUSED VALUES" section and subsections contents. *)
+
 val report_opt_args : string -> (Location.t * string * opt_arg) list -> unit
   (** [report_opt_args used args] prints the "OPTIONAL ARGUMENTS" section and subsections contents.
     [used] must be "NEVER" to report optional arguments never used;
     anything else reports the ones always used. It is printed as part of the section title.
     [args] list of optional arguments that have been processed *)
+  
 val report_style : unit -> unit
   (** Print the "CODING STYLE" section contents. *)
+
 val prloc : ?fn:string -> Location.t -> unit
   (** Print a location as: `path/filename:line: '. *)
 
@@ -228,14 +236,18 @@ val prloc : ?fn:string -> Location.t -> unit
 
 val repr : ?cond:(vd_node -> bool) -> vd_node -> vd_node
   (** [repr cond node] goes deeper in [node] until [cond] is respected (or cannot go deeper) *)
+
 val next_fn_node : vd_node -> vd_node
   (** [next_fn node] goes deeper in [node] until finding a node that is a function
     expecting optional arguments (or cannot go deeper) *)
+
 val vd_node : ?add:bool -> Location.t -> vd_node
   (** [vd_node ?add loc] gives the node corresponding to [loc] if it exists, build it otherwise
     and, if add, save it for later use.*)
+
 val merge_nodes : search:('a -> vd_node) -> 'a -> 'a -> unit
   (** [merge_nodes ~search n1 n2] as [search n1] pointing to [search n2] *)
+
 val merge_locs :
   search:(vd_node -> vd_node) ->
   ?add:bool -> Location.t -> Location.t -> unit
