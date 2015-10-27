@@ -279,7 +279,7 @@ module DeadType = struct
     let save id loc =
       if t.type_manifest = None then
         export path id loc;
-      let path = String.concat "." @@ List.map (fun id -> id.Ident.name) (id::path) in
+      let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (id::path) in
       if Hashtbl.mem fields path then
         Hashtbl.add corres loc
           (let loc = Hashtbl.find fields path in
@@ -324,9 +324,11 @@ module DeadType = struct
     in
     let name = Path.name path in
     let len =
-      if (Path.head path).Ident.name = "Pervasives" then
-        String.length "Pervasives."
-      else 0
+      let rec len path = let open Path in match path with
+        | Pident id when id.Ident.name = "Pervasives" -> String.length "Pervasives."
+        | Papply (_, _) | Pident _ -> 0
+        | Pdot (path, _, _) -> len path
+      in len path
     in
     t ^ String.sub name len (String.length name - len)
 
@@ -372,7 +374,7 @@ module DeadType = struct
   let tstr typ =
 
     let assoc name loc =
-      let path = String.concat "." @@
+      let path = String.concat "." @@ List.rev @@
         name.Asttypes.txt
         :: typ.typ_name.Asttypes.txt :: !mods
         @ (String.capitalize_ascii (unit !current_src):: [])
@@ -380,7 +382,7 @@ module DeadType = struct
       begin try match typ.typ_manifest with
         | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
             let loc1 = Hashtbl.find fields
-              (String.concat "." @@ List.rev @@
+              (String.concat "." @@
                 String.capitalize_ascii (unit !current_src)
                 :: Longident.flatten txt
                 @ (name.Asttypes.txt :: []))
@@ -539,12 +541,6 @@ let rec treat_exp exp args = match exp.exp_desc with
   | _ -> ()
 
 
-
-
-
-
-
-
 (* Binding in Tstr_value *)
 let value_binding = function
   | {
@@ -560,7 +556,6 @@ let value_binding = function
     } when not loc1.loc_ghost ->
       DeadArg.node_build (vd_node ~add:true loc1) exp
   | _ -> ()
-
 
 
 
@@ -610,14 +605,13 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) -> treat_exp exp args
     | Texp_ident (_, _, {Types.val_loc; _})
     | Texp_field (_, _, {lbl_loc=val_loc; _})
-      when not val_loc.Location.loc_ghost ->
-        Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
     | Texp_construct (_, {cstr_loc=val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
         Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
-    | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq -> begin match vb_pat.pat_desc with
-        | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
-        | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
+    | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
+        begin match vb_pat.pat_desc with
+          | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
+          | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
