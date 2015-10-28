@@ -188,10 +188,13 @@ module DeadFlag : sig
     (** Verbose mode: print currently processed filename. *)
 
   val underscore : bool ref
-    (** Ignores names starting with an underscore. *)
+    (** Ignore names starting with an underscore. *)
 
   val types : string list ref
     (** Ignores values of certain types. *)
+
+  val internal : bool ref
+    (** Keep internal calls. *)
 end
 
 (** type_expr manipulation *)
@@ -224,7 +227,7 @@ val report_opt_args : string -> (Location.t * string * opt_arg) list -> unit
     [used] must be "NEVER" to report optional arguments never used;
     anything else reports the ones always used. It is printed as part of the section title.
     [args] list of optional arguments that have been processed *)
-  
+
 val report_style : unit -> unit
   (** Print the "CODING STYLE" section contents. *)
 
