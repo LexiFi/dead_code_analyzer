@@ -10,11 +10,10 @@
 
 
 #Testing
-- \[ \] Test on big projects: see directory results
 - \[X\] Test suite
-	+ \[X\] Detect FP
-	+ \[X\] Detect FN
-	+ \[X\] Add some color and info (stats, ...)
+- \[ \] Test on big projects: see directory results
+- \[ \] Create more precise tests
+- \[ \] Create test for options
 
 
 #Note
@@ -22,4 +21,4 @@
 - The `OPTIONAL ARGUMENTS` section has both FN and FP (due to `ref` usage).
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **97.17%** succesful (over 106 expected results)
+ratio: **97.2%** succesful (over 107 expected results)
