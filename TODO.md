@@ -5,7 +5,6 @@
 - `assoc` is not precise enough (-> FN on types)
 
 #Fix
-- Stop assuming each basename should be unique
 - Clean output
 - Clean code!!
 
