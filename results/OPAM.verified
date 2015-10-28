@@ -1,5 +1,17 @@
 .> UNUSED EXPORTED VALUES:
 =========================
+opam/src/client/opamArg.mli:76: global_options.verbose
+opam/src/client/opamArg.mli:78: global_options.color
+opam/src/client/opamArg.mli:79: global_options.opt_switch
+opam/src/client/opamArg.mli:80: global_options.yes
+opam/src/client/opamArg.mli:81: global_options.strict
+opam/src/client/opamArg.mli:83: global_options.no_base_packages
+opam/src/client/opamArg.mli:84: global_options.git_version
+opam/src/client/opamArg.mli:85: global_options.external_solver
+opam/src/client/opamArg.mli:86: global_options.use_internal_solver
+opam/src/client/opamArg.mli:87: global_options.cudf_file
+opam/src/client/opamArg.mli:88: global_options.solver_preferences
+opam/src/client/opamArg.mli:90: global_options.json
 opam/src/client/opamArg.mli:54: name_list
 opam/src/client/opamArg.mli:57: param_list
 opam/src/client/opamArg.mli:69: nonempty_arg_list
@@ -10,6 +22,7 @@ opam/src/client/opamClient.mli:177: global_lock
 opam/src/client/opamClient.mli:180: switch_lock
 opam/src/client/opamClient.mli:183: read_lock
 opam/src/client/opamClient.mli:187: with_switch_backup
+opam/src/client/opamClientConfig.mli:20: t.autoremove
 opam/src/client/opamMain.mli:28: run
 opam/src/client/opamMain.mli:31: commands
 opam/src/client/opamMain.mli:34: default
@@ -49,12 +62,37 @@ opam/src/core/opamFilename.mli:223: chmod
 opam/src/core/opamFilename.mli:262: Attribute.create
 opam/src/core/opamJson.mli:20: to_string
 opam/src/core/opamJson.mli:22: of_string
+opam/src/core/opamParallel.mli:28: G.has_cycle
+opam/src/core/opamParallel.mli:29: G.scc_list
+opam/src/core/opamParallel.mli:26: G.Topological.fold
 opam/src/core/opamParallel.mli:61: SIG.iter
 opam/src/core/opamParallel.mli:61: Make.iter
+opam/src/core/opamParallel.mli:28: Make.G.has_cycle
+opam/src/core/opamParallel.mli:29: Make.G.scc_list
+opam/src/core/opamParallel.mli:26: Make.G.Topological.fold
 opam/src/core/opamParallel.mli:96: GRAPH.Topological.iter
 opam/src/core/opamParallel.mli:61: GRAPH.Parallel.iter
+opam/src/core/opamParallel.mli:28: GRAPH.Parallel.G.has_cycle
+opam/src/core/opamParallel.mli:29: GRAPH.Parallel.G.scc_list
+opam/src/core/opamParallel.mli:26: GRAPH.Parallel.G.Topological.fold
 opam/src/core/opamParallel.mli:96: MakeGraph.Topological.iter
 opam/src/core/opamParallel.mli:61: MakeGraph.Parallel.iter
+opam/src/core/opamParallel.mli:28: MakeGraph.Parallel.G.has_cycle
+opam/src/core/opamParallel.mli:29: MakeGraph.Parallel.G.scc_list
+opam/src/core/opamParallel.mli:26: MakeGraph.Parallel.G.Topological.fold
+opam/src/core/opamProcess.mli:57: t.p_name
+opam/src/core/opamProcess.mli:58: t.p_args
+opam/src/core/opamProcess.mli:59: t.p_pid
+opam/src/core/opamProcess.mli:60: t.p_cwd
+opam/src/core/opamProcess.mli:61: t.p_time
+opam/src/core/opamProcess.mli:62: t.p_stdout
+opam/src/core/opamProcess.mli:63: t.p_stderr
+opam/src/core/opamProcess.mli:64: t.p_env
+opam/src/core/opamProcess.mli:65: t.p_info
+opam/src/core/opamProcess.mli:66: t.p_metadata
+opam/src/core/opamProcess.mli:67: t.p_verbose
+opam/src/core/opamProcess.mli:78: result.r_cleanup
+opam/src/core/opamProcess.mli:143: Job.Op.job.Run
 opam/src/core/opamProcess.mli:131: read_lines
 opam/src/core/opamStd.mli:296: Sys.os.Linux
 opam/src/core/opamStd.mli:297: Sys.os.FreeBSD
@@ -152,6 +190,11 @@ opam/src/format/opamFile.mli:42: URL.read_from_string
 opam/src/format/opamFile.mli:42: File_attributes.read_from_string
 opam/src/format/opamFile.mli:42: Filenames.read_from_string
 opam/src/format/opamFile.mli:42: Prefix.read_from_string
+opam/src/format/opamFile.mli:568: F.internal
+opam/src/format/opamFile.mli:570: F.empty
+opam/src/format/opamFile.mli:571: F.of_channel
+opam/src/format/opamFile.mli:572: F.of_string
+opam/src/format/opamFile.mli:573: F.to_string
 opam/src/format/opamFile.mli:577: Make.write
 opam/src/format/opamFile.mli:578: Make.read
 opam/src/format/opamFile.mli:579: Make.safe_read
@@ -180,6 +223,9 @@ opam/src/format/opamFormat.mli:176: get_section_by_kind
 opam/src/format/opamFormat.mli:179: get_all_section_by_kind
 opam/src/format/opamFormat.mli:182: assoc_sections
 opam/src/format/opamFormat.mli:256: parse_command
+opam/src/format/opamFormula.mli:75: formula.Block
+opam/src/format/opamFormula.mli:76: formula.And
+opam/src/format/opamFormula.mli:77: formula.Or
 opam/src/format/opamFormula.mli:57: string_of_disjunction
 opam/src/format/opamFormula.mli:66: string_of_cnf
 opam/src/format/opamFormula.mli:69: string_of_dnf
@@ -202,6 +248,9 @@ opam/src/format/opamTypesBase.mli:67: full_action_contents
 opam/src/format/opamTypesBase.mli:73: string_of_upload
 opam/src/format/opamVariable.mli:26: variable_contents.B
 opam/src/format/opamVariable.mli:27: variable_contents.S
+opam/src/format/opamVariable.mli:40: Full.scope.Global
+opam/src/format/opamVariable.mli:42: Full.scope.Self
+opam/src/format/opamVariable.mli:44: Full.scope.Package
 
 opam/src/repository/opamLocal.mli:26: rsync_file
 opam/src/repository/opamRepository.mli:85: pull_url_and_fix_digest
@@ -212,6 +261,15 @@ opam/src/repository/opamRepositoryBackend.mli:46: compare
 opam/src/repository/opamRepositoryBackend.mli:21: S.name
 opam/src/repository/opamRepositoryPath.mli:23: update_cache
 opam/src/repository/opamRepositoryPath.mli:72: upload_dir
+opam/src/repository/opamVCS.mli:24: VCS.name
+opam/src/repository/opamVCS.mli:27: VCS.exists
+opam/src/repository/opamVCS.mli:30: VCS.init
+opam/src/repository/opamVCS.mli:36: VCS.fetch
+opam/src/repository/opamVCS.mli:40: VCS.reset
+opam/src/repository/opamVCS.mli:44: VCS.diff
+opam/src/repository/opamVCS.mli:47: VCS.revision
+opam/src/repository/opamVCS.mli:50: VCS.versionned_files
+opam/src/repository/opamVCS.mli:54: VCS.vc_dir
 
 opam/src/solver/opamCudf.mli:71: get_final_universe
 opam/src/solver/opamCudf.mli:172: string_of_vpkgs
@@ -229,6 +287,9 @@ opam/src/solver/opamHeuristic.mli:142: state_of_request
 opam/src/solver/opamHeuristic.mli:151: actions_of_state
 opam/src/solver/opamSolver.mli:53: cudf_versions_map
 opam/src/solver/opamSolver.mli:57: load_cudf_universe
+opam/src/solver/opamSolverConfig.mli:20: t.solver_preferences_default
+opam/src/solver/opamSolverConfig.mli:21: t.solver_preferences_upgrade
+opam/src/solver/opamSolverConfig.mli:22: t.solver_preferences_fixup
 
 opam/src/state/opamOCaml.mli:20: ocaml_version
 opam/src/state/opamPath.mli:30: update_cache
@@ -237,6 +298,10 @@ opam/src/state/opamPath.mli:242: Switch.doc_dir
 opam/src/state/opamPath.mli:248: Switch.etc_dir
 opam/src/state/opamSolution.mli:62: atom_of_package
 opam/src/state/opamState.mli:24: Types.t.partial
+opam/src/state/opamState.mli:44: Types.t.package_index
+opam/src/state/opamState.mli:47: Types.t.compiler_index
+opam/src/state/opamState.mli:58: Types.t.compiler_version
+opam/src/state/opamState.mli:65: Types.t.opams
 opam/src/state/opamState.mli:107: with_switch
 opam/src/state/opamState.mli:189: descr_opt
 opam/src/state/opamState.mli:192: files
@@ -251,6 +316,12 @@ opam/src/state/opamState.mli:398: is_locally_pinned
 opam/src/state/opamState.mli:410: url_of_locally_pinned_package
 opam/src/state/opamState.mli:96: Cache.load
 
+opam/src/tools/opam_admin.ml:19: default_cmd
+opam/src/tools/opam_admin.ml:24: make_repo_cmd
+opam/src/tools/opam_admin.ml:29: check_repo_cmd
+opam/src/tools/opam_admin.ml:34: stats_cmd
+opam/src/tools/opam_admin.ml:39: depexts_cmd
+opam/src/tools/opam_admin.ml:49: rename_cmd
 opam/src/tools/opam_admin_top.mli:4: repo
 opam/src/tools/opam_admin_top.mli:7: packages
 opam/src/tools/opam_admin_top.mli:10: compilers
@@ -261,6 +332,15 @@ opam/src/tools/opam_admin_top.mli:45: iter_compilers_gen
 opam/src/tools/opam_admin_top.mli:56: filter_compilers
 opam/src/tools/opam_admin_top.mli:58: iter_compilers
 opam/src/tools/opam_installer.ml:33: commands.mkdir
+opam/src/tools/opam_depexts_change.ml:26: package_name
+opam/src/tools/opam_installer.ml:40: do_commands
+opam/src/tools/opam_installer.ml:78: script_commands
+opam/src/tools/opam_installer.ml:126: iter_install
+opam/src/tools/opam_installer.ml:161: install
+opam/src/tools/opam_installer.ml:186: uninstall
+opam/src/tools/opam_installer.ml:217: options
+opam/src/tools/opam_installer.ml:328: command
+opam/src/tools/opam_installer.ml:340: info
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
