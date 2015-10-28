@@ -7,9 +7,15 @@ OCAMLOPT=ocamlopt $(COMPFLAGS)
 SRC=check.ml
 TARGET=res.out
 
-all: check.byt$(EXE)
+all: internal
+
+internal: check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A --internal ../examples > $(TARGET)
 	./check.byt$(EXE) ./internal $(TARGET)
+
+classic: check.byt$(EXE)
+	../src/deadCode.byt$(EXE) -A ../examples > $(TARGET)
+	./check.byt$(EXE) ./classic $(TARGET)
 
 
 opt: check.opt$(EXE)
