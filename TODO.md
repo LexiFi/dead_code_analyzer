@@ -2,7 +2,7 @@
 - all kind of types
 - objects
 - classes
-- `assoc` is not precise enough (-> generates FN)
+- `assoc` is not precise enough (-> may generate FN)
 
 #Fix
 - Clean output
@@ -21,4 +21,4 @@
 - The `OPTIONAL ARGUMENTS` section has both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **97.40%** succesful (over 385 expected results)
+ratio: **97.66%** succesful (over 385 expected results)

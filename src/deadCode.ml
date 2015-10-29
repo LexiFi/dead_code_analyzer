@@ -757,7 +757,7 @@ let rec load_file fn = match kind fn with
           || try Sys.file_exists (Filename.chop_extension (find_path fn) ^ ".mli")
           with Not_found -> false
         in
-        if is_implem fn1 && is_implem fn2 then
+        if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
           Hashtbl.add references vd1 (vd2 ::hashtbl_find_list references vd1)
         else if not (is_implem fn1 && has_iface fn1) then begin
           Hashtbl.add corres vd1 (vd2 :: hashtbl_find_list corres vd1);
