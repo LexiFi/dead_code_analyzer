@@ -200,30 +200,44 @@ let rec sel_section () =
   nextl := ""; comp := "";
   try
     match (input_line !res) with
-        ".> UNUSED EXPORTED VALUES:" ->
-            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mli" !fnames
+        ".> UNUSED EXPORTED VALUES:" as s ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mli" !fnames
             with _ -> ());
-            print_string "UNUSED EXPORTED VALUES:\n";
-            print_string "=======================" |> print_newline; (extend := ".mli")
-            |> section |> sel_section
-      | ".> OPTIONAL ARGUMENTS: ALWAYS:" ->
-            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlopta" !fnames
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mli";
+            sel_section (section ())
+      | ".> OPTIONAL ARGUMENTS: ALWAYS:" as s ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlopta" !fnames
             with _ -> ());
-            print_string "OPTIONAL ARGUMENTS: ALWAYS:\n";
-            print_string "===========================" |> print_newline; (extend := ".mlopta")
-            |> section ~value:true ~info:false |> sel_section
-      | ".> OPTIONAL ARGUMENTS: NEVER:" ->
-            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mloptn" !fnames
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlopta";
+            sel_section (section ~value:true ~info:false ())
+      | ".> OPTIONAL ARGUMENTS: NEVER:" as s ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mloptn" !fnames
             with _ -> ());
-            print_string "OPTIONAL ARGUMENTS: NEVER:\n";
-            print_string "==========================" |> print_newline; (extend := ".mloptn")
-            |> section ~value:true ~info:false |> sel_section
-      | ".> CODING STYLE:" ->
-            (try fnames := empty_fnames ~regexp:"\\.ml[a-z]*$" ".mlstyle" !fnames
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mloptn";
+            sel_section ( section ~value:true ~info:false ())
+      | ".> CODING STYLE:" as s ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlstyle" !fnames
             with _ -> ());
-            print_string "CODING STYLE:\n";
-            print_string "=============" |> print_newline; (extend := ".mlstyle")
-            |> section |> sel_section
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlstyle";
+            sel_section (section ())
+      | s when String.length s > 36 && String.sub s 0 36 = ".>->  ALMOST UNUSED EXPORTED VALUES:" ->
+            let n =
+              Scanf.sscanf s ".>->  ALMOST UNUSED EXPORTED VALUES: Called %s time(s)" (fun n -> n)
+            in
+            begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mli" ^ n) !fnames
+            with _ -> () end;
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mli" ^ n;
+            sel_section (section ())
       | _ -> sel_section ()
   with End_of_file -> ()
 
@@ -236,14 +250,13 @@ let result () =
   print_string @@ "\x1b[0m\nRatio: \x1b[0;3"
       ^ (if ratio < 50. then "1m" else if ratio < 80. then "3m" else "2m");
   print_float ratio;
-  print_string "%\x1b[0m"
-  |> print_newline
+  print_endline "%\x1b[0m"
 
 let rec get_fnames ?(acc = []) dir =
   try
     if Sys.is_directory dir then
       acc @ Array.fold_left (fun l s -> get_fnames ~acc:l (normalize (dir ^ "/" ^ s))) [] @@ Sys.readdir dir
-    else if dir <> "./check.ml" && Str.string_match (Str.regexp ".*/[_a-zA-Z0-9-]*.ml[a-z]*") dir 0 then dir::acc
+    else if dir <> "./check.ml" && Str.string_match (Str.regexp ".*/[_a-zA-Z0-9-]*.ml[a-z0-9]*") dir 0 then dir::acc
     else acc
   with _ -> acc
 
@@ -257,7 +270,7 @@ let () =
   fnames := List.fast_sort
     (fun x y ->
       let req s =
-        get_element ~f:Str.search_backward ~regexp:"\\.ml[a-z]*" ~start:(String.length s - 1) s in
+        get_element ~f:Str.search_backward ~regexp:"\\.ml[a-z0-9]*" ~start:(String.length s - 1) s in
       let c = compare (req x) (req y) in
       if c = 0 then compare x y
       else c)

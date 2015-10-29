@@ -7,7 +7,11 @@ OCAMLOPT=ocamlopt $(COMPFLAGS)
 SRC=check.ml
 TARGET=res.out
 
-all: internal
+all: aggr.byt$(EXE)
+	make internal > internal.out 2>&1
+	make classic > classic.out 2>&1
+	make threshold-1 > threshold-1.out 2>&1
+	./aggr.byt$(EXE) threshold-1.out internal.out classic.out
 
 internal: check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A --internal ../examples > $(TARGET)
@@ -16,6 +20,10 @@ internal: check.byt$(EXE)
 classic: check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A ../examples > $(TARGET)
 	./check.byt$(EXE) ./classic $(TARGET)
+
+threshold-1: check.byt$(EXE)
+	../src/deadCode.byt$(EXE) -A --internal --threshold +1 ../examples > $(TARGET)
+	./check.byt$(EXE) ./threshold-1 $(TARGET)
 
 
 opt: check.opt$(EXE)
@@ -28,5 +36,11 @@ check.byt$(EXE): $(SRC)
 check.opt$(EXE): $(SRC)
 	$(OCAMLC) $(LIBS) $(SRC) -o $@
 
+aggr.byt$(EXE): aggregate.ml
+	$(OCAMLC) $^ -o $@
+
+aggr.opt$(EXE): aggregate.ml
+	$(OCAMLC) $^ -o $@
+
 clean:
-	rm -f *~ *.cm* *.a *.lib *.o *.obj check.byt$(EXE) check.opt$(EXE) **.out
+	rm -f *~ *.cm* *.a *.lib *.o *.obj *.byt$(EXE) *.opt$(EXE) **.out

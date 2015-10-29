@@ -1,0 +1,1 @@
+./examples/opam/let-in.ml:8: let x = ... in x (=> useless binding)
