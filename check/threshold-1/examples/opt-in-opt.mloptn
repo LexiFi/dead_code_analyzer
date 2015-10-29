@@ -1,0 +1,3 @@
+./examples/opt-in-opt.ml:2: ?a
+./examples/opt-in-opt.ml:2: ?b
+./examples/opt-in-opt.ml:5: ?b

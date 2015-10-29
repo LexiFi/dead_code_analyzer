@@ -1629,12 +1629,6 @@ js_of_ocaml/lib/typed_array.mli:103: float64Array_fromBuffer
 js_of_ocaml/lib/typed_array.mli:104: float64Array_inBuffer
 js_of_ocaml/lib/typed_array.mli:108: get
 js_of_ocaml/lib/typed_array.mli:109: unsafe_get
-js_of_ocaml/lib/url.mli:45: http_url.hu_path_string
-js_of_ocaml/lib/url.mli:54: file_url.fu_path_string
-js_of_ocaml/lib/url.mli:31: urldecode
-js_of_ocaml/lib/url.mli:66: default_http_port
-js_of_ocaml/lib/url.mli:69: default_https_port
-=======
 js_of_ocaml/lib/typed_array.mli:142: dataView
 js_of_ocaml/lib/typed_array.mli:143: dataView_inBuffer
 js_of_ocaml/lib/url.mli:42: http_url.hu_host
