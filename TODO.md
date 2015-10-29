@@ -13,7 +13,7 @@
 - \[X\] Test suite
 - \[ \] Test on big projects: see directory results
 - \[ \] Create more precise tests
-- \[ \] Create test for options
+- \[ \] Create tests for options
 
 
 #Note
@@ -21,4 +21,4 @@
 - The `OPTIONAL ARGUMENTS` section has both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **98.15%** succesful (over 162 unique expected results)
+ratio: **96.77%** succesful (over 186 unique expected results)
