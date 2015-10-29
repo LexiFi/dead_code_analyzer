@@ -6,7 +6,7 @@ OCAMLC=ocamlc $(COMPFLAGS)
 OCAMLOPT=ocamlopt $(COMPFLAGS)
 SRC=check.ml
 TARGET=res.out
-DEADFLAGS=-A
+DEADFLAGS=-A --internal
 
 all: check.byt$(EXE)
 	../src/deadCode.byt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)

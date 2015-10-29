@@ -158,16 +158,20 @@ module DeadFlag = struct
 
   let types = ref []
   let update_types s = types := !types @ List.map (fun (_, s) -> s) (list_of_opt ~ignore:["->"] s)
+
+  let internal = ref false
+  let set_internal () = internal := true
+
 end
 
 
                 (********   ATTRIBUTES   ********)
 
-let abspath = Hashtbl.create 16         (* abspath: filename's basename -> absolute path *)
+let abspath = ref []                    (* longest paths known *)
 let bad_files = ref []
 
-let decs = ref []                        (* all exported value declarations *)
-let type_dependencies = ref []           (* like the cmt value_dependencies but for types *)
+let decs = ref []                       (* all exported value declarations *)
+let type_dependencies = ref []          (* like the cmt value_dependencies but for types *)
 let references = Hashtbl.create 256     (* all value references *)
 let fields = Hashtbl.create 256         (* link from fields (record/variant) paths and locations *)
 let corres = Hashtbl.create 256         (* link from dec to def *)
@@ -180,7 +184,13 @@ let mods = ref [] (* module path *)
 
                 (********   HELPERS   ********)
 
-let unit fn = Filename.chop_extension (Filename.basename fn)
+let find_path fn = List.find
+  (fun path ->
+    let lp = String.length path and lf = String.length fn in
+      lp >= lf && String.sub path (lp - lf) lf = fn)
+  !abspath
+
+let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
 
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
@@ -206,7 +216,7 @@ let separator () =
 let prloc ?fn (loc : Location.t) = begin match fn with
   | Some s when Filename.chop_extension (loc.loc_start.pos_fname) = Filename.chop_extension (Filename.basename s) ->
       print_string (Filename.dirname s ^ "/" ^ loc.loc_start.pos_fname)
-  | _ -> begin match Hashtbl.find abspath loc.loc_start.pos_fname with
+  | _ -> begin match find_path loc.loc_start.pos_fname with
     | s -> print_string s
     | exception Not_found -> match fn with
       | None -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
@@ -594,8 +604,11 @@ let collect_references =                          (* Tast_mapper *)
     begin match p.pat_desc with
       | Tpat_record (l, _) ->
           List.iter
-            (fun (_, lab, _) -> Hashtbl.add references lab.lbl_loc
-              (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
+            (fun (_, lab, _) ->
+              if !DeadFlag.internal
+              || unit lab.lbl_loc.Location.loc_start.pos_fname
+                  <> unit !current_src then
+                Hashtbl.add references lab.lbl_loc (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
             l
       | _ -> () end;
     super.pat self p
@@ -606,7 +619,9 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_ident (_, _, {Types.val_loc; _})
     | Texp_field (_, _, {lbl_loc=val_loc; _})
     | Texp_construct (_, {cstr_loc=val_loc; _}, _)
-      when not val_loc.Location.loc_ghost ->
+      when not val_loc.Location.loc_ghost && (!DeadFlag.internal
+          || unit val_loc.Location.loc_start.pos_fname
+            <> unit !current_src) ->
         Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
         begin match vb_pat.pat_desc with
@@ -679,7 +694,7 @@ let kind fn =
  * two files with the same basename. *)
 let regabs fn =
   current_src := fn;
-  Hashtbl.add abspath (Filename.basename fn) fn
+  abspath := fn :: !abspath
 
 (* Useful when the `--exclude-directory' option is used *)
 let exclude_dir, is_excluded_dir =
@@ -739,7 +754,7 @@ let rec load_file fn = match kind fn with
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
           Filename.check_suffix fn ".mli"
-          || try Sys.file_exists (Filename.chop_extension (Hashtbl.find abspath fn) ^ ".mli")
+          || try Sys.file_exists (Filename.chop_extension (find_path fn) ^ ".mli")
           with Not_found -> false
         in
         if is_implem fn1 && is_implem fn2 then
@@ -810,7 +825,7 @@ let analyze_opt_args () =
         (**** Helpers for the following reports ****)
 
 (* Absolute path *)
-let abs loc = match Hashtbl.find abspath loc.Location.loc_start.pos_fname with
+let abs loc = match find_path loc.Location.loc_start.pos_fname with
   | s -> s
   | exception Not_found -> loc.Location.loc_start.pos_fname
 
@@ -1008,6 +1023,8 @@ let parse () =
           \tE: Equivalent to -E +calls.\n\
           \tO: Equivalent to -O +calls.\n\
           \tall: O & E";
+
+      "--internal", Unit DeadFlag.set_internal, " Keep internal uses as exported values uses";
 
       "--nothing", Unit (update_all "-"), " Disable all warnings";
       "-a", Unit (update_all "-"), " See --nothing";
