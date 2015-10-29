@@ -91,7 +91,7 @@ let rec empty_fnames ?(regexp = ".*") threshold = function
       if get_element ~regexp ~start:0 e < threshold then (
         empty @@ open_in e;
         empty_fnames ~regexp threshold l)
-      else l
+      else e::l
   | _ -> []
 
 let is_trash diff eq =
@@ -114,7 +114,7 @@ let rec check_fn name line =
       | _ -> fn := Some name;
           let name = normalize (!dir ^ name) in
           if (try Filename.chop_extension name >= Filename.chop_extension (List.hd !fnames) with _ -> false) then
-            fnames := empty_fnames name !fnames;
+            fnames := List.tl (empty_fnames name !fnames);
           try
             empty !in_file;
             in_file := open_in name;
@@ -237,6 +237,26 @@ let rec sel_section () =
             print_endline s;
             print_endline (input_line !res);
             extend := ".mli" ^ n;
+            sel_section (section ())
+      | s when String.length s > 40 && String.sub s 0 40 = ".>->  OPTIONAL ARGUMENTS: ALMOST ALWAYS:" ->
+            let n =
+              Scanf.sscanf s ".>->  OPTIONAL ARGUMENTS: ALMOST ALWAYS: Except %s time(s)" (fun n -> n)
+            in
+            begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mlopta" ^ n) !fnames
+            with _ -> () end;
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlopta" ^ n;
+            sel_section (section ())
+      | s when String.length s > 39 && String.sub s 0 39 = ".>->  OPTIONAL ARGUMENTS: ALMOST NEVER:" ->
+            let n =
+              Scanf.sscanf s ".>->  OPTIONAL ARGUMENTS: ALMOST NEVER: Except %s time(s)" (fun n -> n)
+            in
+            begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mloptn" ^ n) !fnames
+            with _ -> () end;
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mloptn" ^ n;
             sel_section (section ())
       | _ -> sel_section ()
   with End_of_file -> ()
