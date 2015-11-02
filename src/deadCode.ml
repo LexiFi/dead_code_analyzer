@@ -454,15 +454,11 @@ module DeadArg = struct
           if loc == loc.ptr || count >= !occur then loc.loc
           else (occur := !occur - count; locate @@ next_fn_node loc)
         in
-        let node =
-          (locate loc, lab, has_val, (match expr with
-            | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
-            | _ -> !last_loc))
-        in
-        if check_underscore lab
-        && not (List.exists (fun (pos, lab, _, call) ->
-          (pos, lab, has_val, call) = node) !opt_args) then
-          opt_args := node :: !opt_args
+        if check_underscore lab then
+        opt_args := (locate loc, lab, has_val, (match expr with
+              | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
+              | _ -> !last_loc))
+            :: !opt_args
       in
 
       List.iter
