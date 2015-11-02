@@ -18,7 +18,7 @@
 
 #Note
 - The `UNUSED EXPORTED VALUES` section may have both FN and FP (none known).
-- The `OPTIONAL ARGUMENTS` section has both FN and FP.
+- The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **96.77%** succesful (over 186 unique expected results)
+ratio: **96.79%** succesful (over 187 unique expected results)

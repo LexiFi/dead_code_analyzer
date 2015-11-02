@@ -451,20 +451,23 @@ module DeadArg = struct
         let count x l = List.length @@ List.find_all (( = ) x) l in
         let rec locate loc =
           let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
-          if loc == loc.ptr || count >= !occur then loc
+          if loc == loc.ptr || count >= !occur then loc.loc
           else (occur := !occur - count; locate @@ next_fn_node loc)
         in
-        if check_underscore lab then
-          opt_args :=
-            (locate loc, lab, has_val, (match expr with
-              | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
-              | _ -> !last_loc))
-            :: !opt_args
+        let node =
+          (locate loc, lab, has_val, (match expr with
+            | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
+            | _ -> !last_loc))
+        in
+        if check_underscore lab
+        && not (List.exists (fun (pos, lab, _, call) ->
+          (pos, lab, has_val, call) = node) !opt_args) then
+          opt_args := node :: !opt_args
       in
 
       List.iter
         (function
-          | (Asttypes.Optional lab, expr, _) when (expr <> None || not anon) ->
+          | (Asttypes.Optional lab, expr, _) when expr <> None || not anon ->
             treat lab expr
           | _ -> ())
         args
@@ -493,12 +496,12 @@ module DeadArg = struct
 
       | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
       | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
-          process val_loc (get_sig_args args e.exp_type);
+          process ~anon:true val_loc (get_sig_args args e.exp_type);
           if not val_loc.Location.loc_ghost then
             last_loc := val_loc
 
       | Texp_ident (_, _, {val_loc; _}) ->
-          process val_loc (get_sig_args [] e.exp_type)
+          process ~anon:true val_loc (get_sig_args [] e.exp_type)
 
       | Texp_let (* Partial application as argument may cut in two parts:
                   * let _ = partial in implicit opt_args elimination *)
@@ -802,11 +805,11 @@ let analyze_opt_args () =
 
   let analyze = fun (loc, lab, has_val, callsite) ->
     let slot =
-      try Hashtbl.find tbl (loc.loc, lab)
+      try Hashtbl.find tbl (loc, lab)
       with Not_found ->
         let r = {with_val = []; without_val = []} in
-        all := (loc.loc, lab, r) :: !all;
-        Hashtbl.add tbl (loc.loc, lab) r;
+        all := (loc, lab, r) :: !all;
+        Hashtbl.add tbl (loc, lab) r;
         r
     in
     if has_val then slot.with_val <- callsite :: slot.with_val
@@ -884,7 +887,7 @@ let report_opt_args s l =
           in (loc, lab, l, ratio, total))
         l
       |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
-          compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2 ))
+          compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
     in
 
     let change =
@@ -900,7 +903,7 @@ let report_opt_args s l =
         if !DeadFlag.opt.call_sites then print_string "  Exceptions:"
       end;
       print_newline ();
-      if !DeadFlag.opt.call_sites && ratio <> 1. then begin
+      if !DeadFlag.opt.call_sites then begin
         List.iter (pretty_print_call ()) slot;
         if nb_call <> 0 then print_newline ()
       end

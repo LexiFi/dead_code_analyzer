@@ -19,9 +19,7 @@ clean:
 	make -C examples clean
 	make -C check clean
 
-check:
-	make -C src
-	make -C examples build
+check: all examples
 	make -C check
 
 

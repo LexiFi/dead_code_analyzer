@@ -14,22 +14,24 @@ all: aggr.byt$(EXE)
 	make threshold-3-0.5 > threshold-3-0.5.out 2>&1
 	./aggr.byt$(EXE) threshold-3-0.5.out threshold-1.out internal.out classic.out
 
-internal: check.byt$(EXE)
+internal: prepare check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A --internal ../examples > $(TARGET)
 	./check.byt$(EXE) ./internal $(TARGET)
 
-classic: check.byt$(EXE)
+classic: prepare check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A ../examples > $(TARGET)
 	./check.byt$(EXE) ./classic $(TARGET)
 
-threshold-1: check.byt$(EXE)
+threshold-1: prepare check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A --internal --threshold +1 ../examples > $(TARGET)
 	./check.byt$(EXE) ./threshold-1 $(TARGET)
 
-threshold-3-0.5: check.byt$(EXE)
+threshold-3-0.5: prepare check.byt$(EXE)
 	../src/deadCode.byt$(EXE) -A --internal --threshold +3+0.5+both ../examples > $(TARGET)
 	./check.byt$(EXE) ./threshold-3-0.5 $(TARGET)
 
+prepare:
+	make -C .. examples > /dev/null 2>&1
 
 opt: check.opt$(EXE)
 	../src/deadCode.opt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)

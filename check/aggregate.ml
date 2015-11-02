@@ -34,6 +34,7 @@ let rec process n =
     update file "Failed: \x1b[0;%dm%d%s" err;
     begin try print_endline (input_line file); print_endline "\n\n"
     with _ -> () end;
+    close_in file;
     process (n - 1)
   end
 

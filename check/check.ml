@@ -20,7 +20,10 @@ let get_pos line =
 
 (* Extract extra info from current line *)
 let get_info line =
-  get_element ~regexp:" .*[\r\n]?" ~f:Str.search_backward ~start:(String.length line - 1) line
+  let info =
+    get_element ~regexp:": .*$" ~f:Str.search_backward ~start:(String.length line - 1) line
+  in
+  String.sub info 1 (String.length info - 1)
 
 let sec_part ~regexp line =
   Str.string_match (Str.regexp regexp) line 0
