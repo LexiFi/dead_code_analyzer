@@ -41,7 +41,11 @@
       Here, [x] will be reported as it is declared but never used
 
   Types are studied as a whole and iff they are explicitly declared as their own types.
-  Thus, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
+  Consequently, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
+
+  As this section focuses on exported values, internal calls are ignored by default.
+  This will lead the analyzer to focus on values that are uselessly exported.
+  To keep track of all uses, call the {e internal} option.
 
   The {e threshold} option can be used to report values and types respecting the rules above
   most of the time. e.g. calling the dead code analyzer with {e --threshold +1} on
