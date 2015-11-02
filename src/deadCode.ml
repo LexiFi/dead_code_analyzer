@@ -427,7 +427,7 @@ end
 module DeadArg = struct
 
   (* Verify the optional args calls. Treat args *)
-  let rec process ?(anon = false) val_loc args =
+  let rec process ?(anon = true) val_loc args =
     List.iter                               (* treat each arg's expression before all (even if ghost) *)
       (function
         | (_, None, _) -> ()
@@ -492,16 +492,16 @@ module DeadArg = struct
       | Texp_function (_,
             [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
               c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-          process call_site args
+          process ~anon:false call_site args
 
       | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
       | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
-          process ~anon:true val_loc (get_sig_args args e.exp_type);
+          process val_loc (get_sig_args args e.exp_type);
           if not val_loc.Location.loc_ghost then
             last_loc := val_loc
 
       | Texp_ident (_, _, {val_loc; _}) ->
-          process ~anon:true val_loc (get_sig_args [] e.exp_type)
+          process ~anon:false val_loc (get_sig_args [] e.exp_type)
 
       | Texp_let (* Partial application as argument may cut in two parts:
                   * let _ = partial in implicit opt_args elimination *)
@@ -511,7 +511,7 @@ module DeadArg = struct
                 [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
                   c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}],_);
               exp_loc={loc_ghost=true; _};_}) ->
-          process ~anon:true val_loc args
+          process val_loc args
 
         | _ -> ()
 
@@ -540,7 +540,7 @@ end
 let rec treat_exp exp args = match exp.exp_desc with
   | Texp_ident (_, _, {Types.val_loc; _})
   | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
-      DeadArg.process ~anon:true val_loc args
+      DeadArg.process val_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
       begin match exp_else with
