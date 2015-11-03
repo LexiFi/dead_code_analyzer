@@ -248,15 +248,6 @@ let opt_args = ref []
 
                 (********   NODE MANIPULATION   ********)
 
-(* Go deeper in the vd_node until cond is respected (or cannot go deeper) *)
-let rec repr ?(cond = (fun _ -> false)) n =
-  if n.ptr == n || cond n then n
-  else repr n.ptr
-
-(* repr specialization to get the next node corresponding to a function *)
-let next_fn_node n =
-  repr ~cond:(fun n -> n.opt_args <> []) n.ptr
-
 (* Get or create a vd_node corresponding to the location *)
 let vd_node ?(add = false) loc =
   assert (not loc.Location.loc_ghost);
@@ -267,15 +258,10 @@ let vd_node ?(add = false) loc =
       Hashtbl.add vd_nodes loc r;
     r
 
-(* Merge nodes in order *)
-let merge_nodes ~search n1 n2 =
-  let n1 = search n1 and n2 = search n2 in
-  n1.ptr <- n2
-
 (* Locations l1 and l2 are part of a binding from one to another *)
-let merge_locs ~search ?add l1 l2 =
+let merge_locs ?add l1 l2 =
   if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    merge_nodes ~search (vd_node ?add l1) (vd_node l2)
+    (vd_node ?add l1).ptr.ptr <- (vd_node l2).ptr
 
 
                 (********   PROCESSING   ********)
@@ -450,7 +436,7 @@ module DeadArg = struct
         let rec locate loc =
           let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
           if loc == loc.ptr || count >= !occur then loc.loc
-          else (occur := !occur - count; locate @@ next_fn_node loc)
+          else (occur := !occur - count; locate loc.ptr)
         in
         if check_underscore lab then
         opt_args := (locate loc, lab, has_val, (match expr with
@@ -523,9 +509,9 @@ module DeadArg = struct
     | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args)
     | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=loc2; _}); _}, args) ->
         process loc2 args;
-        merge_locs ~search:next_fn_node node.loc loc2
+        merge_locs node.loc loc2
     | Texp_ident (_, _, {val_loc=loc2; _}) ->
-        merge_locs ~search:next_fn_node node.loc loc2
+        merge_locs node.loc loc2
     | _ -> ()
 
 end
@@ -556,7 +542,7 @@ let value_binding = function
       vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
       _
     } ->
-      merge_locs ~search:next_fn_node ~add:true loc1 loc2
+      merge_locs ~add:true loc1 loc2
   | {
       vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
       vb_expr=exp;
@@ -751,18 +737,10 @@ let rec load_file fn = match kind fn with
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
-          Filename.check_suffix fn ".mli"
-          || try
-              let lenf = String.length fn in
-              let lenc = String.length !current_src in
-              let fn =
-                if lenc >= lenf
-                && String.sub !current_src (lenc - lenf) lenf <> fn then
-                  find_path fn
-                else !current_src
-              in
-              Sys.file_exists (fn ^ "i")
-            with Not_found -> false
+          fn <> "_none_" && (Filename.check_suffix fn ".mli"
+            || try
+                Sys.file_exists (find_path fn ^ "i")
+              with Not_found -> false)
         in
         if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
           Hashtbl.add references vd1 (vd2 ::hashtbl_find_list references vd1)

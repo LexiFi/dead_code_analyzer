@@ -241,24 +241,12 @@ val prloc : ?fn:string -> Location.t -> unit
 
 (** {2 Node processing} *)
 
-val repr : ?cond:(vd_node -> bool) -> vd_node -> vd_node
-  (** [repr cond node] goes deeper in [node] until [cond] is respected (or cannot go deeper) *)
-
-val next_fn_node : vd_node -> vd_node
-  (** [next_fn node] goes deeper in [node] until finding a node that is a function
-    expecting optional arguments (or cannot go deeper) *)
-
 val vd_node : ?add:bool -> Location.t -> vd_node
   (** [vd_node ?add loc] gives the node corresponding to [loc] if it exists, build it otherwise
     and, if add, save it for later use.*)
 
-val merge_nodes : search:('a -> vd_node) -> 'a -> 'a -> unit
-  (** [merge_nodes ~search n1 n2] as [search n1] pointing to [search n2] *)
-
-val merge_locs :
-  search:(vd_node -> vd_node) ->
-  ?add:bool -> Location.t -> Location.t -> unit
-  (** [merge_locs ~search ?add loc1 loc2] as [search (vd_node ?add n1)] pointing to [search n2] *)
+val merge_locs : ?add:bool -> Location.t -> Location.t -> unit
+  (** [merge_locs ?add loc1 loc2] as [(vd_node ?add n1).ptr] pointing to [n2.ptr] *)
 
 
 val analyze_opt_args : unit -> (Location.t * string * opt_arg) list
