@@ -12,6 +12,12 @@ doc:
 man:
 	make -C man all
 
+prof:
+	make -C src prof
+
+prof-opt:
+	make -C src prof-opt
+
 clean:
 	make -C src clean
 	make -C doc clean
@@ -19,7 +25,7 @@ clean:
 	make -C examples clean
 	make -C check clean
 
-check: all examples
+check:
 	make -C check
 
 

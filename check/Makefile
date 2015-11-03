@@ -6,48 +6,49 @@ OCAMLC=ocamlc $(COMPFLAGS)
 OCAMLOPT=ocamlopt $(COMPFLAGS)
 SRC=check.ml
 TARGET=res.out
+EXT=byt
 
-all: aggr.byt$(EXE)
-	make internal > internal.out 2>&1
-	make classic > classic.out 2>&1
-	make threshold-1 > threshold-1.out 2>&1
-	make threshold-3-0.5 > threshold-3-0.5.out 2>&1
-	./aggr.byt$(EXE) threshold-3-0.5.out threshold-1.out internal.out classic.out
+all: aggr.$(EXT)$(EXE)
+	make internal > internal.out 2>&1 EXT=$(EXT)
+	make classic > classic.out 2>&1 EXT=$(EXT)
+	make threshold-1 > threshold-1.out 2>&1 EXT=$(EXT)
+	make threshold-3-0.5 > threshold-3-0.5.out 2>&1 EXT=$(EXT)
+	./aggr.$(EXT)$(EXE) threshold-3-0.5.out threshold-1.out internal.out classic.out
 
-internal: prepare check.byt$(EXE)
-	../src/deadCode.byt$(EXE) -A --internal ../examples > $(TARGET)
-	./check.byt$(EXE) ./internal $(TARGET)
+opt:
+	make EXT=opt
 
-classic: prepare check.byt$(EXE)
-	../src/deadCode.byt$(EXE) -A ../examples > $(TARGET)
-	./check.byt$(EXE) ./classic $(TARGET)
+internal: prepare check.$(EXT)$(EXE)
+	../src/deadCode.$(EXT)$(EXE) -A --internal ../examples > $(TARGET)
+	./check.$(EXT)$(EXE) ./internal $(TARGET)
 
-threshold-1: prepare check.byt$(EXE)
-	../src/deadCode.byt$(EXE) -A --internal --threshold +1 ../examples > $(TARGET)
-	./check.byt$(EXE) ./threshold-1 $(TARGET)
+classic: prepare check.$(EXT)$(EXE)
+	../src/deadCode.$(EXT)$(EXE) -A ../examples > $(TARGET)
+	./check.$(EXT)$(EXE) ./classic $(TARGET)
 
-threshold-3-0.5: prepare check.byt$(EXE)
-	../src/deadCode.byt$(EXE) -A --internal --threshold +3+0.5+both ../examples > $(TARGET)
-	./check.byt$(EXE) ./threshold-3-0.5 $(TARGET)
+threshold-1: prepare check.$(EXT)$(EXE)
+	../src/deadCode.$(EXT)$(EXE) -A --internal --threshold +1 ../examples > $(TARGET)
+	./check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
+
+threshold-3-0.5: prepare check.$(EXT)$(EXE)
+	../src/deadCode.$(EXT)$(EXE) -A --internal --threshold +3+0.5+both ../examples > $(TARGET)
+	./check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
 
 prepare:
-	make -C .. examples > /dev/null 2>&1
-
-opt: check.opt$(EXE)
-	../src/deadCode.opt$(EXE) $(DEADFLAGS) ../examples > $(TARGET)
-	./check.opt$(EXE) . $(TARGET)
+	make -C ../src deadCode.$(EXT)$(EXE) > /dev/null 2>&1
+	make -C ../examples build > /dev/null 2>&1
 
 check.byt$(EXE): $(SRC)
-	$(OCAMLC) $(LIBS) $(SRC) -o $@
+	$(OCAMLC) -o $@ $(LIBS) $(SRC) $^
 
 check.opt$(EXE): $(SRC)
-	$(OCAMLC) $(LIBS) $(SRC) -o $@
+	$(OCAMLOPT) -o $@ $(LIBS:.cma=.cmxa) $^
 
 aggr.byt$(EXE): aggregate.ml
-	$(OCAMLC) $^ -o $@
+	$(OCAMLC) -o $@ $^
 
 aggr.opt$(EXE): aggregate.ml
-	$(OCAMLC) $^ -o $@
+	$(OCAMLOPT) -o $@ $^
 
 clean:
 	rm -f *~ *.cm* *.a *.lib *.o *.obj *.byt$(EXE) *.opt$(EXE) **.out

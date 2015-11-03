@@ -184,7 +184,8 @@ let mods = ref [] (* module path *)
 
                 (********   HELPERS   ********)
 
-let find_path fn = List.find
+let find_path fn =
+List.find
   (fun path ->
     let lp = String.length path and lf = String.length fn in
       lp >= lf && String.sub path (lp - lf) lf = fn)
@@ -214,14 +215,11 @@ let separator () =
 
 (* Location printer: `filename:line: ' *)
 let prloc ?fn (loc : Location.t) = begin match fn with
-  | Some s when Filename.chop_extension (loc.loc_start.pos_fname) = Filename.chop_extension (Filename.basename s) ->
+  | Some s ->
       print_string (Filename.dirname s ^ "/" ^ loc.loc_start.pos_fname)
-  | _ -> begin match find_path loc.loc_start.pos_fname with
+  | _ -> match find_path loc.loc_start.pos_fname with
     | s -> print_string s
-    | exception Not_found -> match fn with
-      | None -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
-      | Some s -> print_string s
-    end
+    | exception Not_found -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
   end;
   print_char ':';
   print_int loc.loc_start.pos_lnum;
@@ -480,6 +478,7 @@ module DeadArg = struct
     let rec get_sig_args args typ = match typ.desc with
       | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
           get_sig_args ((arg, Some {e with exp_desc=Texp_constant (Asttypes.Const_int 0)}, Optional)::args) t
+      | Tarrow (_, _, t, _)
       | Tlink t -> get_sig_args args t
       | _ -> args
 
@@ -753,8 +752,17 @@ let rec load_file fn = match kind fn with
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
           Filename.check_suffix fn ".mli"
-          || try Sys.file_exists (Filename.chop_extension (find_path fn) ^ ".mli")
-          with Not_found -> false
+          || try
+              let lenf = String.length fn in
+              let lenc = String.length !current_src in
+              let fn =
+                if lenc >= lenf
+                && String.sub !current_src (lenc - lenf) lenf <> fn then
+                  find_path fn
+                else !current_src
+              in
+              Sys.file_exists (fn ^ "i")
+            with Not_found -> false
         in
         if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
           Hashtbl.add references vd1 (vd2 ::hashtbl_find_list references vd1)
@@ -888,11 +896,11 @@ let report_opt_args s l =
 
     let change =
       let (loc, _, _, _, _) = try List.hd l with _ -> (!last_loc, "_none_", [], 0., 0) in
-      dir @@ abs loc
+      dir (abs loc)
     in
 
     let pretty_print = fun (loc, lab, slot, ratio, total) ->
-      if change @@ abs loc then print_newline ();
+      if change (abs loc) then print_newline ();
       prloc loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
@@ -937,7 +945,7 @@ let report_unused_exported () =
       in
       List.fold_left folder [] !decs
       |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
-          compare (fn1, abs loc1, path1) (fn2, abs loc2, path2))
+          compare (fn1, loc1, path1) (fn2, loc2, path2))
     in
 
     let change =
