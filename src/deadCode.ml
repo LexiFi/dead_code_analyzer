@@ -184,7 +184,7 @@ let corres = Hashtbl.create 256         (* link from dec to def *)
 let style = ref []                      (* patterns of type unit which are not () *)
 let last_loc = ref Location.none        (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
-let mods = ref [] (* module path *)
+let mods = ref []                       (* module path *)
 
 
                 (********   HELPERS   ********)
@@ -322,7 +322,8 @@ module DeadType = struct
     in
     let name = Path.name path in
     let len =
-      let rec len path = let open Path in match path with
+      let open Path in
+      let rec len path = match path with
         | Pident id when id.Ident.name = "Pervasives" -> String.length "Pervasives."
         | Papply (_, _) | Pident _ -> 0
         | Pdot (path, _, _) -> len path
@@ -427,8 +428,8 @@ module DeadArg = struct
       let tbl = Hashtbl.create 256 in       (* tbl: label -> nb of occurences *)
 
       let treat lab expr =
-        let has_val = match expr with
-          | Some {exp_desc=Texp_construct (_, {cstr_name="None"; _}, _); _} -> false
+        let has_val = match expr.exp_desc with
+          | Texp_construct (_, {cstr_name="None"; _}, _) -> false
           | _ -> true
         in
         let occur = ref @@
@@ -442,15 +443,15 @@ module DeadArg = struct
           else (occur := !occur - count; locate loc.ptr)
         in
         if check_underscore lab then
-          opt_args := (locate loc, lab, has_val, (match expr with
-              | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
-              | _ -> !last_loc))
+          opt_args := (locate loc, lab, has_val,
+              if expr.exp_loc.Location.loc_ghost then !last_loc
+              else expr.exp_loc)
             :: !opt_args
       in
 
       List.iter
         (function
-          | (Asttypes.Optional lab, expr, _) when expr <> None ->
+          | (Asttypes.Optional lab, Some expr, _) ->
             treat lab expr
           | _ -> ())
         args
@@ -561,7 +562,7 @@ let collect_references =                          (* Tast_mapper *)
 
   let structure_item self i = begin match i.str_desc with
     | Tstr_value (_, l) -> List.iter value_binding l
-    | Tstr_type  (_, l) -> List.iter DeadType.tstr l
+    | Tstr_type  (_, l) when !DeadFlag.exported.print -> List.iter DeadType.tstr l
     | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
     | _ -> () end;
     let res = super.structure_item self i in
@@ -583,9 +584,9 @@ let collect_references =                          (* Tast_mapper *)
       | Tpat_record (l, _) ->
           List.iter
             (fun (_, lab, _) ->
-              if !DeadFlag.internal
-              || unit lab.lbl_loc.Location.loc_start.pos_fname
-                  <> unit !current_src then
+              if !DeadFlag.exported.print
+              && (!DeadFlag.internal
+                  || unit lab.lbl_loc.Location.loc_start.pos_fname <> unit !current_src) then
                 Hashtbl.add references lab.lbl_loc (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
             l
       | _ -> () end;
@@ -593,24 +594,27 @@ let collect_references =                          (* Tast_mapper *)
   in
 
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
-    | Texp_apply (exp, args) -> treat_exp exp args
+    | Texp_apply (exp, args) when DeadFlag.(!opt.always || !opt.never) -> treat_exp exp args
+
     | Texp_ident (_, _, {Types.val_loc; _})
     | Texp_field (_, _, {lbl_loc=val_loc; _})
     | Texp_construct (_, {cstr_loc=val_loc; _}, _)
-      when not val_loc.Location.loc_ghost && (!DeadFlag.internal
-          || unit val_loc.Location.loc_start.pos_fname
-            <> unit !current_src) ->
+      when not val_loc.Location.loc_ghost && !DeadFlag.exported.print
+      && (!DeadFlag.internal || unit val_loc.Location.loc_start.pos_fname <> unit !current_src) ->
         Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
+
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
         begin match vb_pat.pat_desc with
           | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
           | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
+
     | Texp_let (
           Nonrecursive,
           [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
           {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
       when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
         style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
+
     | _ -> () end;
     super.expr self e
   in
@@ -754,8 +758,10 @@ let rec load_file fn = match kind fn with
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
-            List.iter assoc (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
-            List.iter assoc !type_dependencies;
+            if !DeadFlag.exported.print then begin
+              List.iter assoc (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
+              List.iter assoc !type_dependencies
+            end;
             type_dependencies := []
         | _ -> ()  (* todo: support partial_implementation? *)
       end

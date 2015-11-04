@@ -4,14 +4,10 @@
 - classes
 - `assoc` is not precise enough (-> may generate FN)
 
-#Fix
-- Clean output
-- Clean code!!
-
 
 #Testing
 - \[X\] Test suite
-- \[ \] Test on big projects: see directory results
+- \[ \] Test on big projects: see directory `results`
 - \[ \] Create more precise tests
 - \[ \] Create tests for options
 
