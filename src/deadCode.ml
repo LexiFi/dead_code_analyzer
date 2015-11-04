@@ -1,5 +1,10 @@
 (***************************************************************************)
-(*  Copyright (C) 2014-2015 LexiFi SAS. All rights reserved.               *)
+(*                                                                         *)
+(**  Copyright (c) 2014-2015 LexiFi SAS. All rights reserved.              *)
+(*                                                                         *)
+(*   This source code is licensed under the ISC License                    *)
+(*   found in the LICENSE file at the root of this source tree             *)
+(*                                                                         *)
 (***************************************************************************)
 
 (** Dead code anlyzing tool. It only reports unused exported values by default.
@@ -184,8 +189,7 @@ let mods = ref [] (* module path *)
 
                 (********   HELPERS   ********)
 
-let find_path fn =
-List.find
+let find_path fn = List.find
   (fun path ->
     let lp = String.length path and lf = String.length fn in
       lp >= lf && String.sub path (lp - lf) lf = fn)
@@ -438,7 +442,7 @@ module DeadArg = struct
           else (occur := !occur - count; locate loc.ptr)
         in
         if check_underscore lab then
-        opt_args := (locate loc, lab, has_val, (match expr with
+          opt_args := (locate loc, lab, has_val, (match expr with
               | Some e when not e.exp_loc.Location.loc_ghost -> e.exp_loc
               | _ -> !last_loc))
             :: !opt_args
@@ -727,10 +731,9 @@ let rec load_file fn = match kind fn with
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
-          fn <> "_none_" && (Filename.check_suffix fn ".mli"
-            || try
-                Sys.file_exists (find_path fn ^ "i")
-              with Not_found -> false)
+          fn <> "_none_" && (fn.[String.length fn - 1] = 'i'
+            ||  try Sys.file_exists (find_path fn ^ "i")
+                with Not_found -> false)
         in
         if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
           Hashtbl.add references vd1 (vd2 ::hashtbl_find_list references vd1)
