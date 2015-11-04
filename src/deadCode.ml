@@ -411,11 +411,11 @@ end
 module DeadArg = struct
 
   (* Verify the optional args calls. Treat args *)
-  let rec process ?(anon = true) val_loc args =
+  let rec process val_loc args =
     List.iter                               (* treat each arg's expression before all (even if ghost) *)
       (function
         | (_, None, _) -> ()
-        | (_, Some e, _) -> check val_loc e)
+        | (_, Some e, _) -> check e)
       args;
     if val_loc.Location.loc_ghost then ()   (* Ghostbuster *)
     else begin                              (* else: `begin ... end' for aesthetics *)
@@ -424,7 +424,6 @@ module DeadArg = struct
 
       let treat lab expr =
         let has_val = match expr with
-          | None -> anon
           | Some {exp_desc=Texp_construct (_, {cstr_name="None"; _}, _); _} -> false
           | _ -> true
         in
@@ -447,7 +446,7 @@ module DeadArg = struct
 
       List.iter
         (function
-          | (Asttypes.Optional lab, expr, _) when expr <> None || not anon ->
+          | (Asttypes.Optional lab, expr, _) when expr <> None ->
             treat lab expr
           | _ -> ())
         args
@@ -455,11 +454,7 @@ module DeadArg = struct
 
 
   (* Verify the nature of the argument to detect and treat function applications and uses *)
-  and check call_site e =
-    let call_site =
-      if call_site.Location.loc_ghost then  e.exp_loc
-      else            (* default *)         call_site
-    in
+  and check e =
     (* Optional arguments used to match a signature are considered used *)
     let rec get_sig_args args typ = match typ.desc with
       | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
@@ -470,11 +465,6 @@ module DeadArg = struct
 
     in match e.exp_desc with
 
-      | Texp_function (_,
-            [{c_lhs={pat_desc=Tpat_var (_, _); pat_loc={loc_ghost=true; _}; _};
-              c_rhs={exp_desc=Texp_apply (_, args); exp_loc={loc_ghost=true; _}; _}; _}], _) ->
-          process ~anon:false call_site args
-
       | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
       | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
           process val_loc (get_sig_args args e.exp_type);
@@ -482,7 +472,7 @@ module DeadArg = struct
             last_loc := val_loc
 
       | Texp_ident (_, _, {val_loc; _}) ->
-          process ~anon:false val_loc (get_sig_args [] e.exp_type)
+          process val_loc (get_sig_args [] e.exp_type)
 
       | Texp_let (* Partial application as argument may cut in two parts:
                   * let _ = partial in implicit opt_args elimination *)
