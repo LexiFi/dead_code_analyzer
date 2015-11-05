@@ -305,14 +305,21 @@ module DeadType = struct
             List.fold_left (fun prev typ -> prev ^ " * " ^ to_string typ) (to_string e) l
         | [] -> "*" end
     | Tconstr (path, l, _) -> make_name path l
-    | Tobject _ -> "Tobject _"
-    | Tfield _ -> "Tfield _"
+    | Tobject (self, _) -> "< " ^ to_string self ^ " >"
+    | Tfield (s, k, t, t1) ->
+        if Btype.field_kind_repr k = Fpresent then
+          s ^ ": "
+          ^ to_string t
+          ^ begin match t1.desc with
+              | Tfield _ -> "; " ^ to_string t1
+              | _ -> "" end
+        else to_string t1
     | Tnil -> "Tnil"
     | Tlink t -> to_string t
     | Tsubst _ -> "Tsubst _"
     | Tvariant {row_more; _} -> to_string row_more
     | Tunivar _ -> "Tunivar _"
-    | Tpoly _ -> "Tpoly _"
+    | Tpoly (t, _) -> to_string t
     | Tpackage _ -> "Tpackage _"
 
   and make_name path l =
@@ -353,7 +360,7 @@ module DeadType = struct
       try
         let t = get_block typ pos1 0 in
         let s = get_block str pos2 0 in
-        if s <> "_" && s <> t then false
+        if s <> "" && s <> t then false
         else compare typ str (pos1 + String.length t + 1) (pos2 + String.length s + 1)
       with _ -> (pos1 >= String.length typ) = (pos2 >= String.length str)
     in compare typ str 0 0
@@ -512,6 +519,40 @@ module DeadArg = struct
 end
 
 
+module DeadObj = struct
+
+  let collect_export export path cltyp loc =
+
+    let save id loc =
+      export path (Ident.create id) loc;
+      let path = String.concat "." (List.rev_map (fun id -> id.Ident.name) (path)) ^ "#" ^ id in
+      if Hashtbl.mem fields path then
+        Hashtbl.add corres loc
+          (let loc = Hashtbl.find fields path in
+          loc :: hashtbl_find_list corres loc);
+      Hashtbl.replace fields path loc
+    in
+
+    let rec export typ = match typ.desc with
+      | Tobject (self, _) -> export self
+      | Tfield (s, k, _, t) ->
+          if Btype.field_kind_repr k = Fpresent then
+            save s loc;
+          export t
+      | _ -> ()
+    in
+
+    let rec sign = function
+      | Cty_signature sg -> sg
+      | Cty_arrow (_, _, t)
+      | Cty_constr (_, _, t) -> sign t
+    in
+
+    export (sign cltyp).csig_self
+
+end
+
+
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
   | Texp_ident (_, _, {Types.val_loc; _})
@@ -650,6 +691,7 @@ let rec collect_export path u signature =
           export path id val_loc;
     | Sig_type (id, t, _) ->
           DeadType.collect_export export (id::path) t
+    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) -> DeadObj.collect_export export (id::path) t loc
     | Sig_module (id, {Types.md_type = t; _}, _)
     | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
     | _ -> ()

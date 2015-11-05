@@ -10,12 +10,15 @@ SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
 all:
 	$(OCAMLC) -c $(SRC)
 	make -C dir
+	make -C obj
 	../src/deadCode.byt $(DEADFLAGS) .
 
 build:
 	$(OCAMLC) -c $(SRC)
 	make -C dir
+	make -C obj
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
 	make -C dir clean
+	make -C obj clean
