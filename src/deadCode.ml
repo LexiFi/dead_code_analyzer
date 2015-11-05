@@ -521,9 +521,26 @@ end
 
 module DeadObj = struct
 
+  let references = Hashtbl.create 256
+
+
+  let rec sign = function
+    | Cty_signature sg -> sg
+    | Cty_arrow (_, _, t)
+    | Cty_constr (_, _, t) -> sign t
+
+
+  let rec treat_fields action typ = match typ.desc with
+    | Tobject (self, _) -> treat_fields action self
+    | Tfield (s, k, _, t) ->
+        if Btype.field_kind_repr k = Fpresent then
+          action s;
+        treat_fields action t
+    | _ -> ()
+
   let collect_export export path cltyp loc =
 
-    let save id loc =
+    let save id =
       export path (Ident.create id) loc;
       let path = String.concat "." (List.rev_map (fun id -> id.Ident.name) (path)) ^ "#" ^ id in
       if Hashtbl.mem fields path then
@@ -533,22 +550,15 @@ module DeadObj = struct
       Hashtbl.replace fields path loc
     in
 
-    let rec export typ = match typ.desc with
-      | Tobject (self, _) -> export self
-      | Tfield (s, k, _, t) ->
-          if Btype.field_kind_repr k = Fpresent then
-            save s loc;
-          export t
-      | _ -> ()
-    in
+    treat_fields save (sign cltyp).csig_self
 
-    let rec sign = function
-      | Cty_signature sg -> sg
-      | Cty_arrow (_, _, t)
-      | Cty_constr (_, _, t) -> sign t
-    in
+  let rec make_path e = match e.exp_desc with
+    | Texp_send (e, Tmeth_name s, _)
+    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
+        make_path e ^ "#" ^ s
+    | Texp_ident (_ , _, t) -> DeadType.to_string t.val_type
+    | _ -> ""
 
-    export (sign cltyp).csig_self
 
 end
 
@@ -637,12 +647,21 @@ let collect_references =                          (* Tast_mapper *)
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
     | Texp_apply (exp, args) when DeadFlag.(!opt.always || !opt.never) -> treat_exp exp args
 
-    | Texp_ident (_, _, {Types.val_loc; _})
-    | Texp_field (_, _, {lbl_loc=val_loc; _})
-    | Texp_construct (_, {cstr_loc=val_loc; _}, _)
-      when not val_loc.Location.loc_ghost && !DeadFlag.exported.print
-      && (!DeadFlag.internal || unit val_loc.Location.loc_start.pos_fname <> unit !current_src) ->
-        Hashtbl.add references val_loc (e.exp_loc :: hashtbl_find_list references val_loc)
+    | Texp_ident (_, _, {Types.val_loc=loc; _})
+    | Texp_field (_, _, {lbl_loc=loc; _})
+    | Texp_construct (_, {cstr_loc=loc; _}, _)
+      when not loc.Location.loc_ghost && !DeadFlag.exported.print
+      && (!DeadFlag.internal || unit loc.Location.loc_start.pos_fname <> unit !current_src) ->
+        Hashtbl.add references loc (e.exp_loc :: hashtbl_find_list references loc)
+
+    | Texp_send _ ->
+        begin try
+          let path = DeadObj.make_path e in
+          if !DeadFlag.exported.print && (!DeadFlag.internal
+              || (let src = unit !current_src in
+                  String.sub path 0 (String.length src) <> String.capitalize_ascii src)) then
+            Hashtbl.add DeadObj.references path (e.exp_loc :: hashtbl_find_list DeadObj.references path)
+        with _ -> () end
 
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
         begin match vb_pat.pat_desc with
@@ -669,10 +688,15 @@ let collect_references =                          (* Tast_mapper *)
 
 let rec collect_export path u signature =
 
-  let export path id loc =
+  let export ?(sep = ".") path id loc =
     if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
-    && check_underscore (Ident.name id) then
-      decs := (!current_src, id :: path, loc) :: !decs
+    && check_underscore id.Ident.name then
+      decs := (!current_src,
+          String.concat "." (List.tl (List.rev_map Ident.name path))
+          ^ (if List.tl path <> [] then sep else "")
+          ^ id.Ident.name,
+          loc)
+        :: !decs;
   in
   let rec sign = function
     | Mty_signature sg -> sg
@@ -690,8 +714,8 @@ let rec collect_export path u signature =
         if not (List.fold_left (fun b str -> b || DeadType.match_str val_type str) false !DeadFlag.types) then
           export path id val_loc;
     | Sig_type (id, t, _) ->
-          DeadType.collect_export export (id::path) t
-    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) -> DeadObj.collect_export export (id::path) t loc
+          DeadType.collect_export (export ~sep:".") (id::path) t
+    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) -> DeadObj.collect_export (export ~sep:"#") (id::path) t loc
     | Sig_module (id, {Types.md_type = t; _}, _)
     | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
     | _ -> ()
@@ -950,13 +974,16 @@ let report_unused_exported () =
     let l =
       let folder = fun acc (fn, path, loc) ->
         let l = ref [] in
-        let test loc =
-          Hashtbl.mem references loc
-          && not (check_length nb_call (l := Hashtbl.find references loc; !l))
+        let test tbl elt =
+          Hashtbl.mem tbl elt
+          && not (check_length nb_call (l := Hashtbl.find tbl elt; !l))
         in
-        match not (test loc || (let loc = Hashtbl.find corres loc in
-              List.fold_left (fun res node -> res || test node) false loc))
-              && check_length nb_call !l with
+        match
+          ( if String.contains path '#' then not (test DeadObj.references path)
+            else not (test references loc || test DeadObj.references path
+            || ( let loc = Hashtbl.find corres loc in
+              List.fold_left (fun res node -> res || test references node) false loc)))
+        && check_length nb_call !l with
           | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
           | exception Not_found -> acc
           | true -> (fn, path, loc, !l)::acc
@@ -968,13 +995,13 @@ let report_unused_exported () =
     in
 
     let change =
-      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", [], !last_loc, []) in
+      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
       dir fn
     in
     let pretty_print = fun (fn, path, loc, call_sites) ->
       if change fn then print_newline ();
       prloc ~fn loc;
-      print_string (String.concat "." @@ List.tl @@ (List.rev_map Ident.name path));
+      print_string path;
       if call_sites <> [] && !DeadFlag.exported.call_sites then print_string "    Call sites:";
       print_newline ();
       if !DeadFlag.exported.call_sites then begin

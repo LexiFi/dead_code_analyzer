@@ -1,8 +1,10 @@
-- improve *--types* option
-- all kind of types
+# Work in Progress
 - objects
 - classes
-- `assoc` is not precise enough (-> may generate FN)
+
+# Waiting
+- improve *--types* option
+- all kind of types
 
 
 #Testing
@@ -17,4 +19,4 @@
 - The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 182 unique expected results)
+ratio: **100%** succesful (over 189 unique expected results)
