@@ -6,4 +6,4 @@ end
 
 val o : c
 
-val f: <f: unit -> unit; ..> -> unit
+val f: <f: unit -> unit> -> unit

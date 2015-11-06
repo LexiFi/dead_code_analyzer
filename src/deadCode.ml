@@ -420,6 +420,74 @@ end
 
 
 
+module DeadObj = struct
+
+  let references = Hashtbl.create 256
+
+
+  let rec sign = function
+    | Cty_signature sg -> sg
+    | Cty_arrow (_, _, t)
+    | Cty_constr (_, _, t) -> sign t
+
+
+  let rec treat_fields action typ = match typ.desc with
+    | Tobject (self, _) -> treat_fields action self
+    | Tfield (s, k, _, t) ->
+        if Btype.field_kind_repr k = Fpresent then
+          action s;
+        treat_fields action t
+    | Tlink t -> treat_fields action t
+    | _ -> ()
+
+
+  let collect_export export path cltyp loc =
+
+    let save id =
+      export path (Ident.create id) loc;
+      let path = String.concat "." (List.rev_map (fun id -> id.Ident.name) (path)) ^ "#" ^ id in
+      if Hashtbl.mem fields path then
+        Hashtbl.add corres loc
+          (let loc = Hashtbl.find fields path in
+          loc :: hashtbl_find_list corres loc);
+      Hashtbl.replace fields path loc
+    in
+
+    treat_fields save (sign cltyp).csig_self
+
+
+  let rec make_path e = match e.exp_desc with
+    | Texp_send (e, Tmeth_name s, _)
+    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
+        make_path e ^ "#" ^ s
+    | Texp_ident (_ , _, t) -> DeadType.to_string t.val_type
+    | _ -> ""
+
+
+  let rec arg typ args = match typ.desc with
+    | Tlink t -> arg t args
+    | Tarrow (_, t, typ, _) -> if args <> [] then begin arg t [(List.hd args)]; arg typ (List.tl args) end
+    | Tobject _ ->
+        treat_fields
+          (fun s ->
+            let _, e, _ = List.hd args in
+            begin match e with
+            Some e ->
+              let path = make_path e in
+              if !DeadFlag.exported.print && (!DeadFlag.internal
+                  || (let src = unit !current_src in
+                      String.length path >= String.length src
+                      && String.sub path 0 (String.length src) <> String.capitalize_ascii src)) then
+                Hashtbl.add references (path ^ "#" ^ s) (e.exp_loc :: hashtbl_find_list references path)
+            | None -> () end
+          )
+          typ
+    | _ -> ()
+
+end
+
+
+
 module DeadArg = struct
 
   (* Verify the optional args calls. Treat args *)
@@ -519,49 +587,6 @@ module DeadArg = struct
 end
 
 
-module DeadObj = struct
-
-  let references = Hashtbl.create 256
-
-
-  let rec sign = function
-    | Cty_signature sg -> sg
-    | Cty_arrow (_, _, t)
-    | Cty_constr (_, _, t) -> sign t
-
-
-  let rec treat_fields action typ = match typ.desc with
-    | Tobject (self, _) -> treat_fields action self
-    | Tfield (s, k, _, t) ->
-        if Btype.field_kind_repr k = Fpresent then
-          action s;
-        treat_fields action t
-    | _ -> ()
-
-  let collect_export export path cltyp loc =
-
-    let save id =
-      export path (Ident.create id) loc;
-      let path = String.concat "." (List.rev_map (fun id -> id.Ident.name) (path)) ^ "#" ^ id in
-      if Hashtbl.mem fields path then
-        Hashtbl.add corres loc
-          (let loc = Hashtbl.find fields path in
-          loc :: hashtbl_find_list corres loc);
-      Hashtbl.replace fields path loc
-    in
-
-    treat_fields save (sign cltyp).csig_self
-
-  let rec make_path e = match e.exp_desc with
-    | Texp_send (e, Tmeth_name s, _)
-    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
-        make_path e ^ "#" ^ s
-    | Texp_ident (_ , _, t) -> DeadType.to_string t.val_type
-    | _ -> ""
-
-
-end
-
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec treat_exp exp args = match exp.exp_desc with
@@ -645,7 +670,11 @@ let collect_references =                          (* Tast_mapper *)
   in
 
   let expr self e = begin match e.exp_desc with   (* most of the processing starts here *)
-    | Texp_apply (exp, args) when DeadFlag.(!opt.always || !opt.never) -> treat_exp exp args
+    | Texp_apply (exp, args) ->
+        if DeadFlag.(!opt.always || !opt.never) then treat_exp exp args;
+        begin match exp.exp_desc with
+          | Texp_ident (_, _, {val_type; _}) -> DeadObj.arg val_type args
+          | _ -> DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
     | Texp_field (_, _, {lbl_loc=loc; _})
