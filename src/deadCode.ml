@@ -422,8 +422,13 @@ end
 
 module DeadObj = struct
 
-  let references = Hashtbl.create 256
+  let references = Hashtbl.create 256                     (* references by path#name *)
 
+  let content = Hashtbl.create 256                        (* classname -> [field names] *)
+
+  let class_dependencies = Hashtbl.create 256             (* inheritance links *)
+
+  let defined = ref []                                    (* all classes defined in the current file *)
 
   let rec sign = function
     | Cty_signature sg -> sg
@@ -443,15 +448,29 @@ module DeadObj = struct
 
   let collect_export export path cltyp loc =
 
+    let str = String.concat "." (List.tl (List.rev_map (fun id -> id.Ident.name) path)) in
+    defined := str :: !defined;
     let save id =
       export path (Ident.create id) loc;
-      let path = String.concat "." (List.rev_map (fun id -> id.Ident.name) (path)) ^ "#" ^ id in
-      if Hashtbl.mem fields path then
-        Hashtbl.add corres loc
-          (let loc = Hashtbl.find fields path in
-          loc :: hashtbl_find_list corres loc);
-      Hashtbl.replace fields path loc
+      Hashtbl.replace
+        content
+        (String.capitalize_ascii (unit !current_src) ^ "." ^ str)
+        (id :: hashtbl_find_list content (String.capitalize_ascii (unit !current_src) ^ "." ^ str))
     in
+
+    List.iter
+      (fun (p, _) ->
+        let name =
+          let name = Path.name p in
+          if List.mem name !defined then
+            String.concat "." (List.rev_map (fun id -> id.Ident.name) (List.tl path)) ^ "." ^ name
+          else name
+        in
+        let path = String.capitalize_ascii (unit !current_src) ^ "." ^ str in
+        Hashtbl.replace class_dependencies
+          path
+          (name :: hashtbl_find_list class_dependencies path))
+      (sign cltyp).csig_inher;
 
     treat_fields save (sign cltyp).csig_self
 
@@ -474,6 +493,17 @@ module DeadObj = struct
             begin match e with
             Some e ->
               let path = make_path e in
+              let rec cut_sharp s pos len =
+                if len = String.length s then s
+                else if s.[pos] = '#' then String.sub s (pos - len) len
+                else cut_sharp s (pos + 1) (len + 1)
+              in
+              let path =
+                if List.mem (cut_sharp path 0 0) !defined then
+                  String.capitalize_ascii (unit !current_src)
+                  ^ "." ^ path
+                else path
+              in
               if !DeadFlag.exported.print && (!DeadFlag.internal
                   || (let src = unit !current_src in
                       String.length path >= String.length src
@@ -686,6 +716,17 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_send _ ->
         begin try
           let path = DeadObj.make_path e in
+          let rec cut_sharp s pos len =
+            if len = String.length s then s
+            else if s.[pos] = '#' then String.sub s (pos - len) len
+            else cut_sharp s (pos + 1) (len + 1)
+          in
+          let path =
+            if List.mem (cut_sharp path 0 0) !DeadObj.defined then
+              String.capitalize_ascii (unit !current_src)
+              ^ "." ^ path
+            else path
+          in
           if !DeadFlag.exported.print && (!DeadFlag.internal
               || (let src = unit !current_src in
                   String.sub path 0 (String.length src) <> String.capitalize_ascii src)) then
@@ -721,8 +762,8 @@ let rec collect_export path u signature =
     if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
     && check_underscore id.Ident.name then
       decs := (!current_src,
-          String.concat "." (List.tl (List.rev_map Ident.name path))
-          ^ (if List.tl path <> [] then sep else "")
+          String.concat "." (List.rev_map Ident.name path)
+          ^ sep
           ^ id.Ident.name,
           loc)
         :: !decs;
@@ -807,6 +848,7 @@ let read_interface fn src = let open Cmi_format in
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
     bad_files := fn :: !bad_files
 
+
 (* Starting point *)
 let rec load_file fn = match kind fn with
   | `Iface src ->
@@ -857,7 +899,8 @@ let rec load_file fn = match kind fn with
               List.iter assoc (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
               List.iter assoc !type_dependencies
             end;
-            type_dependencies := []
+            type_dependencies := [];
+            DeadObj.defined := []
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 
@@ -999,9 +1042,26 @@ let report_opt_args s l =
 
 
 let report_unused_exported () =
+  Hashtbl.iter
+    (fun a l ->
+      List.iter
+        (fun c -> List.iter
+          (fun f ->
+            Hashtbl.replace
+              DeadObj.references
+              (c ^ "#" ^ f)
+              (hashtbl_find_list DeadObj.references (c ^ "#" ^ f) @ hashtbl_find_list DeadObj.references (a ^ "#" ^ f)))
+          (hashtbl_find_list DeadObj.content c))
+        l)
+    DeadObj.class_dependencies;
   let rec report_unused_exported nb_call =
     let l =
       let folder = fun acc (fn, path, loc) ->
+        let rec cut_main s pos =
+          if pos = String.length s then s
+          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
+          else cut_main s (pos + 1)
+        in
         let l = ref [] in
         let test tbl elt =
           Hashtbl.mem tbl elt
@@ -1013,9 +1073,9 @@ let report_unused_exported () =
             || ( let loc = Hashtbl.find corres loc in
               List.fold_left (fun res node -> res || test references node) false loc)))
         && check_length nb_call !l with
-          | exception Not_found when nb_call = 0 -> (fn, path, loc, !l)::acc
+          | exception Not_found when nb_call = 0 -> (fn, cut_main path 0, loc, !l)::acc
           | exception Not_found -> acc
-          | true -> (fn, path, loc, !l)::acc
+          | true -> (fn, cut_main path 0, loc, !l)::acc
           | false -> acc
       in
       List.fold_left folder [] !decs

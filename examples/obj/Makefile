@@ -1,7 +1,7 @@
 COMPFLAGS=-w +A -I +compiler-libs -bin-annot -keep-locs
 OCAMLC=ocamlc $(COMPFLAGS)
 OCAMLOPT=ocamlopt $(COMPFLAGS)
-SRC=class.mli class.ml object.ml
+SRC=class.mli class.ml inher.mli inher.ml object.ml
 
 all:
 	$(OCAMLC) -c $(SRC)

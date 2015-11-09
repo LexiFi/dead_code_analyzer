@@ -1,0 +1,5 @@
+./examples/obj/inher.mli:1: p#f
+./examples/obj/inher.mli:1: p#g
+./examples/obj/inher.mli:7: c#f
+./examples/obj/inher.mli:7: c#g
+./examples/obj/inher.mli:13: f
