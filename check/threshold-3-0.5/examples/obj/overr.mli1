@@ -1,0 +1,3 @@
+./examples/obj/overr.mli:1: p1#f
+./examples/obj/overr.mli:12: c#f
+./examples/obj/overr.mli:12: c#g

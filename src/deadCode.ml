@@ -455,7 +455,7 @@ module DeadObj = struct
       Hashtbl.replace
         content
         (String.capitalize_ascii (unit !current_src) ^ "." ^ str)
-        (id :: hashtbl_find_list content (String.capitalize_ascii (unit !current_src) ^ "." ^ str))
+        ((false, id) :: hashtbl_find_list content (String.capitalize_ascii (unit !current_src) ^ "." ^ str))
     in
 
     List.iter
@@ -482,6 +482,39 @@ module DeadObj = struct
     | Texp_ident (_ , _, t) -> DeadType.to_string t.val_type
     | _ -> ""
 
+  let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
+    let name =
+      String.capitalize_ascii (unit !current_src) ^ "."
+      ^ String.concat "." (List.rev !mods)
+      ^ (if !mods <> [] then "." ^ name.Ident.name else name.Ident.name)
+    in
+    if Hashtbl.mem content name then
+      let rec structure cl_exp = match cl_exp.cl_desc with
+        | Tcl_fun (_, _, _, cl_exp, _)
+        | Tcl_apply (cl_exp, _)
+        | Tcl_let (_, _, _, cl_exp)
+        | Tcl_constraint (cl_exp, _, _, _, _) -> structure cl_exp
+        | Tcl_structure cl_struct ->
+            List.iter
+              (fun f -> match f.cf_desc with
+                | Tcf_inherit (_, _, _, _, l) ->
+                    List.iter
+                      (fun (s, _) ->
+                        Hashtbl.replace content name
+                          (List.map
+                            (fun (overr, f) -> if f = s then (false, f) else (overr, f))
+                            (hashtbl_find_list content name)))
+                      l
+                | Tcf_method ({txt; _}, _, _) ->
+                    Hashtbl.replace content name
+                      (List.map
+                        (fun (overr, f) -> if f = txt then (true, f) else (overr, f))
+                        (hashtbl_find_list content name))
+                | _ -> ())
+              cl_struct.cstr_fields
+        | _ -> ()
+      in
+      structure ci_expr
 
   let rec arg typ args = match typ.desc with
     | Tlink t -> arg t args
@@ -670,6 +703,7 @@ let collect_references =                          (* Tast_mapper *)
     | Tstr_value (_, l) -> List.iter value_binding l
     | Tstr_type  (_, l) when !DeadFlag.exported.print -> List.iter DeadType.tstr l
     | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
+    | Tstr_class l -> List.iter DeadObj.tstr l
     | _ -> () end;
     let res = super.structure_item self i in
     begin match i.str_desc with
@@ -1047,8 +1081,9 @@ let report_unused_exported () =
       let met = ref [] in
       List.iter
         (fun c -> List.iter
-          (fun f ->
-            if not (List.mem f !met) then begin
+          (fun (_, f) ->
+            let overr, _ = List.find (fun (_, s) -> s = f) (hashtbl_find_list DeadObj.content a) in
+            if not (overr || List.mem f !met) then begin
               met := f :: !met;
               Hashtbl.replace
                 DeadObj.references
