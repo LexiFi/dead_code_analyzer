@@ -1044,15 +1044,19 @@ let report_opt_args s l =
 let report_unused_exported () =
   Hashtbl.iter
     (fun a l ->
+      let met = ref [] in
       List.iter
         (fun c -> List.iter
           (fun f ->
-            Hashtbl.replace
-              DeadObj.references
-              (c ^ "#" ^ f)
-              (hashtbl_find_list DeadObj.references (c ^ "#" ^ f) @ hashtbl_find_list DeadObj.references (a ^ "#" ^ f)))
+            if not (List.mem f !met) then begin
+              met := f :: !met;
+              Hashtbl.replace
+                DeadObj.references
+                (c ^ "#" ^ f)
+                (hashtbl_find_list DeadObj.references (c ^ "#" ^ f) @ hashtbl_find_list DeadObj.references (a ^ "#" ^ f))
+            end)
           (hashtbl_find_list DeadObj.content c))
-        l)
+        (List.rev l))
     DeadObj.class_dependencies;
   let rec report_unused_exported nb_call =
     let l =
