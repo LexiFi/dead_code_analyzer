@@ -1,6 +1,6 @@
 # Work in Progress
+- classes: overriding todo
 - objects
-- classes
 
 # Waiting
 - improve *--types* option
@@ -19,4 +19,4 @@
 - The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 189 unique expected results)
+ratio: **100%** succesful (over 205 unique expected results)
