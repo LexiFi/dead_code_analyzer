@@ -1,5 +1,5 @@
 # Work in Progress
-- classes: tests; self referencing in super; verification
+- classes: tests; verification
 - objects
 
 # Waiting

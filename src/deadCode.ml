@@ -432,7 +432,9 @@ module DeadObj = struct
 
   let references = Hashtbl.create 256                     (* references by path#name *)
 
-  let self_ref = Hashtbl.create 256                       (* references by path#name to itself*)
+  let self_ref = Hashtbl.create 256                       (* references by path#name to itself *)
+
+  let super_ref = Hashtbl.create 256                      (* references by path#name to super *)
 
   let content = Hashtbl.create 256                        (* classname -> [field names] *)
 
@@ -441,6 +443,8 @@ module DeadObj = struct
   let defined = ref []                                    (* all classes defined in the current file *)
 
   let aliases = ref []                                    (* aliases on class names *)
+
+  let last_class = ref ""                                 (* last class met *)
 
   let rec sign = function
     | Cty_signature sg -> sg
@@ -460,14 +464,17 @@ module DeadObj = struct
 
   let collect_export export path cltyp loc =
 
+
     let str = String.concat "." (List.tl (List.rev_map (fun id -> id.Ident.name) path)) in
+
+    last_class := String.capitalize_ascii (unit !current_src) ^ "." ^ str;
     defined := str :: !defined;
     let save id =
       export path (Ident.create id) loc;
       Hashtbl.replace
         content
-        (String.capitalize_ascii (unit !current_src) ^ "." ^ str)
-        ((false, id) :: hashtbl_find_list content (String.capitalize_ascii (unit !current_src) ^ "." ^ str))
+        !last_class
+        ((false, id) :: hashtbl_find_list content !last_class)
     in
 
     List.iter
@@ -478,24 +485,29 @@ module DeadObj = struct
             String.concat "." (List.rev_map (fun id -> id.Ident.name) (List.tl path)) ^ "." ^ name
           else name
         in
-        let path = String.capitalize_ascii (unit !current_src) ^ "." ^ str in
         Hashtbl.replace class_dependencies
-          path
-          (name :: hashtbl_find_list class_dependencies path))
+          !last_class
+          (name :: hashtbl_find_list class_dependencies !last_class))
       (sign cltyp).csig_inher;
 
     treat_fields save (sign cltyp).csig_self
 
 
-  let rec make_path ?(self = false) e = match e.exp_desc with
+  let rec make_path ?(hiera = false) e = match e.exp_desc with
     | Texp_send (e, Tmeth_name s, _)
     | Texp_send (e, Tmeth_val {name = s; _}, _) ->
-        make_path ~self e ^ "#" ^ s
+        make_path ~hiera e ^ "#" ^ s
     | Texp_ident (path, _, typ) -> let rec name t = match t.desc with
         | Tlink t -> name t
         | Tvar i -> begin match i with Some id -> id | None -> "'a" end
         | Tconstr (path, _, _) -> Path.name path
-        | _ -> if self then Path.name path else try List.assoc (Path.name path) !aliases with Not_found -> ""
+        | _ ->
+            if hiera then match typ.val_kind with
+              | Val_self _ -> "self"
+              | Val_anc _ -> "super"
+              | _ -> ""
+            else
+              try List.assoc (Path.name path) !aliases with Not_found -> ""
         in name typ.val_type
     | _ -> ""
 
@@ -505,6 +517,7 @@ module DeadObj = struct
       ^ String.concat "." (List.rev !mods)
       ^ (if !mods <> [] then "." ^ name.Ident.name else name.Ident.name)
     in
+    last_class := name;
     if Hashtbl.mem content name then
       let rec structure cl_exp = match cl_exp.cl_desc with
         | Tcl_fun (_, _, _, cl_exp, _)
@@ -572,10 +585,13 @@ module DeadObj = struct
                   ^ "." ^ path
                 else path
               in
-              if path <> "" && exported path then begin
+              if path.[0] <> '#' && exported path then begin
                 Hashtbl.add references path (e.exp_loc :: hashtbl_find_list references path);
-                if String.sub (make_path ~self:true e) 0 4 = "self" then
-                  Hashtbl.add self_ref path (e.exp_loc :: hashtbl_find_list references path)
+                let hiera =  make_path ~hiera:true e in
+                if String.sub hiera 0 4 = "self" then
+                  Hashtbl.add self_ref path (e.exp_loc :: hashtbl_find_list self_ref path)
+                else if String.sub hiera 0 5 = "super" then
+                  Hashtbl.add super_ref (!last_class ^ "#" ^ s) (path :: hashtbl_find_list super_ref path)
               end
             | None -> () end
           )
@@ -798,10 +814,18 @@ let collect_references =                          (* Tast_mapper *)
               ^ "." ^ path
             else path
           in
-          if exported path then begin
+          if path.[0] <> '#' && exported path then begin
             Hashtbl.add DeadObj.references path (e.exp_loc :: hashtbl_find_list DeadObj.references path);
-            if String.sub (DeadObj.make_path ~self:true e) 0 4 = "self" then
-              Hashtbl.add DeadObj.self_ref path (e.exp_loc :: hashtbl_find_list DeadObj.references path)
+            let hiera =  DeadObj.make_path ~hiera:true e in
+            if String.sub hiera 0 4 = "self" then
+              Hashtbl.add DeadObj.self_ref path (e.exp_loc :: hashtbl_find_list DeadObj.self_ref path)
+            else if String.sub hiera 0 5 = "super" then begin
+              let s =
+                let tmp = cut_sharp path 0 0 in
+                String.sub path (String.length tmp + 1) (String.length path - String.length tmp - 1)
+              in
+              Hashtbl.add DeadObj.super_ref (!DeadObj.last_class ^ "#" ^ s) (path :: hashtbl_find_list DeadObj.super_ref path)
+            end
           end
         with _ -> () end
 
@@ -1136,6 +1160,17 @@ let report_unused_exported () =
           (hashtbl_find_list DeadObj.content c))
         (List.rev l))
     DeadObj.class_dependencies;
+  Hashtbl.iter
+    (fun key l ->
+      List.iter
+        (fun path -> if Hashtbl.mem DeadObj.self_ref path then
+          Hashtbl.replace
+            DeadObj.references
+            key
+            (List.sort_uniq compare (hashtbl_find_list DeadObj.self_ref path @ hashtbl_find_list DeadObj.references key))
+        )
+        l)
+    DeadObj.super_ref;
   let rec report_unused_exported nb_call =
     let l =
       let folder = fun acc (fn, path, loc) ->
