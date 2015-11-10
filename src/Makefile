@@ -17,10 +17,13 @@ deadCode.byt$(EXE): $(SRCS)
 deadCode.opt$(EXE): $(SRCS)
 	$(OCAMLOPT) -o $@ $(LIBS:.cma=.cmxa) $(SRCS)
 
-prof:
+debug: $(SRCS)
+	$(OCAMLC) -g -o deadCode.byt$(EXE) $(LIBS) $(SRCS)
+
+prof: $(SRCS)
 	ocamlcp -P a $(COMPFLAGS) -o deadCode.byt$(EXE) $(LIBS) $(SRCS)
 
-prof-opt:
+prof-opt: $(SRCS)
 	ocamloptp -P a -p $(COMPFLAGS) -o deadCode.opt$(EXE) $(LIBS:.cma=.cmxa) $(SRCS)
 
 clean:

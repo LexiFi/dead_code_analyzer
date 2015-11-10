@@ -201,6 +201,14 @@ let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
 let hashtbl_find_list hashtbl key = try Hashtbl.find hashtbl key with Not_found -> []
 
+let exported fn =
+  !DeadFlag.exported.print && (!DeadFlag.internal
+      || fn.[String.length fn - 1] = 'i'
+      || (let src, name = unit !current_src, unit fn in
+        String.length name < String.length src
+        || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
+      || try not (Sys.file_exists (find_path fn ^ "i")) with Not_found -> true)
+
 (* Section printer:
  * section:     `.> SECTION: '
  *              `==========='
@@ -220,7 +228,7 @@ let separator () =
 (* Location printer: `filename:line: ' *)
 let prloc ?fn (loc : Location.t) = begin match fn with
   | Some s ->
-      print_string (Filename.dirname s ^ "/" ^ loc.loc_start.pos_fname)
+      print_string (Filename.dirname s ^ "/" ^ Filename.basename loc.loc_start.pos_fname)
   | _ -> match find_path loc.loc_start.pos_fname with
     | s -> print_string s
     | exception Not_found -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
@@ -424,11 +432,15 @@ module DeadObj = struct
 
   let references = Hashtbl.create 256                     (* references by path#name *)
 
+  let self_ref = Hashtbl.create 256                       (* references by path#name to itself*)
+
   let content = Hashtbl.create 256                        (* classname -> [field names] *)
 
   let class_dependencies = Hashtbl.create 256             (* inheritance links *)
 
   let defined = ref []                                    (* all classes defined in the current file *)
+
+  let aliases = ref []                                    (* aliases on class names *)
 
   let rec sign = function
     | Cty_signature sg -> sg
@@ -475,11 +487,16 @@ module DeadObj = struct
     treat_fields save (sign cltyp).csig_self
 
 
-  let rec make_path e = match e.exp_desc with
+  let rec make_path ?(self = false) e = match e.exp_desc with
     | Texp_send (e, Tmeth_name s, _)
     | Texp_send (e, Tmeth_val {name = s; _}, _) ->
-        make_path e ^ "#" ^ s
-    | Texp_ident (_ , _, t) -> DeadType.to_string t.val_type
+        make_path ~self e ^ "#" ^ s
+    | Texp_ident (path, _, typ) -> let rec name t = match t.desc with
+        | Tlink t -> name t
+        | Tvar i -> begin match i with Some id -> id | None -> "'a" end
+        | Tconstr (path, _, _) -> Path.name path
+        | _ -> if self then Path.name path else try List.assoc (Path.name path) !aliases with Not_found -> ""
+        in name typ.val_type
     | _ -> ""
 
   let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
@@ -495,9 +512,27 @@ module DeadObj = struct
         | Tcl_let (_, _, _, cl_exp)
         | Tcl_constraint (cl_exp, _, _, _, _) -> structure cl_exp
         | Tcl_structure cl_struct ->
+            let cut_pat s = "self" ^ String.sub s 7 (String.length s - 7) in
+            begin match cl_struct.cstr_self with
+              | {pat_desc=Tpat_alias ({pat_desc=Tpat_alias ({pat_desc=Tpat_var (id, _); _}, id2, _); _}, id3, _); _} ->
+                  aliases := (id.Ident.name, name) :: (cut_pat id2.Ident.name, name) :: (cut_pat id3.Ident.name, name) :: !aliases
+              | {pat_desc=Tpat_alias ({pat_desc=Tpat_alias (_, id1, _); _}, id2, _); } ->
+                  aliases := (cut_pat id1.Ident.name, name) :: (cut_pat id2.Ident.name, name) :: !aliases
+              | _ -> () end;
             List.iter
               (fun f -> match f.cf_desc with
-                | Tcf_inherit (_, _, _, _, l) ->
+                | Tcf_inherit (_, cl_exp, s, _, l) ->
+                    begin match s with
+                      | Some s -> let rec name cl_exp = match cl_exp.cl_desc with
+                          | Tcl_ident (path, _, _) -> Path.name path
+                          | Tcl_fun (_, _, _, cl_exp, _)
+                          | Tcl_apply (cl_exp, _)
+                          | Tcl_let (_, _, _, cl_exp)
+                          | Tcl_constraint (cl_exp, _, _, _, _) -> name cl_exp
+                          | _ -> ""
+                          in
+                          aliases := (s, name cl_exp) :: !aliases
+                      | None -> () end;
                     List.iter
                       (fun (s, _) ->
                         Hashtbl.replace content name
@@ -525,7 +560,7 @@ module DeadObj = struct
             let _, e, _ = List.hd args in
             begin match e with
             Some e ->
-              let path = make_path e in
+              let path = make_path e ^ "#" ^ s in
               let rec cut_sharp s pos len =
                 if len = String.length s then s
                 else if s.[pos] = '#' then String.sub s (pos - len) len
@@ -537,11 +572,11 @@ module DeadObj = struct
                   ^ "." ^ path
                 else path
               in
-              if !DeadFlag.exported.print && (!DeadFlag.internal
-                  || (let src = unit !current_src in
-                      String.length path >= String.length src
-                      && String.sub path 0 (String.length src) <> String.capitalize_ascii src)) then
-                Hashtbl.add references (path ^ "#" ^ s) (e.exp_loc :: hashtbl_find_list references path)
+              if path <> "" && exported path then begin
+                Hashtbl.add references path (e.exp_loc :: hashtbl_find_list references path);
+                if String.sub (make_path ~self:true e) 0 4 = "self" then
+                  Hashtbl.add self_ref path (e.exp_loc :: hashtbl_find_list references path)
+              end
             | None -> () end
           )
           typ
@@ -724,9 +759,7 @@ let collect_references =                          (* Tast_mapper *)
       | Tpat_record (l, _) ->
           List.iter
             (fun (_, lab, _) ->
-              if !DeadFlag.exported.print
-              && (!DeadFlag.internal
-                  || unit lab.lbl_loc.Location.loc_start.pos_fname <> unit !current_src) then
+              if exported lab.lbl_loc.Location.loc_start.pos_fname then
                 Hashtbl.add references lab.lbl_loc (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
             l
       | _ -> () end;
@@ -737,14 +770,18 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) ->
         if DeadFlag.(!opt.always || !opt.never) then treat_exp exp args;
         begin match exp.exp_desc with
-          | Texp_ident (_, _, {val_type; _}) -> DeadObj.arg val_type args
+          | Texp_ident (_, {loc; _}, _)
+          when loc.Location.loc_start = exp.exp_loc.Location.loc_start -> ()
+              (* The application is due to dispatching, wich is a case we do not want to treat otherwise
+               * all object's content would be marked as used at this point... *)
+          | Texp_ident (_, _, {val_type; _}) ->
+              DeadObj.arg val_type args
           | _ -> DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
-      when not loc.Location.loc_ghost && !DeadFlag.exported.print
-      && (!DeadFlag.internal || unit loc.Location.loc_start.pos_fname <> unit !current_src) ->
+      when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
         Hashtbl.add references loc (e.exp_loc :: hashtbl_find_list references loc)
 
     | Texp_send _ ->
@@ -761,10 +798,11 @@ let collect_references =                          (* Tast_mapper *)
               ^ "." ^ path
             else path
           in
-          if !DeadFlag.exported.print && (!DeadFlag.internal
-              || (let src = unit !current_src in
-                  String.sub path 0 (String.length src) <> String.capitalize_ascii src)) then
-            Hashtbl.add DeadObj.references path (e.exp_loc :: hashtbl_find_list DeadObj.references path)
+          if exported path then begin
+            Hashtbl.add DeadObj.references path (e.exp_loc :: hashtbl_find_list DeadObj.references path);
+            if String.sub (DeadObj.make_path ~self:true e) 0 4 = "self" then
+              Hashtbl.add DeadObj.self_ref path (e.exp_loc :: hashtbl_find_list DeadObj.references path)
+          end
         with _ -> () end
 
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
@@ -934,6 +972,7 @@ let rec load_file fn = match kind fn with
               List.iter assoc !type_dependencies
             end;
             type_dependencies := [];
+            DeadObj.aliases := [];
             DeadObj.defined := []
         | _ -> ()  (* todo: support partial_implementation? *)
       end
@@ -1088,7 +1127,11 @@ let report_unused_exported () =
               Hashtbl.replace
                 DeadObj.references
                 (c ^ "#" ^ f)
-                (hashtbl_find_list DeadObj.references (c ^ "#" ^ f) @ hashtbl_find_list DeadObj.references (a ^ "#" ^ f))
+                (List.sort_uniq compare (hashtbl_find_list DeadObj.references (c ^ "#" ^ f) @ hashtbl_find_list DeadObj.references (a ^ "#" ^ f)));
+              Hashtbl.replace
+                DeadObj.references
+                (a ^ "#" ^ f)
+                (List.sort_uniq compare (hashtbl_find_list DeadObj.self_ref (c ^ "#" ^ f) @ hashtbl_find_list DeadObj.references (a ^ "#" ^ f)));
             end)
           (hashtbl_find_list DeadObj.content c))
         (List.rev l))

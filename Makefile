@@ -12,6 +12,9 @@ doc:
 man:
 	make -C man all
 
+debug:
+	make -C src debug
+
 prof:
 	make -C src prof
 
