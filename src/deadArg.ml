@@ -87,7 +87,7 @@ and check e =
             exp_loc={loc_ghost=true; _};_}) ->
         process val_loc args
 
-      | _ -> ()
+    | _ -> ()
 
 
 (* Construct the 'opt_args' list of func in node *)
