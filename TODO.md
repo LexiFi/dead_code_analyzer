@@ -1,5 +1,5 @@
 # Work in Progress
-- classes: tests; verification
+- code cleaning
 - objects
 
 # Waiting
@@ -19,4 +19,4 @@
 - The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 213 unique expected results)
+ratio: **100%** succesful (over 192 unique expected results)

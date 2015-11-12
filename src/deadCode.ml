@@ -24,6 +24,8 @@ open DeadCommon
 
 let bad_files = ref []
 
+let var_name = ref ""
+
 
                 (********   PROCESSING   ********)
 
@@ -102,6 +104,7 @@ let collect_references =                          (* Tast_mapper *)
               if exported lab.lbl_loc.Location.loc_start.pos_fname then
                 Hashtbl.replace references lab.lbl_loc (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
             l
+      | Tpat_var (id, _) -> var_name := id.Ident.name
       | _ -> () end;
     super.pat self p
   in
@@ -110,13 +113,15 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) ->
         if DeadFlag.(!opt.always || !opt.never) then treat_exp exp args;
         begin match exp.exp_desc with
-          | Texp_ident (_, {loc; _}, _)
-          when loc.Location.loc_start = exp.exp_loc.Location.loc_start -> ()
-              (* The application is due to dispatching, wich is a case we do not want to treat otherwise
-               * all object's content would be marked as used at this point... *)
+          | Texp_ident (_, _, {Types.val_loc; _})
+          when val_loc.Location.loc_ghost -> (* The application is due to lookup preparation
+              * anticipated in the typedtree, wich is a case we do not want to treat
+              * otherwise all object's content would be marked as used at this point... *)
+              ()
           | Texp_ident (_, _, {val_type; _}) ->
               DeadObj.arg val_type args
-          | _ -> DeadObj.arg exp.exp_type args end
+          | _ ->
+              DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
     | Texp_field (_, _, {lbl_loc=loc; _})
@@ -126,6 +131,8 @@ let collect_references =                          (* Tast_mapper *)
 
     | Texp_send _ ->
           DeadObj.collect_references e
+
+    | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class) :: !DeadObj.aliases
 
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
         begin match vb_pat.pat_desc with

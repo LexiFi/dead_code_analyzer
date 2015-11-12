@@ -36,31 +36,6 @@ let last_class = ref ""                                 (* last class met *)
 
                 (********   HELPERS   ********)
 
-let rec make_path ?(hiera = false) e =
-
-  let rec name t path = match t.desc with
-      | Tlink t -> name t path
-      | Tvar i -> begin match i with Some id -> id | None -> "'a" end
-      | Tconstr (path, _, _) -> Path.name path
-      | _ -> try List.assoc (Path.name path) !aliases with Not_found -> ""
-  in
-
-  match e.exp_desc with
-    | Texp_send (e, Tmeth_name s, _)
-    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
-        make_path ~hiera e ^ "#" ^ s
-
-    | Texp_ident (path, _, typ) ->
-        if hiera then match typ.val_kind with
-          | Val_self _ -> "self"
-          | Val_anc _ -> "super"
-          | _ -> ""
-        else name typ.val_type path
-
-    | Texp_instvar (_, path, _) -> name e.exp_type path
-
-    | _ -> ""
-
 
 let rec sign = function
   | Cty_signature sg -> sg
@@ -82,6 +57,60 @@ let rec cut_sharp s pos len =
   if len = String.length s then s
   else if s.[pos] = '#' then String.sub s (pos - len) len
   else cut_sharp s (pos + 1) (len + 1)
+
+
+let rec make_path ?(hiera = false) e =
+
+  let rec name t path = match t.desc with
+      | Tlink t -> name t path
+      | Tvar i -> begin match i with Some id -> id | None -> "'a" end
+      | Tconstr (path, _, _) -> Path.name path
+      | _ -> try List.assoc path !aliases with Not_found -> ""
+  in
+
+  let clas = match e.exp_desc with
+    | Texp_send (e, Tmeth_name s, _)
+    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
+        make_path ~hiera e ^ "#" ^ s
+
+    | Texp_ident (path, _, typ) ->
+        let path = Path.name path in
+        if hiera then match typ.val_kind with
+          | Val_self _ -> "self"
+          | Val_anc _ -> "super"
+          | _ ->
+              if try List.assoc path !aliases = !last_class with Not_found -> false then
+                "self"
+              else ""
+        else name typ.val_type path
+
+    | Texp_instvar (_, path, _) -> name e.exp_type (Path.name path)
+
+    | _ -> name e.exp_type ""
+  in
+
+  match e.exp_extra with
+    | (Texp_coerce (_, typ), _, _)::_ ->
+        let name = name typ.ctyp_type "" in
+        let name =
+          if List.mem name !defined then
+            String.capitalize_ascii (unit !current_src) ^ "." ^ name
+          else name
+        in
+        if List.mem clas !defined || String.contains clas '.' then
+          if Hashtbl.mem content name then
+            List.iter
+              (fun (_, s) ->
+                hashtbl_merge_list references (clas ^ "#" ^ s) references (name ^ "#" ^ s))
+            (hashtbl_find_list content name)
+          else
+            treat_fields
+              (fun s ->
+                  hashtbl_merge_list references (clas ^ "#" ^ s) references (name ^ "#" ^ s)
+              )
+              typ.ctyp_type;
+        name
+    | _ -> clas
 
 
 
@@ -223,7 +252,8 @@ let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
     structure ci_expr
 
 
-let rec arg typ args = match typ.desc with
+let rec arg typ args =
+  match typ.desc with
   | Tlink t -> arg t args
   | Tarrow (_, t, typ, _) -> if args <> [] then begin arg t [(List.hd args)]; arg typ (List.tl args) end
   | Tobject _ ->
@@ -231,7 +261,8 @@ let rec arg typ args = match typ.desc with
         (fun s ->
           let _, e, _ = List.hd args in
           begin match e with
-          | Some e -> collect_references ~meth:s e
+          | Some e ->
+              collect_references ~meth:s e
           | None -> () end
         )
         typ
@@ -240,13 +271,6 @@ let rec arg typ args = match typ.desc with
 
 let prepare_report () =
 
-  let merge tbl1 key1 tbl2 key2 =
-    if Hashtbl.mem tbl2 key2 then
-      Hashtbl.replace
-        tbl1
-        key1
-        (List.sort_uniq compare (hashtbl_find_list tbl1 key1 @ hashtbl_find_list tbl2 key2))
-  in
 
   let processed = ref [] in
 
@@ -263,9 +287,9 @@ let prepare_report () =
                 let overr, _ = List.find (fun (_, s) -> s = f) (hashtbl_find_list content a) in
                 if not (overr || List.mem f !met) then begin
                   met := f :: !met;
-                  merge references (c ^ "#" ^ f) references (a ^ "#" ^ f);
-                  merge references (a ^ "#" ^ f) self_ref (c ^ "#" ^ f);
-                  merge self_ref (a ^ "#" ^ f) self_ref (c ^ "#" ^ f);
+                  hashtbl_merge_list references (c ^ "#" ^ f) references (a ^ "#" ^ f);
+                  hashtbl_merge_list references (a ^ "#" ^ f) self_ref (c ^ "#" ^ f);
+                  hashtbl_merge_list self_ref (a ^ "#" ^ f) self_ref (c ^ "#" ^ f);
                 end)
               (hashtbl_find_list content c))
             (List.rev l)
@@ -277,7 +301,7 @@ let prepare_report () =
       List.iter
         (fun path ->
           process (cut_sharp path 0 0) (hashtbl_find_list class_dependencies (cut_sharp path 0 0));
-          merge references key self_ref path)
+          hashtbl_merge_list references key self_ref path)
         l)
     super_ref;
   Hashtbl.iter process class_dependencies

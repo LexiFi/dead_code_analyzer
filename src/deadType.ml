@@ -42,10 +42,9 @@ let rec to_string typ = match typ.desc with
       | [] -> "*" end
   | Tconstr (path, l, _) -> make_name path l
   | Tobject (self, _) -> "< " ^ to_string self ^ " >"
-  | Tfield (s, k, t, t1) ->
+  | Tfield (s, k, _, t1) ->
       if Btype.field_kind_repr k = Fpresent then
-        s ^ ": "
-        ^ to_string t
+        s
         ^ begin match t1.desc with
             | Tfield _ -> "; " ^ to_string t1
             | _ -> "" end

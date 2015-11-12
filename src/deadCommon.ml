@@ -42,6 +42,14 @@ let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 let hashtbl_find_list hashtbl key = try Hashtbl.find hashtbl key with Not_found -> []
 
 
+let hashtbl_merge_list tbl1 key1 tbl2 key2 =
+  if Hashtbl.mem tbl2 key2 then
+    Hashtbl.replace
+      tbl1
+      key1
+      (List.sort_uniq compare (hashtbl_find_list tbl1 key1 @ hashtbl_find_list tbl2 key2))
+
+
 let exported fn =
   !DeadFlag.exported.print && (!DeadFlag.internal
       || fn.[String.length fn - 1] = 'i'
