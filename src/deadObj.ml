@@ -32,6 +32,8 @@ let aliases = ref []                                    (* aliases on class name
 
 let last_class = ref ""                                 (* last class met *)
 
+let last_field = ref ""                                 (* last field met *)
+
 
 
                 (********   HELPERS   ********)
@@ -169,87 +171,82 @@ let collect_references ?meth exp =
       Hashtbl.replace references path (exp.exp_loc :: hashtbl_find_list references path);
       let hiera = make_path ~hiera:true exp in
       if String.length hiera >= 4 && String.sub hiera 0 4 = "self" then
-          Hashtbl.replace self_ref path (exp.exp_loc :: hashtbl_find_list self_ref path)
+          Hashtbl.replace self_ref (!last_class ^ "#" ^ !last_field)
+            ( let prev = hashtbl_find_list self_ref (!last_class ^ "#" ^ !last_field) in
+              let e = (path, exp.exp_loc :: try List.assoc path prev with Not_found -> []) in
+              e :: (List.remove_assoc path prev))
         else if String.length hiera >= 5 && String.sub hiera 0 5 = "super" then
-          Hashtbl.replace super_ref (!last_class ^ "#" ^ meth) (path :: hashtbl_find_list super_ref path)
+          Hashtbl.replace super_ref (!last_class ^ "#" ^ meth) (path :: hashtbl_find_list super_ref (!last_class ^ "#" ^ meth))
    end
   end
 
 
-let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
+let tstr ({ci_id_class_type=name; _}, _) =
 
   last_class :=
     String.capitalize_ascii (unit !current_src) ^ "."
     ^ String.concat "." (List.rev !mods)
-    ^ (if !mods <> [] then "." ^ name.Ident.name else name.Ident.name);
+    ^ (if !mods <> [] then "." ^ name.Ident.name else name.Ident.name)
 
+
+let class_structure cl_struct =
   if Hashtbl.mem content !last_class then
-    let rec structure cl_exp = match cl_exp.cl_desc with
-      | Tcl_fun (_, _, _, cl_exp, _)
-      | Tcl_apply (cl_exp, _)
-      | Tcl_let (_, _, _, cl_exp)
-      | Tcl_constraint (cl_exp, _, _, _, _) -> structure cl_exp
+    let cut_pat s = "self" ^ String.sub s 7 (String.length s - 7) in
+    begin match cl_struct.cstr_self with
+      | {pat_desc=Tpat_alias ({pat_desc=Tpat_alias ({pat_desc=Tpat_var (id, _); _}, id2, _); _}, id3, _); _} ->
+          aliases :=
+            (id.Ident.name, !last_class)
+            :: (cut_pat id2.Ident.name, !last_class)
+            :: (cut_pat id3.Ident.name, !last_class)
+            :: !aliases
+      | {pat_desc=Tpat_alias ({pat_desc=Tpat_alias (_, id1, _); _}, id2, _); } ->
+          aliases :=
+            (cut_pat id1.Ident.name, !last_class)
+            :: (cut_pat id2.Ident.name, !last_class)
+            :: !aliases
+      | _ -> () end
 
-      | Tcl_structure cl_struct ->
-          let cut_pat s = "self" ^ String.sub s 7 (String.length s - 7) in
-          begin match cl_struct.cstr_self with
-            | {pat_desc=Tpat_alias ({pat_desc=Tpat_alias ({pat_desc=Tpat_var (id, _); _}, id2, _); _}, id3, _); _} ->
-                aliases :=
-                  (id.Ident.name, !last_class)
-                  :: (cut_pat id2.Ident.name, !last_class)
-                  :: (cut_pat id3.Ident.name, !last_class)
-                  :: !aliases
-            | {pat_desc=Tpat_alias ({pat_desc=Tpat_alias (_, id1, _); _}, id2, _); } ->
-                aliases :=
-                  (cut_pat id1.Ident.name, !last_class)
-                  :: (cut_pat id2.Ident.name, !last_class)
-                  :: !aliases
-            | _ -> () end;
 
-          List.iter
-            (fun f ->
-              let rec name cl_exp = match cl_exp.cl_desc with
-                | Tcl_ident (path, _, _) -> Path.name path
-                | Tcl_fun (_, _, _, cl_exp, _)
-                | Tcl_apply (cl_exp, _)
-                | Tcl_let (_, _, _, cl_exp)
-                | Tcl_constraint (cl_exp, _, _, _, _) -> name cl_exp
-                | _ -> ""
-              in
+let class_field f =
 
-              match f.cf_desc with
-                | Tcf_inherit (_, cl_exp, s, _, l) ->
-                    let name = name cl_exp in
-                    let name =
-                      if List.mem name !defined then
-                        String.capitalize_ascii (unit !current_src) ^ "." ^ name
-                      else name
-                    in
-                    Hashtbl.replace class_dependencies !last_class
-                      (hashtbl_find_list class_dependencies !last_class @ [name]);
-                    begin match s with
-                      | Some s -> aliases := (s, name) :: !aliases
-                      | None -> () end;
-                    List.iter
-                      (fun (s, _) ->
-                        Hashtbl.replace content !last_class
-                          (List.map
-                            (fun (overr, f) -> if f = s then (false, f) else (overr, f))
-                            (hashtbl_find_list content !last_class)))
-                      l
+  let rec name cl_exp = match cl_exp.cl_desc with
+    | Tcl_ident (path, _, _) -> Path.name path
+    | Tcl_fun (_, _, _, cl_exp, _)
+    | Tcl_apply (cl_exp, _)
+    | Tcl_let (_, _, _, cl_exp)
+    | Tcl_constraint (cl_exp, _, _, _, _) -> name cl_exp
+    | _ -> ""
+  in
 
-                | Tcf_method ({txt; _}, _, _) ->
-                    Hashtbl.replace content !last_class
-                      (List.map
-                        (fun (overr, f) -> if f = txt then (true, f) else (overr, f))
-                        (hashtbl_find_list content !last_class))
+  match f.cf_desc with
+    | Tcf_inherit (_, cl_exp, s, _, l) ->
+        let name = name cl_exp in
+        let name =
+        if List.mem name !defined then
+          String.capitalize_ascii (unit !current_src) ^ "." ^ name
+          else name
+        in
+        Hashtbl.replace class_dependencies !last_class
+          (hashtbl_find_list class_dependencies !last_class @ [name]);
+        begin match s with
+          | Some s -> aliases := (s, name) :: !aliases
+          | None -> () end;
+        List.iter
+          (fun (s, _) ->
+            Hashtbl.replace content !last_class
+              (List.map
+                (fun (overr, f) -> if f = s then (false, f) else (overr, f))
+                (hashtbl_find_list content !last_class)))
+          l
 
-                | _ -> ())
+    | Tcf_method ({txt; _}, _, _) ->
+        Hashtbl.replace content !last_class
+          (List.map
+            (fun (overr, f) -> if f = txt then (true, f) else (overr, f))
+              (hashtbl_find_list content !last_class));
+        last_field := txt
 
-            cl_struct.cstr_fields
-      | _ -> ()
-    in
-    structure ci_expr
+    | _ -> ()
 
 
 let rec arg typ args =
@@ -271,37 +268,56 @@ let rec arg typ args =
 
 let prepare_report () =
 
-
   let processed = ref [] in
 
   let rec process a l =
-        if not (List.mem a !processed) then begin
-          processed := a :: !processed;
-          let met = ref [] in
+    if not (List.mem a !processed) then begin
+      processed := a :: !processed;
+      let met = ref [] in
+      List.iter
+        (fun c ->
+          if not (List.mem c !processed) then
+            process c (hashtbl_find_list class_dependencies c);
           List.iter
-            (fun c ->
-              if not (List.mem c !processed) then
-                process c (hashtbl_find_list class_dependencies c);
-            List.iter
-              (fun (_, f) ->
-                let overr, _ = List.find (fun (_, s) -> s = f) (hashtbl_find_list content a) in
-                if not (overr || List.mem f !met) then begin
-                  met := f :: !met;
-                  hashtbl_merge_list references (c ^ "#" ^ f) references (a ^ "#" ^ f);
-                  hashtbl_merge_list references (a ^ "#" ^ f) self_ref (c ^ "#" ^ f);
-                  hashtbl_merge_list self_ref (a ^ "#" ^ f) self_ref (c ^ "#" ^ f);
-                end)
-              (hashtbl_find_list content c))
-            (List.rev l)
-          end
+            (fun (_, f) ->
+              let self, super = a ^ "#" ^ f, c ^ "#" ^ f in
+              List.iter
+                (fun path ->
+                  process (cut_sharp path 0 0) (hashtbl_find_list class_dependencies (cut_sharp path 0 0));
+                  List.iter
+                    (fun (path, call_sites) ->
+                      let src = cut_sharp path 0 0 in
+                      let f = String.sub path (String.length src + 1) (String.length path - String.length src - 1) in
+                      let overr, _ = try List.find (fun (_, s) -> s = f) (hashtbl_find_list content a) with Not_found -> (false, "") in
+                      Hashtbl.replace references (a ^ "#" ^ f) (List.sort_uniq compare (call_sites @ hashtbl_find_list references (a ^ "#" ^ f)));
+                      if not overr then
+                        hashtbl_merge_list references (a ^ "#" ^ f) references path)
+                    (hashtbl_find_list self_ref path))
+                (hashtbl_find_list super_ref self);
+              let overr, _ = try List.find (fun (_, s) -> s = f) (hashtbl_find_list content a) with Not_found -> (false, "") in
+              if not (overr || List.mem f !met) then begin
+                met := f :: !met;
+                Hashtbl.iter
+                  (fun _ l ->
+                    List.iter
+                      (fun (path, call_sites) ->
+                        if path =  super then
+                          Hashtbl.replace references (a ^ "#" ^ f) (List.sort_uniq compare (call_sites @ hashtbl_find_list references (a ^ "#" ^ f))))
+                      l)
+                  self_ref;
+                List.iter
+                  (fun (path, call_sites) -> 
+                      let src = cut_sharp path 0 0 in
+                      let f = String.sub path (String.length src + 1) (String.length path - String.length src - 1) in
+                      Hashtbl.replace references (a ^ "#" ^ f) (List.sort_uniq compare (call_sites @ hashtbl_find_list references (a ^ "#" ^ f)))
+                  )
+                  (hashtbl_find_list self_ref super);
+                hashtbl_merge_list references super references self;
+                hashtbl_merge_list self_ref self self_ref super;
+              end)
+            (hashtbl_find_list content c))
+        (List.rev l)
+    end
   in
 
-  Hashtbl.iter
-    (fun key l ->
-      List.iter
-        (fun path ->
-          process (cut_sharp path 0 0) (hashtbl_find_list class_dependencies (cut_sharp path 0 0));
-          hashtbl_merge_list references key self_ref path)
-        l)
-    super_ref;
   Hashtbl.iter process class_dependencies

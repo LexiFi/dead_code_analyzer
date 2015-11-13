@@ -153,7 +153,10 @@ let collect_references =                          (* Tast_mapper *)
   let expr = wrap expr (fun x -> x.exp_loc) in
   let pat = wrap pat (fun x -> x.pat_loc) in
   let structure_item = wrap structure_item (fun x -> x.str_loc) in
-  {super with structure_item; expr; pat}
+  let class_structure = (fun self x -> DeadObj.class_structure x; super.class_structure self x) in
+  let class_field = (fun self x -> DeadObj.class_field x; super.class_field self x) in
+  let class_field = wrap class_field (fun x -> x.cf_loc) in
+  {super with structure_item; expr; pat; class_structure; class_field}
 
 
 let rec collect_export path u signature =

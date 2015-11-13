@@ -29,7 +29,7 @@ let mods : string list ref = ref []                                             
 let find_path fn = List.find
   (fun path ->
     let lp = String.length path and lf = String.length fn in
-      lp >= lf && String.sub path (lp - lf) lf = fn)
+    (lp > lf && path.[lp - lf - 1] = '/' || lp = lf) && String.sub path (lp - lf) lf = fn)
   !abspath
 
 

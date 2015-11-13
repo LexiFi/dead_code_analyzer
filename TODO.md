@@ -3,7 +3,8 @@
 - objects
 
 # Waiting
-- improve *--types* option
+- cut output: "unused exported values" is lost its meaning: seperate types and obj from it
+- improve options (rethink it)
 - all kind of types
 
 
