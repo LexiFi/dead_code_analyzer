@@ -285,7 +285,8 @@ let rec load_file fn = match kind fn with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
             if !DeadFlag.exported.print then begin
-              List.iter assoc (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
+              List.iter assoc
+                (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
               List.iter assoc !DeadType.dependencies
             end;
             DeadType.dependencies := [];
