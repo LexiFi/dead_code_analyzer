@@ -42,6 +42,9 @@ let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 let hashtbl_find_list hashtbl key = try Hashtbl.find hashtbl key with Not_found -> []
 
 
+let hashtbl_add_to_list hashtbl key elt = Hashtbl.replace hashtbl key (elt :: hashtbl_find_list hashtbl key)
+
+
 let hashtbl_merge_list tbl1 key1 tbl2 key2 =
   if Hashtbl.mem tbl2 key2 then
     Hashtbl.replace

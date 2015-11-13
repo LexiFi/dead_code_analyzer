@@ -102,7 +102,7 @@ let collect_references =                          (* Tast_mapper *)
           List.iter
             (fun (_, lab, _) ->
               if exported lab.lbl_loc.Location.loc_start.pos_fname then
-                Hashtbl.replace references lab.lbl_loc (p.pat_loc :: hashtbl_find_list references lab.lbl_loc))
+                hashtbl_add_to_list references lab.lbl_loc p.pat_loc)
             l
       | Tpat_var (id, _) -> var_name := id.Ident.name
       | _ -> () end;
@@ -127,7 +127,7 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
       when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
-        Hashtbl.replace references loc (e.exp_loc :: hashtbl_find_list references loc)
+        hashtbl_add_to_list references loc e.exp_loc
 
     | Texp_send _ ->
           DeadObj.collect_references e
@@ -270,18 +270,14 @@ let rec load_file fn = match kind fn with
                 with Not_found -> false)
         in
         if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-          Hashtbl.replace references vd1 (vd2 ::hashtbl_find_list references vd1)
+          hashtbl_add_to_list references vd1 vd2
         else if not (is_implem fn1 && has_iface fn1) then begin
-          Hashtbl.replace corres vd1 (vd2 :: hashtbl_find_list corres vd1);
-          Hashtbl.replace references vd1 @@ List.sort_uniq compare
-            ((hashtbl_find_list references vd1)
-            @ hashtbl_find_list references vd2)
+          hashtbl_add_to_list corres vd1 vd2;
+          hashtbl_merge_list references vd1 references vd2
         end
         else begin
-          Hashtbl.replace corres vd2 (vd1 :: hashtbl_find_list corres vd2);
-          Hashtbl.replace references vd2 @@ List.sort_uniq compare
-            ((hashtbl_find_list references vd2)
-            @ hashtbl_find_list references vd1)
+          hashtbl_add_to_list corres vd2 vd1;
+          hashtbl_merge_list references vd2 references vd1
         end
       in
 
@@ -449,21 +445,26 @@ let report_unused_exported () =
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
           else cut_main s (pos + 1)
         in
-        let l = ref [] in
-        let test tbl elt =
-          Hashtbl.mem tbl elt
-          && not (check_length nb_call (l := Hashtbl.find tbl elt; !l))
+        let test tbl elt = match Hashtbl.find tbl elt with
+          | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
+          | _ -> None
         in
-        match
-          ( if String.contains path '#' then not (test DeadObj.references path)
-            else not (test references loc || test DeadObj.references path
-            || ( let loc = Hashtbl.find corres loc in
-              List.fold_left (fun res node -> res || test references node) false loc)))
-        && check_length nb_call !l with
-          | exception Not_found when nb_call = 0 -> (fn, cut_main path 0, loc, !l)::acc
-          | exception Not_found -> acc
-          | true -> (fn, cut_main path 0, loc, !l)::acc
-          | false -> acc
+        let test () =
+          if String.contains path '#' then
+              test DeadObj.references path
+          else match test references loc with
+            | None -> None
+            | opt ->
+              let locs = Hashtbl.find corres loc in
+              match List.find (fun node -> try test references node <> None with Not_found -> false) locs with
+                | exception Not_found -> opt
+                | loc -> test references loc
+        in match test () with
+            | exception Not_found when nb_call = 0 ->
+                  (fn, cut_main path 0, loc, []) :: acc
+            | exception Not_found -> acc
+            | None -> acc
+            | Some l -> l
       in
       List.fold_left folder [] !decs
       |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
