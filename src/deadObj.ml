@@ -240,11 +240,13 @@ let rec arg typ args =
   | Tobject _ ->
       treat_fields
         (fun s ->
-          let _, e, _ = List.hd args in
-          begin match e with
-          | Some e ->
-              collect_references ~meth:s e
-          | None -> () end
+          try
+            let _, e, _ = List.hd args in
+            begin match e with
+            | Some e ->
+                collect_references ~meth:s e
+            | None -> () end
+          with _ -> ()
         )
         typ
   | _ -> ()

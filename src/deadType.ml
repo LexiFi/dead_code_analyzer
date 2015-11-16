@@ -18,8 +18,6 @@ open DeadCommon
 
 let dependencies = ref []   (* like the cmt value_dependencies but for types *)
 
-let fields : (string, Location.t) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
-
 
 
                 (********   HELPERS   ********)
@@ -29,7 +27,7 @@ let is_unit t = match (Ctype.repr t).desc with
   | _ -> false
 
 
-let rec _TO_STRING_ typ = match typ.desc with
+let rec _TO_STRING_ typ = begin [@warning "-11"] match typ.desc with
   | Tvar i -> begin match i with Some id -> id | None -> "'a" end
   | Tarrow (_, t1, t2, _) ->
       begin match t1.desc with
@@ -56,6 +54,7 @@ let rec _TO_STRING_ typ = match typ.desc with
   | Tunivar _ -> "Tunivar _"
   | Tpoly (t, _) -> _TO_STRING_ t
   | Tpackage _ -> "Tpackage _"
+  | _ -> "Extension _" end
 
 
 and make_name path l =
@@ -108,7 +107,12 @@ let collect_export path u t =
 
   match t.type_kind with
     | Type_record (l, _) ->
-        List.iter (fun {Types.ld_id; ld_loc; _} -> save ld_id ld_loc) l
+        List.iter
+          (fun {Types.ld_id; ld_loc; ld_type; _} ->
+            save ld_id ld_loc;
+            DeadLexiFi.export_type path ld_id (_TO_STRING_ ld_type)
+          )
+          l
     | Type_variant l ->
         List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
     | _ -> ()
@@ -153,7 +157,12 @@ let tstr typ =
 
   match typ.typ_kind with
     | Ttype_record l ->
-        List.iter (fun {Typedtree.ld_name; ld_loc; _} -> assoc ld_name ld_loc) l
+        List.iter
+          (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
+            assoc ld_name ld_loc;
+            DeadLexiFi.tstr_type typ ld_name (_TO_STRING_ ld_type.ctyp_type)
+          )
+          l
     | Ttype_variant l ->
         List.iter (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
     | _ -> ()

@@ -16,6 +16,7 @@ let decs : (string * string * Location.t) list ref = ref []                     
 let references : (Location.t, Location.t list) Hashtbl.t  = Hashtbl.create 256      (* all value references *)
 let corres : (Location.t, Location.t list) Hashtbl.t = Hashtbl.create 256           (* link from dec to def *)
 
+let fields : (string, Location.t) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
 
 let style : (string * Location.t * string) list ref = ref []                        (* patterns of type unit which are not () *)
 let last_loc = ref Location.none                                                    (* helper to diagnose occurrences of Location.none in the typedtree *)

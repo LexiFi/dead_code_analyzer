@@ -131,6 +131,9 @@ let collect_references =                          (* Tast_mapper *)
       when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
         hashtbl_add_to_list references loc e.exp_loc
 
+    | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
+        DeadLexiFi.ttype_of e
+
     | Texp_send _ ->
           DeadObj.collect_references e
 
@@ -570,6 +573,7 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
+    DeadLexiFi.prepare_report();
     if !DeadFlag.exported.print                 then  report_unused_exported ();
     if !DeadFlag.obj.print                      then  DeadObj.report();
     if !DeadFlag.typ.print                      then  DeadType.report();
