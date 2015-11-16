@@ -12,7 +12,7 @@
   In addition to selecting which reports are to be displayed, the threshold of authorized
   occurences needed to be reported can be selected (default is 0).
 
-  It assumes .mli are compiled with {e -keep-locs} and .ml are compiled with {e -bin-annot}.
+  It assumes .mli/.mfi are compiled with {e -keep-locs} and .ml/.mf are compiled with {e -bin-annot}.
 
 
   {2 Unused Exported Values}

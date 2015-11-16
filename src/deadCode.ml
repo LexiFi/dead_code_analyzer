@@ -11,7 +11,7 @@
  * Options can enable reporting of optional arguments always/never used as bad style of code.
  * In addition to selecting which reports are to be displayed, the limit of authorized
  * occurences needed to be reported can be selected (default is 0).
- * It assumes .mli are compiled with -keep-locs and .ml are compiled with -bin-annot.
+ * It assumes .mli/.mfi are compiled with -keep-locs and .ml/.mf are compiled with -bin-annot.
  *)
 
 open Types
@@ -193,11 +193,14 @@ let kind fn =
   if Filename.check_suffix fn ".cmi" then
     let base = Filename.chop_suffix fn ".cmi" in
     if      Sys.file_exists (base ^ ".mli")         then  `Iface (base ^ ".mli")
+    else if Sys.file_exists (base ^ ".mfi")         then  `Iface (base ^ ".mfi")
     else if Sys.file_exists (base ^ ".ml")          then  `Iface (base ^ ".ml")
+    else if Sys.file_exists (base ^ ".mf")          then  `Iface (base ^ ".mf")
     else                  (* default *)                   `Ignore
   else if Filename.check_suffix fn ".cmt" then
     let base = Filename.chop_suffix fn ".cmt" in
     if      Sys.file_exists (base ^ ".ml")          then  `Implem (base ^ ".ml")
+    else if Sys.file_exists (base ^ ".mf")          then  `Implem (base ^ ".mf")
     else                  (* default *)                   `Ignore
   else if (try Sys.is_directory fn with _ -> false) then  `Dir
   else                    (* default *)                   `Ignore
@@ -267,7 +270,7 @@ let rec load_file fn = match kind fn with
       (* Used if the cmt is valid. Associates the two value|type dependencies *)
       let assoc references (vd1, vd2) =
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
-        let is_implem fn = Filename.check_suffix fn ".ml" in
+        let is_implem fn = fn <> "_none_" && fn.[String.length fn - 1] <> 'i' in
         let has_iface fn =
           fn <> "_none_" && (fn.[String.length fn - 1] = 'i'
             ||  try Sys.file_exists (find_path fn ^ "i")

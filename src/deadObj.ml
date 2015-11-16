@@ -136,7 +136,7 @@ let collect_export path u cltyp loc =
 let collect_references ?meth exp =
 
   let path = make_path exp in
-  if path <> "" && path.[0] <> '#' then begin
+  if path <> "" && path.[0] <> '#' && (String.contains path '#' || meth <> None) then begin
     let path, meth = match meth with
       | Some s -> path ^ "#" ^ s, s
       | None ->
