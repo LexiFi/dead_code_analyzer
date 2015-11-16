@@ -124,8 +124,6 @@ let collect_references =                          (* Tast_mapper *)
               DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
-      when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
-        hashtbl_add_to_list references loc e.exp_loc
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
       when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
@@ -393,7 +391,6 @@ let report_opt_args s l =
 
 
 let report_unused_exported () =
-  DeadObj.prepare_report ();
   let rec report_unused_exported nb_call =
     let l =
       let folder = fun acc (fn, path, loc) ->
