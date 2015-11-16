@@ -313,3 +313,51 @@ let prepare_report () =
   in
 
   Hashtbl.iter (fun c dep -> process ~dep c) class_dependencies
+
+
+let report () =
+  prepare_report ();
+
+  let rec report nb_call =
+    let l =
+      let folder = fun acc (fn, path, loc) ->
+        let rec cut_main s pos =
+          if pos = String.length s then s
+          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
+          else cut_main s (pos + 1)
+        in
+        if String.contains path '#' then match Hashtbl.find references path with
+          | exception Not_found when nb_call = 0 ->
+                (fn, cut_main path 0, loc, []) :: acc
+          | exception Not_found -> acc
+          | l when check_length nb_call l -> (fn, cut_main path 0, loc, l) :: acc
+          | _ -> acc
+        else acc
+      in
+      List.fold_left folder [] !decs
+      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
+          compare (fn1, loc1, path1) (fn2, loc2, path2))
+    in
+
+    let change =
+      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
+      dir fn
+    in
+    let pretty_print = fun (fn, path, loc, call_sites) ->
+      if change fn then print_newline ();
+      prloc ~fn loc;
+      print_string path;
+      if call_sites <> [] && !DeadFlag.obj.call_sites then print_string "    Call sites:";
+      print_newline ();
+      if !DeadFlag.obj.call_sites then begin
+        List.iter (pretty_print_call ()) call_sites;
+        if nb_call <> 0 then print_newline ()
+      end
+    in
+
+    let continue nb_call = nb_call < !DeadFlag.obj.threshold in
+    let s = if nb_call = 0 then "UNUSED CLASS FIELDS" else "ALMOST UNUSED CLASS FIELDS" in
+    DeadCommon.report s l continue nb_call pretty_print report
+
+  in report 0
+

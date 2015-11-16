@@ -78,9 +78,9 @@ let collect_references =                          (* Tast_mapper *)
 
   let structure_item self i = begin match i.str_desc with
     | Tstr_value (_, l) -> List.iter value_binding l
-    | Tstr_type  (_, l) when !DeadFlag.exported.print -> List.iter DeadType.tstr l
+    | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
     | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
-    | Tstr_class l -> List.iter DeadObj.tstr l
+    | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
     | _ -> () end;
     let res = super.structure_item self i in
     begin match i.str_desc with
@@ -124,6 +124,8 @@ let collect_references =                          (* Tast_mapper *)
               DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
+      when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
+        hashtbl_add_to_list references loc e.exp_loc
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
       when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
@@ -168,13 +170,12 @@ let rec collect_export path u signature =
   in
 
   match signature with
-    | Sig_value (id, {Types.val_loc; Types.val_type; _}) when not val_loc.Location.loc_ghost ->
+    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
         (* a .cmi file can contain locations from other files.
           For instance:
               module M : Set.S with type elt = int
           will create value definitions whose location is in set.mli
         *)
-        if not (List.fold_left (fun b str -> b || DeadType.match_str val_type str) false !DeadFlag.types) then
           export path u id val_loc;
     | Sig_type (id, t, _) ->
           DeadType.collect_export (id::path) u t
@@ -261,7 +262,7 @@ let rec load_file fn = match kind fn with
       in
 
       (* Used if the cmt is valid. Associates the two value|type dependencies *)
-      let assoc (vd1, vd2) =
+      let assoc references (vd1, vd2) =
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
         let is_implem fn = Filename.check_suffix fn ".ml" in
         let has_iface fn =
@@ -285,9 +286,9 @@ let rec load_file fn = match kind fn with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
             ignore (collect_references.structure collect_references x);
             if !DeadFlag.exported.print then begin
-              List.iter assoc
+              List.iter (assoc references)
                 (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
-              List.iter assoc !DeadType.dependencies
+              List.iter (assoc references) !DeadType.dependencies
             end;
             DeadType.dependencies := [];
             DeadObj.defined := []
@@ -334,65 +335,14 @@ let analyze_opt_args () =
   !all
 
 
-        (**** Helpers for the following reports ****)
-
-(* Absolute path *)
-let abs loc = match find_path loc.Location.loc_start.pos_fname with
-  | s -> s
-  | exception Not_found -> loc.Location.loc_start.pos_fname
-
-
-(* Check directory change *)
-let dir first =
-  let prev = ref @@ Filename.dirname first
-  in fun s -> let s = Filename.dirname s in
-    !prev <> s && (prev := s; true)
-
-
-(* Faster than 'List.length l = len' when len < List.length l; same speed otherwise*)
-let rec check_length len = function
-  | [] -> len = 0
-  | _::l when len > 0 -> check_length (len - 1) l
-  | _ -> false
-
-
-(* Print call site *)
-let pretty_print_call () = let ghost = ref false in function
-  | {Location.loc_ghost=true; _} when !ghost -> ()
-  | loc when not loc.Location.loc_ghost ->
-      print_string "         "; prloc loc |> print_newline
-  | _ ->          (* first ghost met *)
-      print_endline "        |~ ghost";
-      ghost := true
-
-
-let percent base = 1. -. (float_of_int base) *. (1. -. !DeadFlag.threshold.percentage) /. 10.
-
-
-(* Base pattern for reports *)
-let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
-  if nb_call = 0 || l <> [] then begin
-    section ~sub:(nb_call <> 0)
-    @@ (if nb_call = 0 then s
-        else if !DeadFlag.threshold.optional = `Both || extra = "Called" then
-          Printf.sprintf "%s: %s %d time(s)" s extra nb_call
-        else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent nb_call));
-    List.iter pretty_print l;
-    if continue nb_call then
-      (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
-  end;
-  if continue nb_call then reporter (nb_call + 1)
-  else (print_newline () |> separator)
-
-
 let report_opt_args s l =
   let rec report_opt_args nb_call =
     let l = List.filter
         (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
-          if !DeadFlag.threshold.optional = `Both then
-            ratio >= !DeadFlag.threshold.percentage && check_length nb_call slot
+          if !DeadFlag.opt.threshold.optional = `Both then
+            ratio >= !DeadFlag.opt.threshold.percentage && check_length nb_call slot
           else ratio >= percent nb_call
-            && (!DeadFlag.threshold.percentage >= 1. || ratio < (percent (nb_call - 1))))
+            && (!DeadFlag.opt.threshold.percentage >= 1. || ratio < (percent (nb_call - 1))))
       @@ List.map
         (fun (loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
@@ -401,16 +351,16 @@ let report_opt_args s l =
           in (loc, lab, l, ratio, total))
         l
       |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
-          compare (abs loc1, loc1, lab1, slot1) (abs loc2, loc2, lab2, slot2))
+          compare (DeadCommon.abs loc1, loc1, lab1, slot1) (DeadCommon.abs loc2, loc2, lab2, slot2))
     in
 
     let change =
       let (loc, _, _, _, _) = try List.hd l with _ -> (!last_loc, "_none_", [], 0., 0) in
-      dir (abs loc)
+      dir (DeadCommon.abs loc)
     in
 
     let pretty_print = fun (loc, lab, slot, ratio, total) ->
-      if change (abs loc) then print_newline ();
+      if change (DeadCommon.abs loc) then print_newline ();
       prloc loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
@@ -424,8 +374,8 @@ let report_opt_args s l =
     in
 
     let continue nb_call =
-      !DeadFlag.threshold.optional = `Both && nb_call < !DeadFlag.threshold.exceptions
-      || !DeadFlag.threshold.optional = `Percent && percent nb_call > !DeadFlag.threshold.percentage
+      !DeadFlag.opt.threshold.optional = `Both && nb_call < !DeadFlag.opt.threshold.exceptions
+      || !DeadFlag.opt.threshold.optional = `Percent && percent nb_call > !DeadFlag.opt.threshold.percentage
     in
     let s =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
@@ -446,20 +396,19 @@ let report_unused_exported () =
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
           else cut_main s (pos + 1)
         in
-        let test tbl elt = match Hashtbl.find tbl elt with
+        let test pos = match Hashtbl.find references pos with
           | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
           | _ -> None
         in
         let test () =
-          if String.contains path '#' then
-              test DeadObj.references path
-          else match test references loc with
+          if String.contains path '#' || DeadType.is_type path then None
+          else match test loc with
             | None -> None
             | opt ->
               let locs = Hashtbl.find corres loc in
-              match List.find (fun node -> try test references node <> None with Not_found -> false) locs with
+              match List.find (fun node -> try test node <> None with Not_found -> false) locs with
                 | exception Not_found -> opt
-                | loc -> test references loc
+                | loc -> test loc
         in match test () with
             | exception Not_found when nb_call = 0 ->
                   (fn, cut_main path 0, loc, []) :: acc
@@ -488,7 +437,7 @@ let report_unused_exported () =
       end
     in
 
-    let continue nb_call = nb_call < !DeadFlag.threshold.exceptions in
+    let continue nb_call = nb_call < !DeadFlag.exported.threshold in
     let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
     report s l continue nb_call pretty_print report_unused_exported
 
@@ -515,10 +464,12 @@ let report_style () =
 
 (* Option parsing and processing *)
 let parse () =
-  let update_all b () =
-    DeadFlag.update_style (b ^ "all");
-    DeadFlag.update_exported (b ^ "all");
-    DeadFlag.update_opt (b ^ "all")
+  let update_all b () = DeadFlag.(
+    update_style (b ^ "all");
+    update_basic "-E" DeadFlag.exported (b ^ "all");
+    update_basic "-C" obj (b ^ "all");
+    update_basic "-T" typ (b ^ "all");
+    update_opt (b ^ "all"))
   in
 
   (* any extra argument can be accepted by any option using some
@@ -526,13 +477,19 @@ let parse () =
   Arg.(parse
     [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
 
-      "--no-underscore", Unit DeadFlag.set_underscore, " Hide names starting with an underscore";
+      "--underscore", Unit DeadFlag.set_underscore, " Show names starting with an underscore";
 
       "--verbose", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
       "-v", Unit DeadFlag.set_verbose, " See --verbose";
 
-      "--threshold", String DeadFlag.update_threshold,
-        " Report values that are almost in a category.\n    \
+      "--thresholdC", Int (DeadFlag.update_threshold "--thresholdC" DeadFlag.obj),
+        "<integer>  Report class fields used up to the given integer";
+
+      "--thresholdE", Int (DeadFlag.update_threshold "--thresholdE" DeadFlag.exported),
+        "<integer>  Report values used up to the given integer";
+
+      "--thresholdO", String DeadFlag.update_opt_threshold,
+        " Report optional arguments almost always/never used.\n    \
           Delimiters '+' and '-' can both be used.\n    \
           Options (can be used together):\n\
           \t<integer>: Maximum number of exceptions. Default is 0.\n\
@@ -540,28 +497,36 @@ let parse () =
           \tpercent: Optional arguments have to respect the percentage only. Default behaviour\n\
           \tboth: Optional arguments have to respect both constraints";
 
-      "--types", String DeadFlag.update_types,
-        "<type list>  Ignore values of specified types.\n    \
-          Delimiters '+' and '-' can both be used.\n    \
-          <type list> types, starting with a delimiter:\n\
-          \t<type>: The type as it would be printed in the toplevel. (e.g: 'a * int -> bool list)";
+      "--thresholdT", Int (DeadFlag.update_threshold "--thresholdT" DeadFlag.typ),
+        "<integer>  Report values used up to the given integer";
 
       "--call-sites", String DeadFlag.update_call_sites,
         " Reports call sites for exceptions in the given category (only useful when used with the threshold option).\n    \
-        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+          Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
           Options (can be used together):\n\
+          \tC: Equivalent to -C +calls.\n\
           \tE: Equivalent to -E +calls.\n\
           \tO: Equivalent to -O +calls.\n\
-          \tall: O & E";
+          \tT: Equivalent to -T +calls.\n\
+          \tall: C & E & O & T";
 
-      "--internal", Unit DeadFlag.set_internal, " Keep internal uses as exported values uses";
+      "--internal", Unit DeadFlag.set_internal,
+        " Keep internal uses as exported values uses when the interface is given. \
+          This is the default behaviour when only the implementation is found";
 
       "--nothing", Unit (update_all "-"), " Disable all warnings";
       "-a", Unit (update_all "-"), " See --nothing";
       "--all", Unit (update_all "+"), " Enable all warnings";
       "-A", Unit (update_all "+"), " See --all";
 
-      "-E", String (DeadFlag.update_exported),
+      "-C", String (DeadFlag.update_basic "-C" DeadFlag.obj),
+        " Enable/Disable unused class fields warnings.\n    \
+        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+        Options (can be used together):\n\
+          \tall\n\
+          \tcalls: show call sites";
+
+      "-E", String (DeadFlag.update_basic "-E" DeadFlag.exported),
         " Enable/Disable unused exported values warnings.\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
         Options (can be used together):\n\
@@ -586,6 +551,14 @@ let parse () =
           \tseq: use sequence\n\
           \tunit: unit pattern\n\
           \tall: bind & opt & seq & unit";
+
+      "-T", String (DeadFlag.update_basic "-T" DeadFlag.typ),
+        " Enable/Disable unused record fields/variant constructors warnings.\n    \
+        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
+        Options (can be used together):\n\
+          \tall\n\
+          \tcalls: show call sites";
+
     ]
     (Printf.eprintf "Scanning files...\n%!";
     load_file)
@@ -598,6 +571,8 @@ let () =
     Printf.eprintf " [DONE]\n\n%!";
 
     if !DeadFlag.exported.print                 then  report_unused_exported ();
+    if !DeadFlag.obj.print                      then  DeadObj.report();
+    if !DeadFlag.typ.print                      then  DeadType.report();
     if DeadFlag.(!opt.always || !opt.never)     then  begin let tmp = analyze_opt_args () in
                 if !DeadFlag.opt.always         then  report_opt_args "ALWAYS" tmp;
                 if !DeadFlag.opt.never          then  report_opt_args "NEVER" tmp end;

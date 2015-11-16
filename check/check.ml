@@ -91,7 +91,12 @@ let rec empty file =
 (* Empty all files until one respect the condition *)
 let rec empty_fnames ?(regexp = ".*") threshold = function
   | e::l ->
-      if get_element ~regexp ~start:0 e < threshold then (
+      let extension s =
+        let tmp = Filename.chop_extension s in
+        String.sub s (String.length tmp) (String.length s - String.length tmp)
+      in
+      if (try extension e <= extension threshold with _ -> true)
+      && get_element ~regexp ~start:0 e < threshold then (
         empty @@ open_in e;
         empty_fnames ~regexp threshold l)
       else e::l
@@ -203,12 +208,26 @@ let rec sel_section () =
   nextl := ""; comp := "";
   try
     match (input_line !res) with
-        ".> UNUSED EXPORTED VALUES:" as s ->
+      | ".> UNUSED EXPORTED VALUES:" as s ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mli" !fnames
             with _ -> ());
             print_endline s;
             print_endline (input_line !res);
             extend := ".mli";
+            sel_section (section ())
+      | ".> UNUSED CLASS FIELDS:" as s ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlio" !fnames
+            with _ -> ());
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlio";
+            sel_section (section ())
+      | ".> UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS:" as s ->
+            (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlit" !fnames
+            with _ -> ());
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlit";
             sel_section (section ())
       | ".> OPTIONAL ARGUMENTS: ALWAYS:" as s ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlopta" !fnames
@@ -223,7 +242,7 @@ let rec sel_section () =
             print_endline s;
             print_endline (input_line !res);
             extend := ".mloptn";
-            sel_section ( section ~value:true ~info:false ())
+            sel_section (section ~value:true ~info:false ())
       | ".> CODING STYLE:" as s ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlstyle" !fnames
             with _ -> ());
@@ -240,6 +259,26 @@ let rec sel_section () =
             print_endline s;
             print_endline (input_line !res);
             extend := ".mli" ^ n;
+            sel_section (section ())
+      | s when String.length s > 33 && String.sub s 0 33 = ".>->  ALMOST UNUSED CLASS FIELDS:" ->
+            let n =
+              Scanf.sscanf s ".>->  ALMOST UNUSED CLASS FIELDS: Called %s time(s)" (fun n -> n)
+            in
+            begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mlio" ^ n) !fnames
+            with _ -> () end;
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlio" ^ n;
+            sel_section (section ())
+      | s when String.length s > 55 && String.sub s 0 55 = ".>->  ALMOST UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS:" ->
+            let n =
+              Scanf.sscanf s ".>->  ALMOST UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS: Called %s time(s)" (fun n -> n)
+            in
+            begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mlit" ^ n) !fnames
+            with _ -> () end;
+            print_endline s;
+            print_endline (input_line !res);
+            extend := ".mlit" ^ n;
             sel_section (section ())
       | s when String.length s > 40 && String.sub s 0 40 = ".>->  OPTIONAL ARGUMENTS: ALMOST ALWAYS:" ->
             let n =

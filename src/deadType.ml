@@ -29,39 +29,39 @@ let is_unit t = match (Ctype.repr t).desc with
   | _ -> false
 
 
-let rec to_string typ = match typ.desc with
+let rec _TO_STRING_ typ = match typ.desc with
   | Tvar i -> begin match i with Some id -> id | None -> "'a" end
   | Tarrow (_, t1, t2, _) ->
       begin match t1.desc with
-        | Tarrow _ -> "(" ^ to_string t1 ^ ")"
-        | _ -> to_string t1 end
-      ^ " -> " ^ to_string t2
+        | Tarrow _ -> "(" ^ _TO_STRING_ t1 ^ ")"
+        | _ -> _TO_STRING_ t1 end
+      ^ " -> " ^ _TO_STRING_ t2
   | Ttuple l -> begin match l with
       | e::l ->
-          List.fold_left (fun prev typ -> prev ^ " * " ^ to_string typ) (to_string e) l
+          List.fold_left (fun prev typ -> prev ^ " * " ^ _TO_STRING_ typ) (_TO_STRING_ e) l
       | [] -> "*" end
   | Tconstr (path, l, _) -> make_name path l
-  | Tobject (self, _) -> "< " ^ to_string self ^ " >"
+  | Tobject (self, _) -> "< " ^ _TO_STRING_ self ^ " >"
   | Tfield (s, k, _, t1) ->
       if Btype.field_kind_repr k = Fpresent then
         s
         ^ begin match t1.desc with
-            | Tfield _ -> "; " ^ to_string t1
+            | Tfield _ -> "; " ^ _TO_STRING_ t1
             | _ -> "" end
-      else to_string t1
+      else _TO_STRING_ t1
   | Tnil -> "Tnil"
-  | Tlink t -> to_string t
+  | Tlink t -> _TO_STRING_ t
   | Tsubst _ -> "Tsubst _"
-  | Tvariant {row_more; _} -> to_string row_more
+  | Tvariant {row_more; _} -> _TO_STRING_ row_more
   | Tunivar _ -> "Tunivar _"
-  | Tpoly (t, _) -> to_string t
+  | Tpoly (t, _) -> _TO_STRING_ t
   | Tpackage _ -> "Tpackage _"
 
 
 and make_name path l =
   let t = match l with
     | [] -> ""
-    | _ -> List.fold_left (fun prev typ -> prev ^ to_string typ ^ " ") "" l;
+    | _ -> List.fold_left (fun prev typ -> prev ^ _TO_STRING_ typ ^ " ") "" l;
   in
   let name = Path.name path in
   let len =
@@ -75,31 +75,19 @@ and make_name path l =
   t ^ String.sub name len (String.length name - len)
 
 
-let match_str typ str =
-  let typ = to_string typ in
-  let str =
-    let rec single_space s pos =
-      if pos = String.length s - 1 then String.make 1 s.[pos]
-      else if s.[pos] = ' ' && s.[pos + 1] = ' ' then single_space s (pos + 1)
-      else String.make 1 s.[pos] ^ single_space s (pos + 1)
-    in
-    single_space str 0
-  in
-
-  let rec get_block str pos len =
-    if pos = String.length str || str.[pos] = ' ' then
-      String.sub str (pos - len) len
-    else get_block str (pos + 1) (len + 1)
-  in
-
-  let rec compare typ str pos1 pos2 =
+let is_type s =
+  let rec blk s p l acc =
     try
-      let t = get_block typ pos1 0 in
-      let s = get_block str pos2 0 in
-      if s <> "" && s <> t then false
-      else compare typ str (pos1 + String.length t + 1) (pos2 + String.length s + 1)
-    with _ -> (pos1 >= String.length typ) = (pos2 >= String.length str)
-  in compare typ str 0 0
+      if s.[p] = '.' then
+        let acc = String.sub s (p - l) l :: acc in
+        blk s (p + 1) 0 acc
+      else blk s (p + 1) (l + 1) acc
+    with _ -> String.sub s (p - l) l :: acc
+  in
+  if not (String.contains s '.') then false
+  else
+    let [@ocaml.warning "-8"] hd::cont::_ = blk s 0 0 [] in
+    String.capitalize_ascii hd = hd || String.lowercase_ascii cont = cont
 
 
 
@@ -169,3 +157,64 @@ let tstr typ =
     | Ttype_variant l ->
         List.iter (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
     | _ -> ()
+
+
+let report () =
+  let rec report nb_call =
+    let l =
+      let folder = fun acc (fn, path, loc) ->
+        let rec cut_main s pos =
+          if pos = String.length s then s
+          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
+          else cut_main s (pos + 1)
+        in
+        let test elt = match Hashtbl.find references elt with
+          | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
+          | _ -> None
+        in
+        let test () =
+          if String.contains path '#' || not (is_type path) then None
+          else
+            match test loc with
+              | None -> None
+              | opt ->
+                let locs = Hashtbl.find corres loc in
+                match List.find (fun node -> try test node <> None with Not_found -> false) locs with
+                  | exception Not_found -> opt
+                  | loc -> test loc
+        in match test () with
+          | exception Not_found when nb_call = 0 ->
+                (fn, cut_main path 0, loc, []) :: acc
+          | exception Not_found -> acc
+          | None -> acc
+          | Some l -> l
+      in
+      List.fold_left folder [] !decs
+      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
+          compare (fn1, loc1, path1) (fn2, loc2, path2))
+    in
+
+    let change =
+      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
+      dir fn
+    in
+    let pretty_print = fun (fn, path, loc, call_sites) ->
+      if change fn then print_newline ();
+      prloc ~fn loc;
+      print_string path;
+      if call_sites <> [] && !DeadFlag.typ.call_sites then print_string "    Call sites:";
+      print_newline ();
+      if !DeadFlag.typ.call_sites then begin
+        List.iter (pretty_print_call ()) call_sites;
+        if nb_call <> 0 then print_newline ()
+      end
+    in
+
+    let continue nb_call = nb_call < !DeadFlag.typ.threshold in
+    let s =
+      if nb_call = 0 then "UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS"
+      else "ALMOST UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS"
+    in
+    DeadCommon.report s l continue nb_call pretty_print report
+
+  in report 0

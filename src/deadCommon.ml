@@ -149,3 +149,55 @@ let merge_locs ?add l1 l2 =
           ^ id.Ident.name,
           loc)
         :: !decs
+
+
+
+                (**** REPORTING ****)
+
+(* Absolute path *)
+let abs loc = match find_path loc.Location.loc_start.pos_fname with
+  | s -> s
+  | exception Not_found -> loc.Location.loc_start.pos_fname
+
+
+(* Check directory change *)
+let dir first =
+  let prev = ref @@ Filename.dirname first
+  in fun s -> let s = Filename.dirname s in
+    !prev <> s && (prev := s; true)
+
+
+(* Faster than 'List.length l = len' when len < List.length l; same speed otherwise*)
+let rec check_length len = function
+  | [] -> len = 0
+  | _::l when len > 0 -> check_length (len - 1) l
+  | _ -> false
+
+
+(* Print call site *)
+let pretty_print_call () = let ghost = ref false in function
+  | {Location.loc_ghost=true; _} when !ghost -> ()
+  | loc when not loc.Location.loc_ghost ->
+      print_string "         "; prloc loc |> print_newline
+  | _ ->          (* first ghost met *)
+      print_endline "        |~ ghost";
+      ghost := true
+
+
+let percent base = 1. -. (float_of_int base) *. (1. -. !DeadFlag.opt.threshold.percentage) /. 10.
+
+
+(* Base pattern for reports *)
+let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
+  if nb_call = 0 || l <> [] then begin
+    section ~sub:(nb_call <> 0)
+    @@ (if nb_call = 0 then s
+        else if !DeadFlag.opt.threshold.optional = `Both || extra = "Called" then
+          Printf.sprintf "%s: %s %d time(s)" s extra nb_call
+        else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent nb_call));
+    List.iter pretty_print l;
+    if continue nb_call then
+      (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
+  end;
+  if continue nb_call then reporter (nb_call + 1)
+  else (print_newline () |> separator)

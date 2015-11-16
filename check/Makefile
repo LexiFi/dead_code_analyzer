@@ -27,11 +27,11 @@ classic: prepare check.$(EXT)$(EXE)
 	./check.$(EXT)$(EXE) ./classic $(TARGET)
 
 threshold-1: prepare check.$(EXT)$(EXE)
-	../src/deadCode.$(EXT)$(EXE) -A --internal --threshold +1 ../examples > $(TARGET)
+	../src/deadCode.$(EXT)$(EXE) -A --internal --thresholdE 1 --thresholdO +1 --thresholdC 1 --thresholdT 1 ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
 
 threshold-3-0.5: prepare check.$(EXT)$(EXE)
-	../src/deadCode.$(EXT)$(EXE) -A --internal --threshold +3+0.5+both ../examples > $(TARGET)
+	../src/deadCode.$(EXT)$(EXE) -A --internal --thresholdE 3 --thresholdO +3+0.5+both --thresholdC 3 --thresholdT 3 ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
 
 prepare:
