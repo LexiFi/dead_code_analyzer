@@ -156,19 +156,14 @@ let collect_references =                          (* Tast_mapper *)
   let expr = wrap expr (fun x -> x.exp_loc) in
   let pat = wrap pat (fun x -> x.pat_loc) in
   let structure_item = wrap structure_item (fun x -> x.str_loc) in
+  let module_expr = (fun self x -> DeadMod.expr x; super.module_expr self x) in
   let class_structure = (fun self x -> DeadObj.class_structure x; super.class_structure self x) in
   let class_field = (fun self x -> DeadObj.class_field x; super.class_field self x) in
   let class_field = wrap class_field (fun x -> x.cf_loc) in
-  {super with structure_item; expr; pat; class_structure; class_field}
+  {super with structure_item; expr; pat; module_expr; class_structure; class_field}
 
 
 let rec collect_export path u signature =
-
-  let rec sign = function
-    | Mty_signature sg -> sg
-    | Mty_functor (_, _, t) -> sign t
-    | Mty_ident _ | Mty_alias _ -> []
-  in
 
   match signature with
     | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
@@ -182,7 +177,7 @@ let rec collect_export path u signature =
           DeadType.collect_export (id::path) u t
     | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) -> DeadObj.collect_export (id::path) u t loc
     | Sig_module (id, {Types.md_type = t; _}, _)
-    | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (sign t)
+    | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (DeadMod.sign t)
     | _ -> ()
 
 
