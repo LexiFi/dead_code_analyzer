@@ -64,12 +64,16 @@ let rec cut_sharp s pos len =
   if len = String.length s then s
   else if s.[pos] = '#' then String.sub s (pos - len) len
   else cut_sharp s (pos + 1) (len + 1)
-
+let cut_sharp s = cut_sharp s 0 0
 
 let full_name name =
-  if List.mem name !defined then
-    String.capitalize_ascii (unit !current_src) ^ "." ^ name
-  else name
+  try
+    List.map (fun (_, path, _) -> cut_sharp path) !incl
+    |> find_path name ~sep:'.'
+  with Not_found ->
+    if List.mem name !defined then
+      String.capitalize_ascii (unit !current_src) ^ "." ^ name
+    else name
 
 let rec make_name t path = match t.desc with
   | Tlink t -> make_name t path
@@ -128,7 +132,7 @@ let rec make_path ?(hiera = false) e =
 
                 (********   PROCESSING  ********)
 
-let collect_export path u cltyp loc =
+let collect_export path u stock cltyp loc =
 
   let str = String.concat "." (List.tl (List.rev_map (fun id -> id.Ident.name) path)) in
 
@@ -136,7 +140,7 @@ let collect_export path u cltyp loc =
   defined := str :: !defined;
 
   let save id =
-    export ~sep:"#" path u (Ident.create id) loc;
+    export ~sep:"#" path u stock (Ident.create id) loc;
     Hashtbl.replace content !last_class ((false, id) :: hashtbl_find_list content !last_class)
   in
 
@@ -151,7 +155,7 @@ let collect_references ?meth exp =
       let path, meth = match meth with
         | Some s -> path, s
         | None ->
-            let tmp = cut_sharp path 0 0 in
+            let tmp = cut_sharp path in
             let s = String.sub path (String.length tmp + 1) (String.length path - String.length tmp - 1) in
             tmp, s
       in
@@ -185,10 +189,7 @@ let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
     | Tcl_ident (p, _, _) ->
         let p = full_name (Path.name p) in
         let name = full_name name.Ident.name in
-        hashtbl_merge_list dependencies p dependencies name;
-        hashtbl_merge_list dependencies name dependencies p;
-        hashtbl_add_to_list dependencies p name;
-        hashtbl_add_to_list dependencies name p
+        hashtbl_add_to_list dependencies name p;
     | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr
     | _ -> ()
   in
@@ -302,27 +303,28 @@ let prepare_report () =
     Hashtbl.replace references path (List.sort_uniq compare (call_sites @ hashtbl_find_list references path))
   in
 
-  let merge_dep c =
-    try
-      let dep = Hashtbl.find dependencies c in
-      List.iter
-        (fun (_, s) ->
-          let cont = c ^ "#" ^ s in
-          List.iter
-          (fun c2 ->
-            hashtbl_merge_list references (c ^ "#" ^ s) references (c2 ^ "#" ^ s);
-            hashtbl_merge_list references (c2 ^ "#" ^ s) references (c ^ "#" ^ s)
+  let merge_dep c dep =
+    List.iter
+      (fun c2 ->
+        hashtbl_merge_list inheritances c inheritances c2;
+        List.iter
+          (fun (b, s) ->
+            hashtbl_find_list content c
+            |> List.filter (fun (_, f) -> f <> s)
+            |> Hashtbl.replace content c;
+            hashtbl_add_to_list content c (b, s);
+            hashtbl_merge_list self_ref (c ^ "#" ^ s) self_ref (c2 ^ "#" ^ s);
+            hashtbl_merge_list super_ref (c2 ^ "#" ^ s) super_ref (c ^ "#" ^ s)
           )
-          dep
-        )
-        (hashtbl_find_list content c)
-    with Not_found -> ()
+          (hashtbl_find_list content c2)
+      )
+      dep
   in
+  Hashtbl.iter merge_dep dependencies;
 
   let rec process ?inher c =
     if not (Hashtbl.mem processed c) then begin
       Hashtbl.replace processed c ();
-      merge_dep c;
       let inher = match inher with
         | Some inher -> inher
         | None -> hashtbl_find_list inheritances c
@@ -331,7 +333,6 @@ let prepare_report () =
       List.iter
         (fun p -> process p; List.iter (fun e -> merge_refs e c p met) (hashtbl_find_list content p))
         inher;
-      merge_dep c;
     end
 
   and merge_refs (_, f) c p met =
@@ -354,7 +355,7 @@ let prepare_report () =
     end
 
   and super_proc path c =
-    process (cut_sharp path 0 0);
+    process (cut_sharp path);
     List.iter
       (fun (path, call_sites) ->
         let f = self_proc (path, call_sites) c in
@@ -368,7 +369,7 @@ let prepare_report () =
       (hashtbl_find_list self_ref path)
 
   and self_proc (path, call_sites) c =
-    let src = cut_sharp path 0 0 in
+    let src = cut_sharp path in
     let f = String.sub path (String.length src + 1) (String.length path - String.length src - 1) in
     add_calls (c ^ "#" ^ f) call_sites;
     f

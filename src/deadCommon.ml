@@ -13,6 +13,9 @@ let abspath = ref []                                                            
 
 
 let decs : (string * string * Location.t) list ref = ref []                         (* all exported value declarations *)
+
+let incl : (string * string * Location.t) list ref = ref []                         (* all exported value declarations *)
+
 let references : (Location.t, Location.t list) Hashtbl.t  = Hashtbl.create 256      (* all value references *)
 let corres : (Location.t, Location.t list) Hashtbl.t = Hashtbl.create 256           (* link from dec to def *)
 
@@ -27,11 +30,11 @@ let mods : string list ref = ref []                                             
 
                 (********   HELPERS   ********)
 
-let find_path fn = List.find
+let find_path fn ?(sep = '/') l = List.find
   (fun path ->
     let lp = String.length path and lf = String.length fn in
-    (lp > lf && path.[lp - lf - 1] = '/' || lp = lf) && String.sub path (lp - lf) lf = fn)
-  !abspath
+    (lp > lf && path.[lp - lf - 1] = sep || lp = lf) && String.sub path (lp - lf) lf = fn)
+  l
 
 
 let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
@@ -60,7 +63,7 @@ let exported fn =
       || (let src, name = unit !current_src, unit fn in
         String.length name < String.length src
         || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
-      || try not (Sys.file_exists (find_path fn ^ "i")) with Not_found -> true)
+      || try not (Sys.file_exists (find_path fn !abspath ^ "i")) with Not_found -> true)
 
 
 (* Section printer:
@@ -85,7 +88,7 @@ let separator () =
 let prloc ?fn (loc : Location.t) = begin match fn with
   | Some s ->
       print_string (Filename.dirname s ^ "/" ^ Filename.basename loc.loc_start.pos_fname)
-  | _ -> match find_path loc.loc_start.pos_fname with
+  | _ -> match find_path loc.loc_start.pos_fname !abspath with
     | s -> print_string s
     | exception Not_found -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
   end;
@@ -141,22 +144,22 @@ let merge_locs ?add l1 l2 =
 
                 (********   PROCESSING  ********)
 
-  let export ?(sep = ".") path u id loc =
+  let export ?(sep = ".") path u stock id loc =
     if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
     && check_underscore id.Ident.name then
-      decs := (!current_src,
+      stock := (!current_src,
           String.concat "." (List.rev_map Ident.name path)
           ^ sep
           ^ id.Ident.name,
           loc)
-        :: !decs
+        :: !stock
 
 
 
                 (**** REPORTING ****)
 
 (* Absolute path *)
-let abs loc = match find_path loc.Location.loc_start.pos_fname with
+let abs loc = match find_path loc.Location.loc_start.pos_fname !abspath with
   | s -> s
   | exception Not_found -> loc.Location.loc_start.pos_fname
 

@@ -7,18 +7,17 @@ SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
 	mod_alias.mli mod_alias.ml functor.mli functor.ml partial_opt.ml\
 	record.mli record.ml variant.mli variant.ml
 
-all:
-	$(OCAMLC) -c $(SRC)
-	make -C dir
-	make -C obj
+all: build
 	../src/deadCode.byt $(DEADFLAGS) .
 
 build:
 	$(OCAMLC) -c $(SRC)
 	make -C dir
 	make -C obj
+	make -C advanced
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
 	make -C dir clean
 	make -C obj clean
+	make -C advanced clean

@@ -24,6 +24,7 @@ val is_type : string -> bool
 val collect_export :
   Ident.t list
   -> string
+  -> (string * string * Location.t) list ref
   -> Types.type_declaration
   -> unit
 

@@ -30,6 +30,26 @@ let var_name = ref ""
                 (********   PROCESSING   ********)
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
+let rec collect_export path u stock signature =
+
+  match signature with
+    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+        (* a .cmi file can contain locations from other files.
+          For instance:
+              module M : Set.S with type elt = int
+          will create value definitions whose location is in set.mli
+        *)
+          export path u stock id val_loc;
+    | Sig_type (id, t, _) ->
+        DeadType.collect_export (id::path) u stock t
+    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
+        DeadObj.collect_export (id::path) u stock t loc
+    | Sig_module (id, {Types.md_type = t; _}, _)
+    | Sig_modtype (id, {Types.mtd_type = Some t; _}) ->
+        List.iter (collect_export (id :: path) u stock) (DeadMod.sign t)
+    | _ -> ()
+
+
 let rec treat_exp exp args = match exp.exp_desc with
   | Texp_ident (_, _, {Types.val_loc; _})
   | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
@@ -81,11 +101,17 @@ let collect_references =                          (* Tast_mapper *)
     | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
     | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
     | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
+    | Tstr_include i -> begin match i.incl_mod.mod_desc with
+      | Tmod_ident (p, _) ->
+          List.iter
+            (collect_export (Ident.create (Path.name p) :: []) (String.uncapitalize_ascii (Path.last p)) incl)
+            i.incl_type
+      | _ -> () end
     | _ -> () end;
     let res = super.structure_item self i in
     begin match i.str_desc with
-    | Tstr_module _ -> mods := List.tl !mods
-    | _ -> () end;
+      | Tstr_module _ -> mods := List.tl !mods
+      | _ -> () end;
     res
   in
 
@@ -163,24 +189,6 @@ let collect_references =                          (* Tast_mapper *)
   {super with structure_item; expr; pat; module_expr; class_structure; class_field}
 
 
-let rec collect_export path u signature =
-
-  match signature with
-    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-        (* a .cmi file can contain locations from other files.
-          For instance:
-              module M : Set.S with type elt = int
-          will create value definitions whose location is in set.mli
-        *)
-          export path u id val_loc;
-    | Sig_type (id, t, _) ->
-          DeadType.collect_export (id::path) u t
-    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) -> DeadObj.collect_export (id::path) u t loc
-    | Sig_module (id, {Types.md_type = t; _}, _)
-    | Sig_modtype (id, {Types.mtd_type = Some t; _}) -> List.iter (collect_export (id :: path) u) (DeadMod.sign t)
-    | _ -> ()
-
-
 (* Checks the nature of the file *)
 let kind fn =
   if Filename.check_suffix fn ".cmi" then
@@ -236,7 +244,7 @@ let read_interface fn src = let open Cmi_format in
     regabs src;
     let u = unit fn in
     if !DeadFlag.exported.print then
-      List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u) (read_cmi fn).cmi_sign
+      List.iter (collect_export [Ident.create (String.capitalize_ascii u)] u decs) (read_cmi fn).cmi_sign
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
     bad_files := fn :: !bad_files
@@ -266,7 +274,7 @@ let rec load_file fn = match kind fn with
         let is_implem fn = fn <> "_none_" && fn.[String.length fn - 1] <> 'i' in
         let has_iface fn =
           fn <> "_none_" && (fn.[String.length fn - 1] = 'i'
-            ||  try Sys.file_exists (find_path fn ^ "i")
+            ||  try Sys.file_exists (find_path fn !abspath ^ "i")
                 with Not_found -> false)
         in
         if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
@@ -289,6 +297,7 @@ let rec load_file fn = match kind fn with
                 (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
               List.iter (assoc references) !DeadType.dependencies
             end;
+            incl := [];
             DeadType.dependencies := [];
             DeadObj.defined := []
         | _ -> ()  (* todo: support partial_implementation? *)

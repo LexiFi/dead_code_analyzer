@@ -92,11 +92,11 @@ let is_type s =
 
                 (********   PROCESSING  ********)
 
-let collect_export path u t =
+let collect_export path u stock t =
 
   let save id loc =
     if t.type_manifest = None then
-      export path u id loc;
+      export path u stock id loc;
     let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (id::path) in
     if Hashtbl.mem fields path then
       Hashtbl.replace corres loc
