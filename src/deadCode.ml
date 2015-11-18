@@ -135,7 +135,7 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_send _ ->
           DeadObj.collect_references e
 
-    | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class) :: !DeadObj.aliases
+    | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class::[]) :: !DeadObj.aliases
 
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
         begin match vb_pat.pat_desc with
