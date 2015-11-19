@@ -60,15 +60,9 @@ let rec treat_fields action typ = match typ.desc with
   | _ -> ()
 
 
-let rec cut_sharp s pos len =
-  if len = String.length s then s
-  else if s.[pos] = '#' then String.sub s (pos - len) len
-  else cut_sharp s (pos + 1) (len + 1)
-let cut_sharp s = cut_sharp s 0 0
-
 let full_name name =
   try
-    List.map (fun (_, path, _) -> cut_sharp path) !incl
+    List.map (fun (_, path, _) -> string_cut '#' path) !incl
     |> find_path name ~sep:'.'
   with Not_found ->
     if List.mem name !defined then
@@ -155,7 +149,7 @@ let collect_references ?meth exp =
       let path, meth = match meth with
         | Some s -> path, s
         | None ->
-            let tmp = cut_sharp path in
+            let tmp = string_cut '#' path in
             let s = String.sub path (String.length tmp + 1) (String.length path - String.length tmp - 1) in
             tmp, s
       in
@@ -313,6 +307,7 @@ let prepare_report () =
             |> List.filter (fun (_, f) -> f <> s)
             |> Hashtbl.replace content c;
             hashtbl_add_to_list content c (b, s);
+            hashtbl_merge_list inheritances c inheritances c2;
             hashtbl_merge_list self_ref (c ^ "#" ^ s) self_ref (c2 ^ "#" ^ s);
             hashtbl_merge_list super_ref (c2 ^ "#" ^ s) super_ref (c ^ "#" ^ s)
           )
@@ -321,6 +316,34 @@ let prepare_report () =
       dep
   in
   Hashtbl.iter merge_dep dependencies;
+
+  let merge_eq m eq =
+    List.iter
+      (fun e ->
+        let c = string_cut '#' e in
+        let c, f =
+          String.sub c (String.length m + 1) (String.length c - String.length m - 1),
+          String.sub e (String.length c + 1) (String.length e - String.length c - 1)
+        in
+        List.iter
+          (fun m2 ->
+            hashtbl_merge_list references e references (m2 ^ "." ^ c ^ "#" ^ f)
+          )
+          eq
+      )
+      (
+        List.map (fun (_, path, _) -> path) !decs
+        |> List.filter
+          (fun path ->
+            if String.length path > String.length m && String.contains path '#'
+            && String.sub path 0 (String.length m) = m then begin
+            true
+            end
+            else false
+          )
+      )
+  in
+  Hashtbl.iter merge_eq DeadMod.equal;
 
   let rec process ?inher c =
     if not (Hashtbl.mem processed c) then begin
@@ -355,7 +378,7 @@ let prepare_report () =
     end
 
   and super_proc path c =
-    process (cut_sharp path);
+    process (string_cut '#' path);
     List.iter
       (fun (path, call_sites) ->
         let f = self_proc (path, call_sites) c in
@@ -369,7 +392,7 @@ let prepare_report () =
       (hashtbl_find_list self_ref path)
 
   and self_proc (path, call_sites) c =
-    let src = cut_sharp path in
+    let src = string_cut '#' path in
     let f = String.sub path (String.length src + 1) (String.length path - String.length src - 1) in
     add_calls (c ^ "#" ^ f) call_sites;
     f

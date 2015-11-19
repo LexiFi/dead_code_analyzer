@@ -40,6 +40,13 @@ let find_path fn ?(sep = '/') l = List.find
 let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
 
 
+let rec string_cut c s pos len =
+  if len = String.length s then s
+  else if s.[pos] = c then String.sub s (pos - len) len
+  else string_cut c s (pos + 1) (len + 1)
+let string_cut c s = string_cut c s 0 0
+
+
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
 
@@ -145,7 +152,8 @@ let merge_locs ?add l1 l2 =
                 (********   PROCESSING  ********)
 
   let export ?(sep = ".") path u stock id loc =
-    if not loc.Location.loc_ghost && u = unit loc.Location.loc_start.Lexing.pos_fname
+    if not loc.Location.loc_ghost
+    && (u = unit loc.Location.loc_start.Lexing.pos_fname || u <> unit !current_src)
     && check_underscore id.Ident.name then
       stock := (!current_src,
           String.concat "." (List.rev_map Ident.name path)

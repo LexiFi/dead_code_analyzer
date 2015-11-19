@@ -1,5 +1,5 @@
 # Work in Progress
-- handling includes
+- handle module types correctly
 - code cleaning
 - objects
 
@@ -21,4 +21,4 @@
 - The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 192 unique expected results)
+ratio: **100%** succesful (over 195 unique expected results)

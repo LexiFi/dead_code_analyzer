@@ -30,24 +30,26 @@ let var_name = ref ""
                 (********   PROCESSING   ********)
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
-let rec collect_export path u stock signature =
-
-  match signature with
-    | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-        (* a .cmi file can contain locations from other files.
-          For instance:
-              module M : Set.S with type elt = int
-          will create value definitions whose location is in set.mli
-        *)
-          export path u stock id val_loc;
-    | Sig_type (id, t, _) ->
-        DeadType.collect_export (id::path) u stock t
-    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
+let rec collect_export ?(mod_type = false) path u stock = function
+  | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+      (* a .cmi file can contain locations from other files.
+        For instance:
+            module M : Set.S with type elt = int
+        will create value definitions whose location is in set.mli
+      *)
+        export path u stock id val_loc;
+  | Sig_type (id, t, _) ->
+      DeadType.collect_export (id::path) u stock t
+  | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
         DeadObj.collect_export (id::path) u stock t loc
-    | Sig_module (id, {Types.md_type = t; _}, _)
-    | Sig_modtype (id, {Types.mtd_type = Some t; _}) ->
-        List.iter (collect_export (id :: path) u stock) (DeadMod.sign t)
-    | _ -> ()
+  | (Sig_module (id, {Types.md_type = t; _}, _)
+  | Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
+      let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
+      if collect then
+        DeadMod.sign t
+        |> List.iter (collect_export ~mod_type (id :: path) u stock)
+
+  | _ -> ()
 
 
 let rec treat_exp exp args = match exp.exp_desc with
@@ -99,18 +101,37 @@ let collect_references =                          (* Tast_mapper *)
   let structure_item self i = begin match i.str_desc with
     | Tstr_value (_, l) -> List.iter value_binding l
     | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
-    | Tstr_module  {mb_name={txt; _};_} -> mods := txt :: !mods
+    | Tstr_module  {mb_name={txt; _}; mb_expr; _} ->
+        mods := txt :: !mods;
+        DeadMod.add_equal mb_expr;
+        DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
     | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
-    | Tstr_include i -> begin match i.incl_mod.mod_desc with
-      | Tmod_ident (p, _) ->
+    | Tstr_include i ->
+        let collect_include p =
+          let name = DeadMod.full_name (Path.name p) in
+          let u = "*include*"in
+          let name = Ident.create name :: [] in
           List.iter
-            (collect_export (Ident.create (Path.name p) :: []) (String.uncapitalize_ascii (Path.last p)) incl)
-            i.incl_type
-      | _ -> () end
+            (collect_export
+              ~mod_type:true
+              name
+              u
+              incl
+            )
+            i.incl_type;
+        in
+        let rec includ mod_expr = match mod_expr.mod_desc with
+          | Tmod_ident (p, _) -> collect_include p
+          | Tmod_apply (mod_expr, _, _)
+          | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
+          | _ -> ()
+        in
+        includ i.incl_mod
     | _ -> () end;
     let res = super.structure_item self i in
     begin match i.str_desc with
       | Tstr_module _ -> mods := List.tl !mods
+      | Tstr_class _ -> DeadObj.last_class := "_none_"
       | _ -> () end;
     res
   in
@@ -297,8 +318,8 @@ let rec load_file fn = match kind fn with
                 (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
               List.iter (assoc references) !DeadType.dependencies
             end;
-            incl := [];
             DeadType.dependencies := [];
+            incl := [];
             DeadObj.defined := []
         | _ -> ()  (* todo: support partial_implementation? *)
       end
