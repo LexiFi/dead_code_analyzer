@@ -31,17 +31,18 @@ let var_name = ref ""
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec collect_export ?(mod_type = false) path u stock = function
-  | Sig_value (id, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+  | Sig_value (id, {Types.val_loc; val_type; _}) when not val_loc.Location.loc_ghost ->
       (* a .cmi file can contain locations from other files.
         For instance:
             module M : Set.S with type elt = int
         will create value definitions whose location is in set.mli
       *)
         export path u stock id val_loc;
+        DeadObj.collect_export ({id with name = id.name ^ "*"}::path) "*obj*" stock ~obj:val_type val_loc
   | Sig_type (id, t, _) ->
       DeadType.collect_export (id::path) u stock t
   | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
-        DeadObj.collect_export (id::path) u stock t loc
+      DeadObj.collect_export (id::path) u stock ~cltyp:t loc
   | (Sig_module (id, {Types.md_type = t; _}, _)
   | Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
       let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
@@ -78,11 +79,12 @@ let value_binding = function
     } ->
       merge_locs ~add:true loc1 loc2
   | {
-      vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
+    vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
       vb_expr=exp;
       _
     } when not loc1.loc_ghost ->
-      DeadArg.node_build (vd_node ~add:true loc1) exp
+      DeadArg.node_build (vd_node ~add:true loc1) exp;
+      DeadObj.add_var (name ^ "*") exp
   | _ -> ()
 
 
@@ -93,45 +95,47 @@ let collect_references =                          (* Tast_mapper *)
     let l = !last_loc in
     let ll = loc x in
     if ll <> Location.none then last_loc := ll;
+    let prev_last_class = !DeadObj.last_class in
     let r = f self x in
+    DeadObj.last_class := prev_last_class;
     last_loc := l;
     r
   in
 
-  let structure_item self i = begin match i.str_desc with
-    | Tstr_value (_, l) -> List.iter value_binding l
-    | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
-    | Tstr_module  {mb_name={txt; _}; mb_expr; _} ->
-        mods := txt :: !mods;
-        DeadMod.add_equal mb_expr;
-        DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
-    | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
-    | Tstr_include i ->
-        let collect_include p =
-          let name = DeadMod.full_name (Path.name p) in
-          let u = "*include*"in
-          let name = Ident.create name :: [] in
-          List.iter
-            (collect_export
-              ~mod_type:true
-              name
-              u
-              incl
-            )
-            i.incl_type;
-        in
-        let rec includ mod_expr = match mod_expr.mod_desc with
-          | Tmod_ident (p, _) -> collect_include p
-          | Tmod_apply (mod_expr, _, _)
-          | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
-          | _ -> ()
-        in
-        includ i.incl_mod
-    | _ -> () end;
+  let structure_item self i =
+    begin match i.str_desc with
+      | Tstr_value (_, l) -> List.iter value_binding l
+      | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
+      | Tstr_module  {mb_name={txt; _}; mb_expr; _} ->
+          mods := txt :: !mods;
+          DeadMod.add_equal mb_expr;
+          DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
+      | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
+      | Tstr_include i ->
+          let collect_include p =
+            let name = DeadMod.full_name (Path.name p) in
+            let u = "*include*"in
+            let name = Ident.create name :: [] in
+            List.iter
+              (collect_export
+                ~mod_type:true
+                name
+                u
+                incl
+              )
+              i.incl_type;
+          in
+          let rec includ mod_expr = match mod_expr.mod_desc with
+            | Tmod_ident (p, _) -> collect_include p
+            | Tmod_apply (mod_expr, _, _)
+            | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
+            | _ -> ()
+          in
+          includ i.incl_mod
+      | _ -> () end;
     let res = super.structure_item self i in
     begin match i.str_desc with
       | Tstr_module _ -> mods := List.tl !mods
-      | Tstr_class _ -> DeadObj.last_class := "_none_"
       | _ -> () end;
     res
   in

@@ -65,12 +65,12 @@ let hashtbl_merge_list tbl1 key1 tbl2 key2 =
 
 
 let exported fn =
-  !DeadFlag.exported.print && (!DeadFlag.internal
-      || fn.[String.length fn - 1] = 'i'
-      || (let src, name = unit !current_src, unit fn in
-        String.length name < String.length src
-        || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
-      || try not (Sys.file_exists (find_path fn !abspath ^ "i")) with Not_found -> true)
+   !DeadFlag.internal
+   || fn.[String.length fn - 1] = 'i'
+   || (let src, name = unit !current_src, unit fn in
+      String.length name < String.length src
+      || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
+   || try not (Sys.file_exists (find_path fn !abspath ^ "i")) with Not_found -> true
 
 
 (* Section printer:
@@ -152,15 +152,15 @@ let merge_locs ?add l1 l2 =
                 (********   PROCESSING  ********)
 
   let export ?(sep = ".") path u stock id loc =
-    if not loc.Location.loc_ghost
-    && (u = unit loc.Location.loc_start.Lexing.pos_fname || u <> unit !current_src)
-    && check_underscore id.Ident.name then
-      stock := (!current_src,
+    let value = 
           String.concat "." (List.rev_map Ident.name path)
           ^ sep
-          ^ id.Ident.name,
-          loc)
-        :: !stock
+          ^ id.Ident.name
+    in
+    if not loc.Location.loc_ghost
+    && (u = unit loc.Location.loc_start.Lexing.pos_fname || u = "*include*")
+    && check_underscore id.Ident.name then
+      stock := (!current_src, value, loc) :: !stock
 
 
 
