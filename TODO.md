@@ -1,12 +1,9 @@
 # Work in Progress
-- handle module types correctly
+- literal objects
 - code cleaning
-- objects
 
 # Waiting
-- cut output: "unused exported values" is lost its meaning: seperate types and obj from it
-- improve options (rethink it)
-- all kind of types
+- handle module types correctly
 
 
 #Testing
@@ -21,4 +18,4 @@
 - The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 195 unique expected results)
+ratio: **100%** succesful (over 198 unique expected results)
