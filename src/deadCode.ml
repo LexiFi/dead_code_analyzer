@@ -43,6 +43,8 @@ let rec collect_export ?(mod_type = false) path u stock = function
       DeadType.collect_export (id::path) u stock t
   | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
       DeadObj.collect_export (id::path) u stock ~cltyp:t loc
+  | Sig_class_type (id, {Types.clty_type = t; clty_loc = loc; _}, _) ->
+      DeadObj.collect_export (id::path) "~class type~" stock ~cltyp:t loc
   | (Sig_module (id, {Types.md_type = t; _}, _)
   | Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
       let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
@@ -188,17 +190,31 @@ let collect_references =                          (* Tast_mapper *)
 
     | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class::[]) :: !DeadObj.aliases
 
-    | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
-        begin match vb_pat.pat_desc with
-          | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
-          | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
+    | Texp_let (_, l, _) ->
+        List.iter
+          (function
+            | {
+                vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
+                vb_expr=exp;
+                _
+              } when not loc1.loc_ghost ->
+                DeadObj.add_var (name ^ "*") exp
+            | _ -> ()
+          )
+          l;
+          begin match e.exp_desc with
+          | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
+              begin match vb_pat.pat_desc with
+              | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
+              | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
 
-    | Texp_let (
-          Nonrecursive,
-          [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
-          {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
-      when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
-        style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
+          | Texp_let (
+                Nonrecursive,
+                [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
+                {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
+            when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
+              style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
+          | _ -> () end
 
     | _ -> () end;
     super.expr self e

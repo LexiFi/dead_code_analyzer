@@ -69,9 +69,17 @@ let full_name name =
     List.map (fun (_, path, _) -> string_cut '#' path) !incl
     |> find_path name ~sep:'.'
   with Not_found ->
-    if List.mem name !defined then
-      String.capitalize_ascii (unit !current_src) ^ "." ^ name
-    else name
+    let rec full_name intent name =
+      if List.mem name !defined then
+        String.capitalize_ascii (unit !current_src) ^ "." ^ name
+      else
+        let cut = string_cut '.' name in
+        let path = DeadMod.full_name cut in
+        if intent = 0 && path <> cut then
+          let name = (path ^ String.sub name (String.length cut) (String.length name - String.length cut)) in
+          full_name 1 name
+        else name
+    in full_name 0 name
 
 let rec make_name t path = match t.desc with
   | Tarrow (_, _, t, _)
@@ -221,33 +229,33 @@ let add_var name e =
   end
 
 let class_structure cl_struct =
-  if Hashtbl.mem content !last_class then
-    let cut_pat s =
-      if String.length s > 7 && String.sub s 0 4 = "self" then
-        "self" ^ String.sub s 7 (String.length s - 7)
-      else s
-    in
-    let rec clean_sharp s p =
-      try
-        if s.[p] = '#' then String.sub s 0 p ^ String.sub s (p + 1) (String.length s - p - 1)
-        else clean_sharp s (p + 1)
-      with _ -> s
-    in
-    let rec add_alias pat = begin match pat.pat_desc with
-      | Tpat_alias (pat, id, _) -> aliases := (cut_pat id.Ident.name, !last_class :: []) :: !aliases; add_alias pat
-      | Tpat_var (id, _) -> aliases := (id.Ident.name, !last_class :: []) :: !aliases
-      | _ -> () end;
-      List.iter
-        (function
-          | (Tpat_constraint {ctyp_desc=Ttyp_class (p, _, _); _}, _, _) ->
-              let name = clean_sharp (Path.name p) 0 in
-              let name = full_name name in
-              aliases := List.map (fun (a, l) -> if List.mem !last_class l then (a, name::l) else (a, l)) !aliases
-          | _ -> ()
-        )
-        pat.pat_extra
-    in
-    add_alias cl_struct.cstr_self
+  let cut_pat s =
+    if String.length s > 7 && String.sub s 0 4 = "self" then
+      "self" ^ String.sub s 7 (String.length s - 7)
+    else s
+  in
+  let rec clean_sharp s p =
+    try
+      if s.[p] = '#' then String.sub s 0 p ^ String.sub s (p + 1) (String.length s - p - 1)
+      else clean_sharp s (p + 1)
+    with _ -> s
+  in
+  let rec add_alias pat = begin match pat.pat_desc with
+    | Tpat_alias (pat, id, _) -> aliases := (cut_pat id.Ident.name, !last_class :: []) :: !aliases; add_alias pat
+    | Tpat_var (id, _) -> aliases := (id.Ident.name, !last_class :: []) :: !aliases
+    | _ -> () end;
+    List.iter
+      (function
+        | (Tpat_constraint {ctyp_desc=Ttyp_class (p, _, _); _}, _, _) ->
+            let name = clean_sharp (Path.name p) 0 in
+            let name = full_name name in
+            aliases := List.map (fun (a, l) -> if List.mem !last_class l then (a, name::l) else (a, l)) !aliases;
+            hashtbl_add_to_list dependencies !last_class name
+        | _ -> ()
+      )
+      pat.pat_extra
+  in
+  add_alias cl_struct.cstr_self
 
 
 let class_field f =
@@ -274,11 +282,7 @@ let class_field f =
   match f.cf_desc with
     | Tcf_inherit (_, cl_exp, s, _, l) ->
         let name = name cl_exp in
-        let name =
-        if List.mem name !defined then
-          String.capitalize_ascii (unit !current_src) ^ "." ^ name
-          else name
-        in
+        let name = full_name name in
         hashtbl_add_to_list inheritances !last_class name;
         begin match s with
           | Some s -> aliases := (s, name::[]) :: !aliases
@@ -339,8 +343,12 @@ let prepare_report () =
         List.iter
           (fun m2 ->
             let c2 = m2 ^ "." ^ c2 in
-            List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c)
-            |> Hashtbl.replace content c;
+            if hashtbl_find_list content c <> [] then
+              List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c)
+              |> Hashtbl.replace content c
+            else
+              List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c2)
+              |> Hashtbl.replace content c;
             Hashtbl.replace inheritances c [c2];
           )
           eq
@@ -363,6 +371,7 @@ let prepare_report () =
             |> Hashtbl.replace content c;
             hashtbl_add_to_list content c (b, s);
             hashtbl_merge_list inheritances c inheritances c2;
+            hashtbl_merge_list references (c ^ "#" ^ s) references (c2 ^ "#" ^ s);
             hashtbl_merge_list self_ref (c ^ "#" ^ s) self_ref (c2 ^ "#" ^ s);
             hashtbl_merge_list super_ref (c2 ^ "#" ^ s) super_ref (c ^ "#" ^ s)
           )
@@ -477,32 +486,29 @@ let prepare_report () =
 
   let merge_eq m eq =
     List.iter
-      (fun e ->
-        let c = string_cut '#' e in
-        let c, f =
-          String.sub c (String.length m + 1) (String.length c - String.length m - 1),
-          String.sub e (String.length c + 1) (String.length e - String.length c - 1)
-        in
+      (fun c ->
+        let c2 = c in
+        let c = m ^"." ^c in
         List.iter
           (fun m2 ->
-            let e2 = m2 ^ "." ^ c ^ "#" ^ f in
-            hashtbl_merge_list references e2 references e;
-            hashtbl_merge_list references e references e2;
+            let c2 = m2 ^ "." ^ c2 in
+            List.iter
+              (fun (_, f) ->
+                let e = c ^"#" ^f in
+                let e2 = c2 ^"#" ^f in
+                hashtbl_merge_list references e references e2;
+                hashtbl_merge_list references e2 references e
+              )
+              (hashtbl_find_list content c)
           )
           eq
       )
       (
-        List.map (fun (_, path, _) -> path) !decs
-        |> List.filter
-          (fun path ->
-            if String.length path > String.length m && String.contains path '#'
-            && String.sub path 0 (String.length m) = m then begin
-            true
-            end
-            else false
-          )
+        List.filter (fun (p, _) -> p.[String.length p - 1] = '#') (hashtbl_find_list DeadMod.content m)
+        |> List.map (fun (path, _) -> String.sub path 0 (String.length path - 1))
       )
   in
+  Hashtbl.iter merge_eq DeadMod.equal;
   Hashtbl.iter merge_eq DeadMod.equal
 
 

@@ -151,16 +151,16 @@ let merge_locs ?add l1 l2 =
 
                 (********   PROCESSING  ********)
 
-  let export ?(sep = ".") path u stock id loc =
-    let value = 
-          String.concat "." (List.rev_map Ident.name path)
-          ^ sep
-          ^ id.Ident.name
-    in
-    if not loc.Location.loc_ghost
-    && (u = unit loc.Location.loc_start.Lexing.pos_fname || u = "*include*")
-    && check_underscore id.Ident.name then
-      stock := (!current_src, value, loc) :: !stock
+let export ?(sep = ".") path u stock id loc =
+  let value =
+    String.concat "." (List.rev_map Ident.name path)
+    ^ sep
+    ^ id.Ident.name
+  in
+  if not loc.Location.loc_ghost
+  && (u = unit loc.Location.loc_start.Lexing.pos_fname || u = "*include*")
+  && check_underscore id.Ident.name then
+    stock := (!current_src, value, loc) :: !stock
 
 
 
