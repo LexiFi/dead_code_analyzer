@@ -39,6 +39,8 @@ let rec collect_export ?(mod_type = false) path u stock = function
       *)
         export path u stock id val_loc;
         DeadObj.collect_export ({id with name = id.name ^ "*"}::path) "*obj*" stock ~obj:val_type val_loc
+  | Sig_type (id, {type_kind=Type_abstract; type_manifest=Some t; type_loc=loc; _}, _) ->
+      DeadObj.collect_export (id::path) "~type~" stock ~obj:t loc
   | Sig_type (id, t, _) ->
       DeadType.collect_export (id::path) u stock t
   | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->

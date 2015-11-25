@@ -108,6 +108,7 @@ let rec make_path ?(hiera = false) e =
           (path ^ "*")::[]
         else
           make_name e.exp_type path
+    | Texp_new (path, _, _) -> Path.name path :: []
 
     | Texp_instvar (_, path, _) -> make_name e.exp_type (Path.name path)
 
@@ -167,9 +168,12 @@ let collect_export path u stock ?obj ?cltyp loc =
     | None -> ()
 
 
-let collect_references ?meth exp =
+let collect_references ?meth ?path exp =
 
-  let path = make_path exp in
+  let path = match path with
+    | None -> make_path exp
+    | Some path -> path
+  in
   let process path =
     if path <> "" && path.[0] <> '#' && (String.contains path '#' || meth <> None) then begin
       let path, meth = match meth with
@@ -299,10 +303,13 @@ let class_field f =
     | _ -> ()
 
 
-let rec arg typ args =
-  match typ.desc with
-  | Tlink t -> arg t args
-  | Tarrow (_, t, typ, _) -> if args <> [] then begin arg t [(List.hd args)]; arg typ (List.tl args) end
+let arg typ args = let rec arg self typ args = match typ.desc with
+  | Tlink t -> arg self t args
+  | Tarrow (_, _, typ, _) when self -> 
+      arg self typ args
+  | Tarrow (_, t, typ, _) when args <> [] ->
+      arg self t [(List.hd args)];
+      arg self typ (List.tl args)
   | Tobject _ ->
       begin try
         let _, e, _ = List.hd args in
@@ -312,18 +319,29 @@ let rec arg typ args =
         | None -> () end
       with _ -> () end
   | Tconstr (p, _, _) ->
-      let p = full_name (Path.name p) in
-      let collect () =
-        try
-          let _, e, _ = List.hd args in
-          begin match e with
-          | Some e ->
-              List.iter (fun (_, s) -> collect_references ~meth:s e) (hashtbl_find_list content p)
-          | None -> () end
-        with _ -> ()
-      in
-      later := collect :: !later
+      begin try
+        let _, e, _ = List.hd args in
+        match e with
+        | Some e ->
+            let p = full_name (Path.name p) in
+            let path = make_path e |> List.map full_name in
+            let collect () =
+              List.iter
+                (fun (_, s) -> collect_references ~meth:s ~path e)
+                (hashtbl_find_list content p)
+            in
+            later := collect :: !later
+        | None -> ()
+      with _ -> () end
+  | Tvar _ when not self->
+      begin try
+        let _, e, _ = List.hd args in
+        match e with
+        | Some e -> arg true e.exp_type args
+        | _ -> ()
+      with _ -> () end
   | _ -> ()
+  in arg false typ args
 
 
 let prepare_report () =
