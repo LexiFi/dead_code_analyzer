@@ -13,6 +13,9 @@ open Typedtree
 open DeadCommon
 
 
+let later = ref []
+
+
 (* Verify the optional args calls. Treat args *)
 let rec process val_loc args =
   List.iter                               (* treat each arg's expression before all (even if ghost) *)
@@ -24,6 +27,7 @@ let rec process val_loc args =
   else begin                              (* else: `begin ... end' for aesthetics *)
     let loc = vd_node val_loc in
     let tbl = Hashtbl.create 256 in       (* tbl: label -> nb of occurences *)
+    let last_loc = !last_loc in
 
     let treat lab expr =
       let has_val = match expr.exp_desc with
@@ -42,7 +46,7 @@ let rec process val_loc args =
       in
       if check_underscore lab then
         opt_args := (locate loc, lab, has_val,
-            if expr.exp_loc.Location.loc_ghost then !last_loc
+            if expr.exp_loc.Location.loc_ghost then last_loc
             else expr.exp_loc)
           :: !opt_args
     in
@@ -50,7 +54,10 @@ let rec process val_loc args =
     List.iter
       (function
         | (Asttypes.Optional lab, Some expr, _) ->
-          treat lab expr
+            if loc.ptr == loc then
+              later := (fun () -> treat lab expr) :: !later
+            else
+              treat lab expr
         | _ -> ())
       args
   end

@@ -14,10 +14,12 @@ build:
 	$(OCAMLC) -c $(SRC)
 	make -C dir
 	make -C obj
+	make -C opt
 	make -C advanced
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
 	make -C dir clean
 	make -C obj clean
+	make -C opt clean
 	make -C advanced clean

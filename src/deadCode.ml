@@ -74,24 +74,6 @@ let rec treat_exp exp args = match exp.exp_desc with
   | _ -> ()
 
 
-(* Binding in Tstr_value *)
-let value_binding = function
-  | {
-      vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
-      vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
-      _
-    } ->
-      merge_locs ~add:true loc1 loc2
-  | {
-    vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
-      vb_expr=exp;
-      _
-    } when not loc1.loc_ghost ->
-      DeadArg.node_build (vd_node ~add:true loc1) exp;
-      DeadObj.add_var (name ^ "*") exp
-  | _ -> ()
-
-
 (* Parse the AST *)
 let collect_references =                          (* Tast_mapper *)
   let super = Tast_mapper.default in
@@ -106,9 +88,25 @@ let collect_references =                          (* Tast_mapper *)
     r
   in
 
+  let value_binding = function
+    | {
+        vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
+        vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
+        _
+      } ->
+        merge_locs ~add:true loc1 loc2
+    | {
+      vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
+        vb_expr=exp;
+        _
+      } when not loc1.loc_ghost ->
+        DeadArg.node_build (vd_node ~add:true loc1) exp;
+        DeadObj.add_var (name ^ "*") exp
+    | _ -> ()
+  in
+
   let structure_item self i =
     begin match i.str_desc with
-      | Tstr_value (_, l) -> List.iter value_binding l
       | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
       | Tstr_module  {mb_name={txt; _}; mb_expr; _} ->
           mods := txt :: !mods;
@@ -192,31 +190,17 @@ let collect_references =                          (* Tast_mapper *)
 
     | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class::[]) :: !DeadObj.aliases
 
-    | Texp_let (_, l, _) ->
-        List.iter
-          (function
-            | {
-                vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
-                vb_expr=exp;
-                _
-              } when not loc1.loc_ghost ->
-                DeadObj.add_var (name ^ "*") exp
-            | _ -> ()
-          )
-          l;
-          begin match e.exp_desc with
-          | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
-              begin match vb_pat.pat_desc with
-              | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
-              | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
+    | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
+        begin match vb_pat.pat_desc with
+        | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
+        | _ -> style := (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") :: !style end
 
-          | Texp_let (
-                Nonrecursive,
-                [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
-                {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
-            when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
-              style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
-          | _ -> () end
+    | Texp_let (
+          Nonrecursive,
+          [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
+          {exp_desc= Texp_ident (Pident id2, _, _); exp_extra = []; _})
+      when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
+        style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
 
     | _ -> () end;
     super.expr self e
@@ -225,11 +209,20 @@ let collect_references =                          (* Tast_mapper *)
   let expr = wrap expr (fun x -> x.exp_loc) in
   let pat = wrap pat (fun x -> x.pat_loc) in
   let structure_item = wrap structure_item (fun x -> x.str_loc) in
-  let module_expr = (fun self x -> DeadMod.expr x; super.module_expr self x) in
+  let value_binding =
+    wrap
+      (fun self x -> value_binding x; super.value_binding self x)
+      (fun x -> x.vb_expr.exp_loc)
+  in
+  let module_expr =
+    wrap
+      (fun self x -> DeadMod.expr x; super.module_expr self x)
+      (fun x -> x.mod_loc)
+  in
   let class_structure = (fun self x -> DeadObj.class_structure x; super.class_structure self x) in
   let class_field = (fun self x -> DeadObj.class_field x; super.class_field self x) in
   let class_field = wrap class_field (fun x -> x.cf_loc) in
-  {super with structure_item; expr; pat; module_expr; class_structure; class_field}
+  {super with structure_item; expr; pat; value_binding; module_expr; class_structure; class_field}
 
 
 (* Checks the nature of the file *)
@@ -334,7 +327,9 @@ let rec load_file fn = match kind fn with
 
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
+            List.iter (fun ({Types.val_loc=loc1; _}, {Types.val_loc=loc2; _}) -> merge_locs ~add:true loc2 loc1) cmt_value_dependencies;
             ignore (collect_references.structure collect_references x);
+            List.iter (fun f -> f()) !DeadArg.later;
             if !DeadFlag.exported.print then begin
               List.iter (assoc references)
                 (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
