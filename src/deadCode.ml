@@ -342,7 +342,7 @@ let rec load_file fn = match kind fn with
             end;
             DeadType.dependencies := [];
             incl := [];
-            DeadObj.defined := []
+            Hashtbl.reset DeadObj.defined
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 

@@ -34,7 +34,7 @@ let later = ref []
 
 
 
-let defined = ref []                                    (* all classes defined in the current file *)
+let defined = Hashtbl.create 12                                    (* all classes defined in the current file *)
 
 let aliases = ref []                                    (* aliases on class names *)
 
@@ -70,9 +70,9 @@ let full_name name =
     |> find_path name ~sep:'.'
   with Not_found ->
     let rec full_name intent name =
-      if List.mem name !defined then
-        String.capitalize_ascii (unit !current_src) ^ "." ^ name
-      else
+      try
+        String.capitalize_ascii (unit !current_src) ^ "." ^ Hashtbl.find defined name
+      with Not_found ->
         let cut = string_cut '.' name in
         let path = DeadMod.full_name cut in
         if intent = 0 && path <> cut then
@@ -125,7 +125,7 @@ let rec make_path ?(hiera = false) e =
         let names = List.map full_name names
         in
         let merge name clas =
-          if List.mem clas !defined || String.contains clas '.' then
+          if Hashtbl.mem defined clas || String.contains clas '.' then
             if Hashtbl.mem content name then
               List.iter
                 (fun (_, s) ->
@@ -152,9 +152,10 @@ let collect_export path u stock ?obj ?cltyp loc =
   let str = String.concat "." (List.tl (List.rev_map (fun id -> id.Ident.name) path)) in
 
   last_class := String.capitalize_ascii (unit !current_src) ^ "." ^ str;
-  defined := str :: !defined;
+  Hashtbl.add defined str str;
 
   let save id =
+    if stock != decs || not (Sys.file_exists (Filename.chop_extension !current_src ^ ".csml")) then
     export ~sep:"#" path u stock (Ident.create id) loc;
     hashtbl_add_to_list content !last_class (false, id)
   in
@@ -206,14 +207,25 @@ let collect_references ?meth ?path exp =
 let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
 
   last_class :=
-    String.capitalize_ascii (unit !current_src) ^ "."
-    ^ String.concat "." (List.rev !mods)
+    String.concat "." (List.rev !mods)
     ^ (if !mods <> [] then "." ^ name.Ident.name else name.Ident.name);
-  let rec make_dep ci_expr = match ci_expr.cl_desc with
-    | Tcl_ident (p, _, _) ->
-        let p = full_name (Path.name p) in
-        let name = full_name name.Ident.name in
-        hashtbl_add_to_list dependencies name p;
+  Hashtbl.add defined name.Ident.name !last_class;
+  last_class :=
+    String.capitalize_ascii (unit !current_src) ^ "." ^ !last_class;
+  let add_depend p =
+    let p = full_name (Path.name p) in
+    hashtbl_add_to_list dependencies !last_class p
+  in
+  let rec check_type = function
+    | Cty_constr (p, _, _) -> add_depend p
+    | Cty_signature _ -> ()
+    | Cty_arrow (_, _, cl_type) -> check_type cl_type
+  in
+  check_type ci_expr.cl_type;
+  let rec make_dep ci_expr =
+    match ci_expr.cl_desc with
+    | Tcl_ident (p, _, _) -> add_depend p
+    | Tcl_fun (_, _, _, ci_expr, _)
     | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr
     | _ -> ()
   in
@@ -227,7 +239,7 @@ let add_var name e =
     | _ -> false
   in
   if is_obj e then begin
-    defined := name :: !defined;
+    Hashtbl.add defined name name;
     last_class := full_name name;
     literals := !last_class :: !literals
   end
@@ -244,7 +256,8 @@ let class_structure cl_struct =
       else clean_sharp s (p + 1)
     with _ -> s
   in
-  let rec add_alias pat = begin match pat.pat_desc with
+  let rec add_alias pat =
+    begin match pat.pat_desc with
     | Tpat_alias (pat, id, _) -> aliases := (cut_pat id.Ident.name, !last_class :: []) :: !aliases; add_alias pat
     | Tpat_var (id, _) -> aliases := (id.Ident.name, !last_class :: []) :: !aliases
     | _ -> () end;
@@ -388,7 +401,6 @@ let prepare_report () =
             |> List.filter (fun (_, f) -> f <> s)
             |> Hashtbl.replace content c;
             hashtbl_add_to_list content c (b, s);
-            hashtbl_merge_list inheritances c inheritances c2;
             hashtbl_merge_list references (c ^ "#" ^ s) references (c2 ^ "#" ^ s);
             hashtbl_merge_list self_ref (c ^ "#" ^ s) self_ref (c2 ^ "#" ^ s);
             hashtbl_merge_list super_ref (c2 ^ "#" ^ s) super_ref (c ^ "#" ^ s)
@@ -430,6 +442,7 @@ let prepare_report () =
           List.iter (fun (path, call_sites) -> if path =  super then add_calls (c ^ "#" ^ f) call_sites) l
         )
         self_ref;
+      decs := List.filter (fun (_, path, _) -> path <> self) !decs;
       hashtbl_merge_list references super references self;
       Hashtbl.replace references self (hashtbl_find_list references super);
       hashtbl_merge_list self_ref self self_ref super;
