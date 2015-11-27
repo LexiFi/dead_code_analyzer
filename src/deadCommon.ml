@@ -9,15 +9,15 @@
 
                 (********   ATTRIBUTES   ********)
 
-let abspath = ref []                                                                (* longest paths known *)
+let abspath : (string, string) Hashtbl.t = Hashtbl.create 512                  (* longest paths known *)
 
 
 let decs : (string * string * Location.t) list ref = ref []                         (* all exported value declarations *)
 
 let incl : (string * string * Location.t) list ref = ref []                         (* all exported value declarations *)
 
-let references : (Location.t, Location.t list) Hashtbl.t  = Hashtbl.create 256      (* all value references *)
-let corres : (Location.t, Location.t list) Hashtbl.t = Hashtbl.create 256           (* link from dec to def *)
+let references : (Location.t, Location.t) Hashtbl.t  = Hashtbl.create 256      (* all value references *)
+let corres : (Location.t, Location.t) Hashtbl.t = Hashtbl.create 256           (* link from dec to def *)
 
 let fields : (string, Location.t) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
 
@@ -30,13 +30,6 @@ let mods : string list ref = ref []                                             
 
                 (********   HELPERS   ********)
 
-let find_path fn ?(sep = '/') l = List.find
-  (fun path ->
-    let lp = String.length path and lf = String.length fn in
-    (lp > lf && path.[lp - lf - 1] = sep || lp = lf) && String.sub path (lp - lf) lf = fn)
-  l
-
-
 let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
 
 
@@ -44,24 +37,47 @@ let rec string_cut c s pos len =
   if len = String.length s then s
   else if s.[pos] = c then String.sub s (pos - len) len
   else string_cut c s (pos + 1) (len + 1)
-let string_cut c s = string_cut c s 0 0
+let string_cut c s = if String.contains s c then string_cut c s 0 0 else s
 
 
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
 
-let hashtbl_find_list hashtbl key = try Hashtbl.find hashtbl key with Not_found -> []
+let hashtbl_find_list hashtbl key = Hashtbl.find_all hashtbl key
 
+let hashtbl_add_to_list hashtbl key elt = Hashtbl.add hashtbl key elt
 
-let hashtbl_add_to_list hashtbl key elt = Hashtbl.replace hashtbl key (elt :: hashtbl_find_list hashtbl key)
+let hashtbl_add_unique_to_list hashtbl key elt =
+  if not (List.mem elt (hashtbl_find_list hashtbl key)) then
+    Hashtbl.add hashtbl key elt
 
+let rec hashtbl_remove_list hashtbl key =
+  if Hashtbl.mem hashtbl key then begin
+    Hashtbl.remove hashtbl key;
+    hashtbl_remove_list hashtbl key
+  end
+
+let hashtbl_replace_list hashtbl key l =
+  hashtbl_remove_list hashtbl key;
+  List.iter (fun elt -> hashtbl_add_to_list hashtbl key elt) l
 
 let hashtbl_merge_list tbl1 key1 tbl2 key2 =
-  if Hashtbl.mem tbl2 key2 then
-    Hashtbl.replace
-      tbl1
-      key1
-      (List.sort_uniq compare (hashtbl_find_list tbl1 key1 @ hashtbl_find_list tbl2 key2))
+  List.iter (fun elt -> hashtbl_add_to_list tbl1 key1 elt) (hashtbl_find_list tbl2 key2)
+
+let hashtbl_merge_unique_list tbl1 key1 tbl2 key2 =
+  List.iter (fun elt -> hashtbl_add_unique_to_list tbl1 key1 elt) (hashtbl_find_list tbl2 key2)
+
+
+let find_path fn ?(sep = '/') l = List.find
+  (fun path ->
+    let lp = String.length path and lf = String.length fn in
+    (lp > lf && path.[lp - lf - 1] = sep || lp = lf) && String.sub path (lp - lf) lf = fn)
+  l
+
+let find_abspath fn =
+  find_path fn (hashtbl_find_list abspath (unit fn))
+
+
 
 
 let exported flag loc =
@@ -72,7 +88,7 @@ let exported flag loc =
     || (let src, name = unit !current_src, unit fn in
         String.length name < String.length src
         || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
-    || try not (Sys.file_exists (find_path fn !abspath ^ "i")) with Not_found -> true)
+    || try not (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> true)
 
 
 (* Section printer:
@@ -97,7 +113,7 @@ let separator () =
 let prloc ?fn (loc : Location.t) = begin match fn with
   | Some s ->
       print_string (Filename.dirname s ^ "/" ^ Filename.basename loc.loc_start.pos_fname)
-  | _ -> match find_path loc.loc_start.pos_fname !abspath with
+  | _ -> match find_abspath loc.loc_start.pos_fname with
     | s -> print_string s
     | exception Not_found -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
   end;
@@ -169,7 +185,7 @@ let export ?(sep = ".") path u stock id loc =
                 (**** REPORTING ****)
 
 (* Absolute path *)
-let abs loc = match find_path loc.Location.loc_start.pos_fname !abspath with
+let abs loc = match find_abspath loc.Location.loc_start.pos_fname with
   | s -> s
   | exception Not_found -> loc.Location.loc_start.pos_fname
 

@@ -15,11 +15,11 @@ open DeadCommon
 
 
 
-let equal : (string, string list) Hashtbl.t = Hashtbl.create 16
+let equal : (string, string) Hashtbl.t = Hashtbl.create 16
 
 let defined : string list ref = ref []
 
-let content : (string, (string * Location.t) list) Hashtbl.t = Hashtbl.create 16
+let content : (string, (string * Location.t)) Hashtbl.t = Hashtbl.create 16
 
 
 let full_name name =
@@ -86,7 +86,7 @@ let add_equal mb_expr =
   if path <> name then
     hashtbl_add_to_list equal path name;
   make_content ~clas:true mb_expr.mod_type
-  |> Hashtbl.replace content path
+  |> hashtbl_replace_list content path
 
 
 

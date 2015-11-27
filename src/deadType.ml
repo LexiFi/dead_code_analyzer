@@ -99,9 +99,7 @@ let collect_export path u stock t =
       export path u stock id loc;
     let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (id::path) in
     if Hashtbl.mem fields path then
-      Hashtbl.replace corres loc
-        (let loc = Hashtbl.find fields path in
-        loc :: hashtbl_find_list corres loc);
+      hashtbl_add_to_list corres loc (Hashtbl.find fields path);
     Hashtbl.replace fields path loc
   in
 
@@ -177,7 +175,7 @@ let report () =
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
           else cut_main s (pos + 1)
         in
-        let test elt = match Hashtbl.find references elt with
+        let test elt = match hashtbl_find_list references elt with
           | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
           | _ -> None
         in
@@ -187,7 +185,7 @@ let report () =
             match test loc with
               | None -> None
               | opt ->
-                let locs = Hashtbl.find corres loc in
+                let locs = hashtbl_find_list corres loc in
                 match List.find (fun node -> try test node <> None with Not_found -> false) locs with
                   | exception Not_found -> opt
                   | loc -> test loc

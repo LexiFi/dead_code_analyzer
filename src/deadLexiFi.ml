@@ -71,10 +71,8 @@ let prepare_report () =
         in
         List.iter
           (fun loc ->
-            Hashtbl.replace
-              references
-              loc
-              (call_site :: hashtbl_find_list references loc))
+            hashtbl_add_to_list references loc call_site
+          )
           (proc name);
     | _ -> ()
   in

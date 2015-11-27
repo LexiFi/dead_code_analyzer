@@ -64,7 +64,7 @@ let rec treat_fields action typ = match typ.desc with
 
 let full_name name =
   try
-    List.map (fun (_, path, _) -> string_cut '#' path) !incl
+    List.map (fun (_, path, _) -> path) !incl
     |> find_path name ~sep:'.'
   with Not_found ->
     let rec full_name intent name =
@@ -124,13 +124,13 @@ let rec make_path ?(hiera = false) e =
             if Hashtbl.mem content name then
               List.iter
                 (fun (_, s) ->
-                  hashtbl_merge_list references (clas ^ "#" ^ s) references (name ^ "#" ^ s)
+                  hashtbl_merge_unique_list references (clas ^ "#" ^ s) references (name ^ "#" ^ s)
                 )
                 (hashtbl_find_list content name)
             else
               treat_fields
                 (fun s ->
-                    hashtbl_merge_list references (clas ^ "#" ^ s) references (name ^ "#" ^ s)
+                    hashtbl_merge_unique_list references (clas ^ "#" ^ s) references (name ^ "#" ^ s)
                 )
                 typ.ctyp_type
         in
@@ -140,7 +140,7 @@ let rec make_path ?(hiera = false) e =
 
 
 let add_alias src dest =
-  hashtbl_add_to_list aliases src dest
+  hashtbl_add_unique_to_list aliases src dest
 
 
 let eom () =
@@ -159,10 +159,13 @@ let collect_export path u stock ?obj ?cltyp loc =
   last_class := String.capitalize_ascii (unit !current_src) ^ "." ^ str;
   Hashtbl.add defined str str;
 
+  if stock != decs then
+    export (List.tl path) u stock (List.hd path) loc;
+
   let save id =
-    if stock != decs || not (Sys.file_exists (Filename.chop_extension !current_src ^ ".csml")) then
-    export ~sep:"#" path u stock (Ident.create id) loc;
-    hashtbl_add_to_list content !last_class (false, id)
+    if stock == decs && not (Sys.file_exists (Filename.chop_extension !current_src ^ ".csml")) then
+      export ~sep:"#" path u stock (Ident.create id) loc;
+    hashtbl_add_unique_to_list content !last_class (false, id)
   in
 
   let typ = match cltyp with
@@ -191,16 +194,16 @@ let collect_references ?meth ?path exp =
       in
       let path = full_name path ^ "#" ^ meth in
 
-      hashtbl_add_to_list references path exp.exp_loc;
+      hashtbl_add_unique_to_list references path exp.exp_loc;
       try
         let hiera = List.hd (make_path ~hiera:true exp) in
         if String.length hiera >= 4 && String.sub hiera 0 4 = "self" then
-            Hashtbl.replace self_ref (!last_class ^ "#" ^ !last_field)
+            hashtbl_replace_list self_ref (!last_class ^ "#" ^ !last_field)
               ( let prev = hashtbl_find_list self_ref (!last_class ^ "#" ^ !last_field) in
                 let e = (path, exp.exp_loc :: try List.assoc path prev with Not_found -> []) in
                 e :: (List.remove_assoc path prev))
           else if String.length hiera >= 5 && String.sub hiera 0 5 = "super" then
-            hashtbl_add_to_list super_ref (!last_class ^ "#" ^ meth) path
+            hashtbl_add_unique_to_list super_ref (!last_class ^ "#" ^ meth) path
       with _ -> ()
     end
   in
@@ -217,7 +220,7 @@ let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
     String.capitalize_ascii (unit !current_src) ^ "." ^ !last_class;
   let add_depend p =
     let p = full_name (Path.name p) in
-    hashtbl_add_to_list dependencies !last_class p
+    hashtbl_add_unique_to_list dependencies !last_class p
   in
   let rec check_type = function
     | Cty_constr (p, _, _) -> add_depend p
@@ -270,8 +273,8 @@ let class_structure cl_struct =
         | (Tpat_constraint {ctyp_desc=Ttyp_class (p, _, _); _}, _, _) ->
             let name = clean_sharp (Path.name p) 0 in
             let name = full_name name in
-            Hashtbl.iter (fun a l -> if List.mem !last_class l then add_alias a name) aliases;
-            hashtbl_add_to_list dependencies !last_class name
+            Hashtbl.iter (fun a e -> if e = !last_class then add_alias a name) aliases;
+            hashtbl_add_unique_to_list dependencies !last_class name
         | _ -> ()
       )
       pat.pat_extra
@@ -297,14 +300,14 @@ let class_field f =
         List.map (fun ((_, f) as e) -> if f = s then (b, f) else e) l
       else (b, s) :: l
     in
-    Hashtbl.replace content !last_class l
+    hashtbl_replace_list content !last_class l
   in
 
   match f.cf_desc with
     | Tcf_inherit (_, cl_exp, s, _, l) ->
         let name = name cl_exp in
         let name = full_name name in
-        hashtbl_add_to_list inheritances !last_class name;
+        hashtbl_add_unique_to_list inheritances !last_class name;
         begin match s with
           | Some s -> add_alias s name
           | None -> () end;
@@ -321,19 +324,19 @@ let class_field f =
         let rec make_name t = match t.ctyp_desc with
           | Ttyp_arrow (_, _, t) -> make_name t
           | Ttyp_var id ->
-              begin try Hashtbl.find aliases id |> List.hd with Not_found -> id end
+              begin try Hashtbl.find aliases id with Not_found -> id end
           | Ttyp_class (path, _, _) ->
               let path = Path.name path in
               String.sub path 1 (String.length path - 1)
           | Ttyp_constr (path, _, _) ->
               let path = Path.name path in
-              begin try Hashtbl.find aliases path |> List.hd with Not_found -> path end
+              begin try Hashtbl.find aliases path with Not_found -> path end
           | _ -> "_"
         in
         let name1, name2 = make_name t1, make_name t2 in
         let name1, name2 = full_name name1, full_name name2 in
-        hashtbl_add_to_list dependencies name2 name1;
-        hashtbl_add_to_list dependencies name1 name2;
+        hashtbl_add_unique_to_list dependencies name2 name1;
+        hashtbl_add_unique_to_list dependencies name1 name2;
 
     | _ -> ()
 
@@ -385,26 +388,21 @@ let prepare_report () =
   let processed = Hashtbl.create 64 in
 
   let add_calls path call_sites =
-    Hashtbl.replace references path (List.sort_uniq compare (call_sites @ hashtbl_find_list references path))
+    List.iter (fun elt -> hashtbl_add_unique_to_list references path elt) call_sites;
   in
 
-  let merge_eq m eq =
+  let merge_eq m m2 =
     List.iter
       (fun c ->
-        let c2 = c in
-        let c = m ^"." ^c in
-        List.iter
-          (fun m2 ->
-            let c2 = m2 ^ "." ^ c2 in
-            if hashtbl_find_list content c <> [] then
-              List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c)
-              |> Hashtbl.replace content c
-            else
-              List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c2)
-              |> Hashtbl.replace content c;
-            Hashtbl.replace inheritances c [c2];
-          )
-          eq
+        let c2 = m2 ^ "." ^ c in
+        let c = m ^"." ^ c in
+        if hashtbl_find_list content c <> [] then
+          List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c)
+          |> hashtbl_replace_list content c
+        else
+          List.map (fun (_, f) -> (false, f)) (hashtbl_find_list content c2)
+          |> hashtbl_replace_list content c;
+        hashtbl_replace_list inheritances c [c2];
       )
       (
         List.filter (fun (p, _) -> p.[String.length p - 1] = '#') (hashtbl_find_list DeadMod.content m)
@@ -413,33 +411,26 @@ let prepare_report () =
   in
   Hashtbl.iter merge_eq DeadMod.equal;
 
-  let merge_dep c dep =
+  let merge_dep c c2 =
+    hashtbl_merge_unique_list inheritances c inheritances c2;
     List.iter
-      (fun c2 ->
-        hashtbl_merge_list inheritances c inheritances c2;
-        List.iter
-          (fun (b, s) ->
-            hashtbl_find_list content c
-            |> List.filter (fun (_, f) -> f <> s)
-            |> Hashtbl.replace content c;
-            hashtbl_add_to_list content c (b, s);
-            hashtbl_merge_list references (c ^ "#" ^ s) references (c2 ^ "#" ^ s);
-            hashtbl_merge_list self_ref (c ^ "#" ^ s) self_ref (c2 ^ "#" ^ s);
-            hashtbl_merge_list super_ref (c2 ^ "#" ^ s) super_ref (c ^ "#" ^ s)
-          )
-          (hashtbl_find_list content c2)
+      (fun (b, s) ->
+        hashtbl_find_list content c
+        |> List.filter (fun (_, f) -> f <> s)
+        |> hashtbl_replace_list content c;
+        hashtbl_add_unique_to_list content c (b, s);
+        hashtbl_merge_unique_list references (c ^ "#" ^ s) references (c2 ^ "#" ^ s);
+        hashtbl_merge_unique_list self_ref (c ^ "#" ^ s) self_ref (c2 ^ "#" ^ s);
+        hashtbl_merge_unique_list super_ref (c2 ^ "#" ^ s) super_ref (c ^ "#" ^ s)
       )
-      dep
+      (hashtbl_find_list content c2)
   in
   Hashtbl.iter merge_dep dependencies;
 
-  let rec process ?inher c =
+  let rec process c =
     if not (Hashtbl.mem processed c) then begin
       Hashtbl.replace processed c ();
-      let inher = match inher with
-        | Some inher -> inher
-        | None -> hashtbl_find_list inheritances c
-      in
+      let inher = hashtbl_find_list inheritances c in
       let met = ref [] in
       List.iter
         (fun p ->
@@ -460,15 +451,15 @@ let prepare_report () =
     if not (overr || List.mem f !met) then begin
       met := f :: !met;
       Hashtbl.iter
-        (fun _ l ->
-          List.iter (fun (path, call_sites) -> if path =  super then add_calls (c ^ "#" ^ f) call_sites) l
+        (fun _ (path, call_sites) ->
+          if path =  super then add_calls (c ^ "#" ^ f) call_sites
         )
         self_ref;
       decs := List.filter (fun (_, path, _) -> path <> self) !decs;
-      hashtbl_merge_list references super references self;
-      Hashtbl.replace references self (hashtbl_find_list references super);
-      hashtbl_merge_list self_ref self self_ref super;
-      hashtbl_merge_list super_ref self super_ref super
+      hashtbl_merge_unique_list references super references self;
+      hashtbl_replace_list references self (hashtbl_find_list references super);
+      hashtbl_merge_unique_list self_ref self self_ref super;
+      hashtbl_merge_unique_list super_ref self super_ref super
     end
 
   and super_proc path c =
@@ -481,12 +472,12 @@ let prepare_report () =
           with Not_found -> (false, "")
         in
         if not overr then
-          hashtbl_merge_list references (c ^ "#" ^ f) references p;
+          hashtbl_merge_unique_list references (c ^ "#" ^ f) references p;
         let s =
           let src = string_cut '#' path in
           String.sub path (String.length src + 1) (String.length path - String.length src - 1)
         in
-        hashtbl_add_to_list self_ref (c ^ "#" ^ s) (c ^ "#" ^ f, call_sites)
+        hashtbl_add_unique_to_list self_ref (c ^ "#" ^ s) (c ^ "#" ^ f, call_sites)
       )
       (hashtbl_find_list self_ref path)
 
@@ -498,16 +489,13 @@ let prepare_report () =
 
   in
 
-  Hashtbl.iter (fun c inher -> process ~inher c) inheritances;
+  Hashtbl.iter (fun c _ -> process c) inheritances;
   Hashtbl.reset processed;
 
-  let rec process ?inher c =
+  let rec process c =
     if not (Hashtbl.mem processed c) then begin
       Hashtbl.replace processed c ();
-      let inher = match inher with
-        | Some inher -> inher
-        | None -> hashtbl_find_list inheritances c
-      in
+      let inher = hashtbl_find_list inheritances c in
       let met = ref [] in
       List.iter
         (fun p ->
@@ -526,35 +514,30 @@ let prepare_report () =
     if not (overr || List.mem f !met) then begin
       met := f :: !met;
       Hashtbl.iter
-        (fun _ l ->
-          List.iter (fun (path, call_sites) -> if path =  super then add_calls (c ^ "#" ^ f) call_sites) l
+        (fun _ (path, call_sites) ->
+          if path =  super then add_calls (c ^ "#" ^ f) call_sites
         )
         self_ref;
-      hashtbl_merge_list references super references self;
-      Hashtbl.replace references self (hashtbl_find_list references super);
+      hashtbl_merge_unique_list references super references self;
+      hashtbl_replace_list references self (hashtbl_find_list references super);
     end
   in
 
-  Hashtbl.iter (fun c inher -> process ~inher c) inheritances;
+  Hashtbl.iter (fun c _ -> process c) inheritances;
 
-  let merge_eq m eq =
+  let merge_eq m m2 =
     List.iter
       (fun c ->
-        let c2 = c in
-        let c = m ^"." ^c in
+        let c2 = m2 ^ "." ^ c in
+        let c = m ^"." ^ c in
         List.iter
-          (fun m2 ->
-            let c2 = m2 ^ "." ^ c2 in
-            List.iter
-              (fun (_, f) ->
-                let e = c ^"#" ^f in
-                let e2 = c2 ^"#" ^f in
-                hashtbl_merge_list references e references e2;
-                hashtbl_merge_list references e2 references e
-              )
-              (hashtbl_find_list content c)
+          (fun (_, f) ->
+            let e = c ^"#" ^f in
+            let e2 = c2 ^"#" ^f in
+            hashtbl_merge_unique_list references e references e2;
+            hashtbl_merge_unique_list references e2 references e
           )
-          eq
+          (hashtbl_find_list content c)
       )
       (
         List.filter (fun (p, _) -> p.[String.length p - 1] = '#') (hashtbl_find_list DeadMod.content m)
@@ -576,7 +559,7 @@ let report () =
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
           else cut_main s (pos + 1)
         in
-        if String.contains path '#' then match Hashtbl.find references path with
+        if String.contains path '#' then match hashtbl_find_list references path with
           | exception Not_found when nb_call = 0 ->
                 (fn, cut_main path 0, loc, []) :: acc
           | exception Not_found -> acc

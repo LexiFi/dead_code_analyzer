@@ -1,0 +1,5 @@
+./examples/obj/obj_inher.ml:7: o
+./examples/obj/obj_inher.ml:12: o4
+./examples/obj/obj_inher.ml:17: o2
+./examples/obj/obj_inher.ml:19: o3
+./examples/obj/obj_inher.ml:24: f

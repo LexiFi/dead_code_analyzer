@@ -1,0 +1,3 @@
+./examples/dir/alias-opt.ml:4: baz
+./examples/dir/alias-opt.ml:11: foo
+./examples/dir/alias-opt.ml:12: bar

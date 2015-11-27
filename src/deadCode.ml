@@ -31,7 +31,7 @@ let var_name = ref ""
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec collect_export ?(mod_type = false) path u stock = function
-  | Sig_value (id, {Types.val_loc; val_type; _}) when not val_loc.Location.loc_ghost ->
+  | Sig_value (id, {Types.val_loc; val_type; _}) when not val_loc.Location.loc_ghost && stock == decs ->
       (* a .cmi file can contain locations from other files.
         For instance:
             module M : Set.S with type elt = int
@@ -39,9 +39,9 @@ let rec collect_export ?(mod_type = false) path u stock = function
       *)
         export path u stock id val_loc;
         DeadObj.collect_export ({id with name = id.name ^ "*"}::path) "*obj*" stock ~obj:val_type val_loc
-  | Sig_type (id, {type_kind=Type_abstract; type_manifest=Some t; type_loc=loc; _}, _) ->
+  | Sig_type (id, {type_kind=Type_abstract; type_manifest=Some t; type_loc=loc; _}, _) when stock == decs ->
       DeadObj.collect_export (id::path) "~type~" stock ~obj:t loc
-  | Sig_type (id, t, _) ->
+  | Sig_type (id, t, _) when stock == decs ->
       DeadType.collect_export (id::path) u stock t
   | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
       DeadObj.collect_export (id::path) u stock ~cltyp:t loc
@@ -260,7 +260,7 @@ let kind fn =
  * two files with the same basename. *)
 let regabs fn =
   current_src := fn;
-  abspath := fn :: !abspath
+  hashtbl_add_to_list abspath (unit fn) fn
 
 
 (* Useful when the `--exclude-directory' option is used *)
@@ -323,7 +323,7 @@ let rec load_file fn = match kind fn with
         let is_implem fn = fn <> "_none_" && fn.[String.length fn - 1] <> 'i' in
         let has_iface fn =
           fn <> "_none_" && (fn.[String.length fn - 1] = 'i'
-            ||  try Sys.file_exists (find_path fn !abspath ^ "i")
+            ||  try Sys.file_exists (find_abspath fn ^ "i")
                 with Not_found -> false)
         in
         if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
@@ -454,7 +454,7 @@ let report_unused_exported () =
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
           else cut_main s (pos + 1)
         in
-        let test pos = match Hashtbl.find references pos with
+        let test pos = match hashtbl_find_list references pos with
           | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
           | _ -> None
         in
@@ -463,7 +463,7 @@ let report_unused_exported () =
           else match test loc with
             | None -> None
             | opt ->
-              let locs = Hashtbl.find corres loc in
+              let locs = hashtbl_find_list corres loc in
               match List.find (fun node -> try test node <> None with Not_found -> false) locs with
                 | exception Not_found -> opt
                 | loc -> test loc
