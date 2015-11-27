@@ -177,9 +177,11 @@ let collect_references =                          (* Tast_mapper *)
               DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
+      when not loc.Location.loc_ghost && !DeadFlag.exported.print && exported loc.Location.loc_start.pos_fname ->
+        hashtbl_add_to_list references loc e.exp_loc
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
-      when not loc.Location.loc_ghost && exported loc.Location.loc_start.pos_fname ->
+      when not loc.Location.loc_ghost && !DeadFlag.typ.print && exported loc.Location.loc_start.pos_fname ->
         hashtbl_add_to_list references loc e.exp_loc
 
     | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
@@ -189,7 +191,7 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_send (e, Tmeth_val {name = s; _}, _) ->
         DeadObj.collect_references ~meth:s e
 
-    | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class::[]) :: !DeadObj.aliases
+    | Texp_override (_, _) -> DeadObj.add_alias !var_name !DeadObj.last_class
 
     | Texp_let (_, [{vb_pat; _}], _) when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
         begin match vb_pat.pat_desc with
@@ -338,7 +340,7 @@ let rec load_file fn = match kind fn with
             end;
             DeadType.dependencies := [];
             incl := [];
-            Hashtbl.reset DeadObj.defined
+            DeadObj.eom ()
         | _ -> ()  (* todo: support partial_implementation? *)
       end
 

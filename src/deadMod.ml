@@ -17,9 +17,7 @@ open DeadCommon
 
 let equal : (string, string list) Hashtbl.t = Hashtbl.create 16
 
-
 let defined : string list ref = ref []
-
 
 let content : (string, (string * Location.t) list) Hashtbl.t = Hashtbl.create 16
 
@@ -89,3 +87,22 @@ let add_equal mb_expr =
     hashtbl_add_to_list equal path name;
   make_content ~clas:true mb_expr.mod_type
   |> Hashtbl.replace content path
+
+
+
+                (********   WRAPPING  ********)
+
+let wrap f x =
+  if [@warning "-44"]
+  DeadFlag.(!exported.print || !typ.print || !obj.print) then
+    f x
+  else ()
+
+let wrap_obj f x =
+  if !DeadFlag.obj.print then f x else ()
+
+let expr m =
+  wrap expr m
+
+let add_equal mb_expr =
+  wrap_obj add_equal mb_expr

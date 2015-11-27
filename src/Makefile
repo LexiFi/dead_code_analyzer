@@ -1,6 +1,6 @@
 include $(shell ocamlc -where)/Makefile.config
 
-SRCS=deadCode.mli deadFlag.ml deadCommon.ml deadType.mli \
+SRCS=deadCode.mli deadFlag.ml deadCommon.ml deadArg.mli deadType.mli deadObj.mli \
      deadLexiFi.ml deadType.ml deadArg.ml deadMod.ml deadObj.ml deadCode.ml
 LIBS=ocamlcommon.cma
 

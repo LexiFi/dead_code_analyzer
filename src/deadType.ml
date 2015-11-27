@@ -227,3 +227,14 @@ let report () =
     DeadCommon.report s l continue nb_call pretty_print report
 
   in report 0
+
+
+
+                (********   WRAPPING  ********)
+
+let wrap f x =
+  if !DeadFlag.typ.print then f x else ()
+
+let collect_export path u stock t = wrap (collect_export path u stock) t
+let tstr typ = wrap tstr typ
+let report () = wrap report ()

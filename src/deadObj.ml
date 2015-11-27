@@ -32,11 +32,9 @@ let literals = ref []
 
 let later = ref []
 
+let defined = Hashtbl.create 32                         (* all classes defined in the current file *)
 
-
-let defined = Hashtbl.create 12                                    (* all classes defined in the current file *)
-
-let aliases = ref []                                    (* aliases on class names *)
+let aliases = Hashtbl.create 32                         (* aliases on class names *)
 
 let last_class = ref "*none*"                           (* last class met *)
 
@@ -81,12 +79,13 @@ let full_name name =
         else name
     in full_name 0 name
 
+
 let rec make_name t path = match t.desc with
   | Tarrow (_, _, t, _)
   | Tlink t -> make_name t path
   | Tvar i -> begin match i with Some id -> id :: [] | None -> [] end
   | Tconstr (path, _, _) -> Path.name path :: []
-  | _ -> try List.assoc path !aliases with Not_found -> []
+  | _ -> hashtbl_find_list aliases path
 
 
 let rec make_path ?(hiera = false) e =
@@ -97,7 +96,7 @@ let rec make_path ?(hiera = false) e =
         if hiera then match typ.val_kind with
           | Val_self _ -> "self" :: []
           | Val_anc _ -> "super" :: []
-          | _ when try List.mem !last_class (List.assoc path !aliases) with Not_found -> false ->
+          | _ when List.mem !last_class (hashtbl_find_list aliases path) ->
               "self" :: []
           | _ -> []
         else if List.mem (full_name (path ^ "*")) !literals then
@@ -140,8 +139,18 @@ let rec make_path ?(hiera = false) e =
     | _ -> classes
 
 
+let add_alias src dest =
+  hashtbl_add_to_list aliases src dest
+
+
+let eom () =
+  Hashtbl.reset defined;
+  Hashtbl.reset aliases
+
+
 
                 (********   PROCESSING  ********)
+
 
 let collect_export path u stock ?obj ?cltyp loc =
 
@@ -240,6 +249,7 @@ let add_var name e =
     literals := !last_class :: !literals
   end
 
+
 let class_structure cl_struct =
   let cut_pat s =
     if String.length s > 7 && String.sub s 0 4 = "self" then
@@ -252,23 +262,23 @@ let class_structure cl_struct =
       else clean_sharp s (p + 1)
     with _ -> s
   in
-  let rec add_alias pat =
+  let rec add_aliases pat =
     begin match pat.pat_desc with
-    | Tpat_alias (pat, id, _) -> aliases := (cut_pat id.Ident.name, !last_class :: []) :: !aliases; add_alias pat
-    | Tpat_var (id, _) -> aliases := (id.Ident.name, !last_class :: []) :: !aliases
+    | Tpat_alias (pat, id, _) -> add_alias (cut_pat id.Ident.name) !last_class; add_aliases pat
+    | Tpat_var (id, _) -> add_alias id.Ident.name !last_class
     | _ -> () end;
     List.iter
       (function
         | (Tpat_constraint {ctyp_desc=Ttyp_class (p, _, _); _}, _, _) ->
             let name = clean_sharp (Path.name p) 0 in
             let name = full_name name in
-            aliases := List.map (fun (a, l) -> if List.mem !last_class l then (a, name::l) else (a, l)) !aliases;
+            Hashtbl.iter (fun a l -> if List.mem !last_class l then add_alias a name) aliases;
             hashtbl_add_to_list dependencies !last_class name
         | _ -> ()
       )
       pat.pat_extra
   in
-  add_alias cl_struct.cstr_self
+  add_aliases cl_struct.cstr_self
 
 
 let class_field f =
@@ -298,7 +308,7 @@ let class_field f =
         let name = full_name name in
         hashtbl_add_to_list inheritances !last_class name;
         begin match s with
-          | Some s -> aliases := (s, name::[]) :: !aliases
+          | Some s -> add_alias s name
           | None -> () end;
         List.iter
           (fun (s, _) ->
@@ -313,13 +323,13 @@ let class_field f =
         let rec make_name t = match t.ctyp_desc with
           | Ttyp_arrow (_, _, t) -> make_name t
           | Ttyp_var id ->
-              begin try List.assoc id !aliases |> List.hd with Not_found -> id end
+              begin try Hashtbl.find aliases id |> List.hd with Not_found -> id end
           | Ttyp_class (path, _, _) ->
               let path = Path.name path in
               String.sub path 1 (String.length path - 1)
           | Ttyp_constr (path, _, _) ->
               let path = Path.name path in
-              begin try List.assoc path !aliases |> List.hd with Not_found -> path end
+              begin try Hashtbl.find aliases path |> List.hd with Not_found -> path end
           | _ -> "_"
         in
         let name1, name2 = make_name t1, make_name t2 in
@@ -603,3 +613,40 @@ let report () =
 
   in report 0
 
+
+
+                (********   WRAPPING  ********)
+
+
+let wrap f x =
+  if !DeadFlag.obj.print then f x else ()
+
+let add_alias src dest =
+  wrap (add_alias src) dest
+
+let eom () =
+  wrap eom ()
+
+let collect_export path u stock ?obj ?cltyp loc =
+  wrap (collect_export path u stock ?obj ?cltyp) loc
+
+let collect_references ?meth ?path expr =
+  wrap (collect_references ?meth ?path) expr
+
+let tstr cl_dec =
+  wrap tstr cl_dec
+
+let add_var name expr =
+  wrap (add_var name) expr
+
+let class_structure cl_struct =
+  wrap class_structure cl_struct
+
+let class_field cl_field =
+  wrap class_field cl_field
+
+let arg typ args =
+  wrap (arg typ) args
+
+let report () =
+  wrap report ()

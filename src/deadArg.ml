@@ -113,3 +113,16 @@ let rec node_build node expr = match expr.exp_desc with
   | Texp_ident (_, _, {val_loc=loc2; _}) ->
       merge_locs node.loc loc2
   | _ -> ()
+
+
+
+                (********   WRAPPING  ********)
+
+
+let wrap f x y =
+  if DeadFlag.(!opt.never || !opt.always) then f x y else ()
+
+let process val_loc args =
+  wrap process val_loc args
+let node_build node expr =
+  wrap node_build node expr
