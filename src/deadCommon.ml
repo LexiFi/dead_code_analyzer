@@ -64,13 +64,15 @@ let hashtbl_merge_list tbl1 key1 tbl2 key2 =
       (List.sort_uniq compare (hashtbl_find_list tbl1 key1 @ hashtbl_find_list tbl2 key2))
 
 
-let exported fn =
-   !DeadFlag.internal
-   || fn.[String.length fn - 1] = 'i'
-   || (let src, name = unit !current_src, unit fn in
-      String.length name < String.length src
-      || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
-   || try not (Sys.file_exists (find_path fn !abspath ^ "i")) with Not_found -> true
+let exported flag loc =
+  let fn = loc.Location.loc_start.pos_fname in
+  !flag.DeadFlag.print
+  && (!DeadFlag.internal
+    || fn.[String.length fn - 1] = 'i'
+    || (let src, name = unit !current_src, unit fn in
+        String.length name < String.length src
+        || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
+    || try not (Sys.file_exists (find_path fn !abspath ^ "i")) with Not_found -> true)
 
 
 (* Section printer:

@@ -14,6 +14,7 @@ open DeadCommon
 
 
 let later = ref []
+let depth = ref (-1)
 
 
 (* Verify the optional args calls. Treat args *)
@@ -54,7 +55,7 @@ let rec process val_loc args =
     List.iter
       (function
         | (Asttypes.Optional lab, Some expr, _) ->
-            if loc.ptr == loc then
+            if loc.ptr == loc && !depth > 0 then
               later := (fun () -> treat lab expr) :: !later
             else
               treat lab expr

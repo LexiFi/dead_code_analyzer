@@ -154,7 +154,7 @@ let collect_references =                          (* Tast_mapper *)
       | Tpat_record (l, _) ->
           List.iter
             (fun (_, lab, _) ->
-              if exported lab.lbl_loc.Location.loc_start.pos_fname then
+              if exported DeadFlag.typ lab.lbl_loc then
                 hashtbl_add_to_list references lab.lbl_loc p.pat_loc)
             l
       | Tpat_var (id, _) -> var_name := id.Ident.name
@@ -177,11 +177,11 @@ let collect_references =                          (* Tast_mapper *)
               DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
-      when not loc.Location.loc_ghost && !DeadFlag.exported.print && exported loc.Location.loc_start.pos_fname ->
+      when not loc.Location.loc_ghost && exported DeadFlag.exported loc ->
         hashtbl_add_to_list references loc e.exp_loc
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
-      when not loc.Location.loc_ghost && !DeadFlag.typ.print && exported loc.Location.loc_start.pos_fname ->
+      when not loc.Location.loc_ghost && exported DeadFlag.typ loc ->
         hashtbl_add_to_list references loc e.exp_loc
 
     | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
@@ -214,7 +214,17 @@ let collect_references =                          (* Tast_mapper *)
   let structure_item = wrap structure_item (fun x -> x.str_loc) in
   let value_binding =
     wrap
-      (fun self x -> value_binding x; super.value_binding self x)
+      (fun self x ->
+        let old_later = !DeadArg.later in
+        DeadArg.later := [];
+        incr DeadArg.depth;
+        value_binding x;
+        let res = super.value_binding self x in
+        List.iter (fun f -> f()) !DeadArg.later;
+        DeadArg.later := old_later;
+        decr DeadArg.depth;
+        res
+      )
       (fun x -> x.vb_expr.exp_loc)
   in
   let module_expr =
@@ -620,8 +630,8 @@ let () =
 
     DeadLexiFi.prepare_report();
     if !DeadFlag.exported.print                 then  report_unused_exported ();
-    if !DeadFlag.obj.print                      then  DeadObj.report();
-    if !DeadFlag.typ.print                      then  DeadType.report();
+    DeadObj.report();
+    DeadType.report();
     if DeadFlag.(!opt.always || !opt.never)     then  begin let tmp = analyze_opt_args () in
                 if !DeadFlag.opt.always         then  report_opt_args "ALWAYS" tmp;
                 if !DeadFlag.opt.never          then  report_opt_args "NEVER" tmp end;

@@ -191,19 +191,17 @@ let collect_references ?meth ?path exp =
       in
       let path = full_name path ^ "#" ^ meth in
 
-      if exported path then begin
-        hashtbl_add_to_list references path exp.exp_loc;
-        try
-          let hiera = List.hd (make_path ~hiera:true exp) in
-          if String.length hiera >= 4 && String.sub hiera 0 4 = "self" then
-              Hashtbl.replace self_ref (!last_class ^ "#" ^ !last_field)
-                ( let prev = hashtbl_find_list self_ref (!last_class ^ "#" ^ !last_field) in
-                  let e = (path, exp.exp_loc :: try List.assoc path prev with Not_found -> []) in
-                  e :: (List.remove_assoc path prev))
-            else if String.length hiera >= 5 && String.sub hiera 0 5 = "super" then
-              hashtbl_add_to_list super_ref (!last_class ^ "#" ^ meth) path
-        with _ -> ()
-     end
+      hashtbl_add_to_list references path exp.exp_loc;
+      try
+        let hiera = List.hd (make_path ~hiera:true exp) in
+        if String.length hiera >= 4 && String.sub hiera 0 4 = "self" then
+            Hashtbl.replace self_ref (!last_class ^ "#" ^ !last_field)
+              ( let prev = hashtbl_find_list self_ref (!last_class ^ "#" ^ !last_field) in
+                let e = (path, exp.exp_loc :: try List.assoc path prev with Not_found -> []) in
+                e :: (List.remove_assoc path prev))
+          else if String.length hiera >= 5 && String.sub hiera 0 5 = "super" then
+            hashtbl_add_to_list super_ref (!last_class ^ "#" ^ meth) path
+      with _ -> ()
     end
   in
   List.iter process path

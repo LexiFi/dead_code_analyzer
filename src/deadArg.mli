@@ -14,6 +14,8 @@ open Typedtree
 
 val later : (unit -> unit) list ref
 
+val depth : int ref
+
 
 val wrap :
   ('a -> 'b -> unit)
