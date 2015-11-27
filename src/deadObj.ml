@@ -343,11 +343,11 @@ let class_field f =
 
 let arg typ args = let rec arg self typ args = match typ.desc with
   | Tlink t -> arg self t args
-  | Tarrow (_, _, typ, _) when self -> 
-      arg self typ args
-  | Tarrow (_, t, typ, _) when args <> [] ->
+  | Tarrow (_, t, typ, _) when args <> [] && not self ->
       arg self t [(List.hd args)];
       arg self typ (List.tl args)
+  | Tarrow (_, _, typ, _) when self ->
+      arg self typ args
   | Tobject _ ->
       begin try
         let _, e, _ = List.hd args in
@@ -362,13 +362,18 @@ let arg typ args = let rec arg self typ args = match typ.desc with
         match e with
         | Some e ->
             let p = full_name (Path.name p) in
-            let path = make_path e |> List.map full_name in
-            let collect () =
-              List.iter
-                (fun (_, s) -> collect_references ~meth:s ~path e)
-                (hashtbl_find_list content p)
+            let path =
+              make_path e
+              |> List.map full_name
+              |> List.filter (fun path -> path = String.capitalize_ascii path)
             in
-            later := collect :: !later
+            if path <> [] then
+              let collect () =
+                List.iter
+                  (fun (_, s) -> collect_references ~meth:s ~path e)
+                  (hashtbl_find_list content p)
+              in
+              later := collect :: !later
         | None -> ()
       with _ -> () end
   | Tvar _ when not self->

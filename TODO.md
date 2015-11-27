@@ -1,6 +1,6 @@
 # Work in Progress
+- code cleaning (a lot to do)
 - literal objects
-- code cleaning
 
 # Waiting
 - handle module types correctly

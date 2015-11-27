@@ -37,7 +37,7 @@ let rec string_cut c s pos len =
   if len = String.length s then s
   else if s.[pos] = c then String.sub s (pos - len) len
   else string_cut c s (pos + 1) (len + 1)
-let string_cut c s = if String.contains s c then string_cut c s 0 0 else s
+let string_cut c s = string_cut c s 0 0
 
 
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
@@ -83,11 +83,10 @@ let find_abspath fn =
 let exported flag loc =
   let fn = loc.Location.loc_start.pos_fname in
   !flag.DeadFlag.print
+  && hashtbl_find_list references loc |> List.length <= !flag.DeadFlag.threshold
   && (!DeadFlag.internal
     || fn.[String.length fn - 1] = 'i'
-    || (let src, name = unit !current_src, unit fn in
-        String.length name < String.length src
-        || String.capitalize_ascii (String.sub name 0 (String.length src)) <> String.capitalize_ascii src)
+    || unit !current_src <> unit fn
     || try not (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> true)
 
 
