@@ -92,10 +92,6 @@ let rec make_name t path = match t.desc with
 let rec make_path ?(hiera = false) e =
 
   let classes = match e.exp_desc with
-    | Texp_send (e, Tmeth_name s, _)
-    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
-        List.map (fun c -> c ^ "#" ^ s) (make_path ~hiera e)
-
     | Texp_ident (path, _, typ) ->
         let path = Path.name path in
         if hiera then match typ.val_kind with
@@ -312,6 +308,24 @@ let class_field f =
     | Tcf_method ({txt; _}, _, _) ->
         update_overr true txt;
         last_field := txt
+
+    | Tcf_constraint (t1, t2) ->
+        let rec make_name t = match t.ctyp_desc with
+          | Ttyp_arrow (_, _, t) -> make_name t
+          | Ttyp_var id ->
+              begin try List.assoc id !aliases |> List.hd with Not_found -> id end
+          | Ttyp_class (path, _, _) ->
+              let path = Path.name path in
+              String.sub path 1 (String.length path - 1)
+          | Ttyp_constr (path, _, _) ->
+              let path = Path.name path in
+              begin try List.assoc path !aliases |> List.hd with Not_found -> path end
+          | _ -> "_"
+        in
+        let name1, name2 = make_name t1, make_name t2 in
+        let name1, name2 = full_name name1, full_name name2 in
+        hashtbl_add_to_list dependencies name2 name1;
+        hashtbl_add_to_list dependencies name1 name2;
 
     | _ -> ()
 

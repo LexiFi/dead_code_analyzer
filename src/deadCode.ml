@@ -185,8 +185,9 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
         DeadLexiFi.ttype_of e
 
-    | Texp_send _ ->
-          DeadObj.collect_references e
+    | Texp_send (e, Tmeth_name s, _)
+    | Texp_send (e, Tmeth_val {name = s; _}, _) ->
+        DeadObj.collect_references ~meth:s e
 
     | Texp_override (_, _) -> DeadObj.aliases := (!var_name, !DeadObj.last_class::[]) :: !DeadObj.aliases
 
