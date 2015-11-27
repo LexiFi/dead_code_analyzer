@@ -18,4 +18,4 @@
 - The `OPTIONAL ARGUMENTS` section may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 198 unique expected results)
+ratio: **100%** succesful (over 230 unique expected results)

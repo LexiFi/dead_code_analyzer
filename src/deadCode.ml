@@ -326,8 +326,10 @@ let rec load_file fn = match kind fn with
             ||  try Sys.file_exists (find_abspath fn ^ "i")
                 with Not_found -> false)
         in
-        if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
+        if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then begin
+          hashtbl_merge_list references vd2 references vd1;
           hashtbl_add_to_list references vd1 vd2
+        end
         else if not (is_implem fn1 && has_iface fn1) then begin
           hashtbl_add_to_list corres vd1 vd2;
           hashtbl_merge_list references vd1 references vd2
