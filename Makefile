@@ -6,6 +6,12 @@ all:
 opt:
 	make -C src opt
 
+lexifi:
+	make -C src lexifi
+
+lexifii-opt:
+	make -C src lexifi-opt
+
 doc:
 	make -C doc all
 

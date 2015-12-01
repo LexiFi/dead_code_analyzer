@@ -31,14 +31,15 @@ let var_name = ref ""
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec collect_export ?(mod_type = false) path u stock = function
-  | Sig_value (id, {Types.val_loc; val_type; _}) when not val_loc.Location.loc_ghost && stock == decs ->
+  | Sig_value (id, ({Types.val_loc; val_type; _} as value)) when not val_loc.Location.loc_ghost && stock == decs ->
       (* a .cmi file can contain locations from other files.
         For instance:
             module M : Set.S with type elt = int
         will create value definitions whose location is in set.mli
       *)
         export path u stock id val_loc;
-        DeadObj.collect_export ({id with name = id.name ^ "*"}::path) "*obj*" stock ~obj:val_type val_loc
+        DeadObj.collect_export ({id with name = id.name ^ "*"}::path) "*obj*" stock ~obj:val_type val_loc;
+        !DeadLexiFi.sig_value value
   | Sig_type (id, {type_kind=Type_abstract; type_manifest=Some t; type_loc=loc; _}, _) when stock == decs ->
       DeadObj.collect_export (id::path) "~type~" stock ~obj:t loc
   | Sig_type (id, t, _) when stock == decs ->
@@ -185,7 +186,7 @@ let collect_references =                          (* Tast_mapper *)
         DeadType.collect_references loc e.exp_loc
 
     | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
-        DeadLexiFi.ttype_of e
+        !DeadLexiFi.ttype_of e
 
     | Texp_send (e, Tmeth_name s, _)
     | Texp_send (e, Tmeth_val {name = s; _}, _) ->
@@ -215,6 +216,7 @@ let collect_references =                          (* Tast_mapper *)
   let value_binding =
     wrap
       (fun self x ->
+        !DeadLexiFi.value_binding x;
         let old_later = !DeadArg.later in
         DeadArg.later := [];
         incr DeadArg.depth;
@@ -235,7 +237,8 @@ let collect_references =                          (* Tast_mapper *)
   let class_structure = (fun self x -> DeadObj.class_structure x; super.class_structure self x) in
   let class_field = (fun self x -> DeadObj.class_field x; super.class_field self x) in
   let class_field = wrap class_field (fun x -> x.cf_loc) in
-  {super with structure_item; expr; pat; value_binding; module_expr; class_structure; class_field}
+  let typ = (fun self x -> !DeadLexiFi.type_ext x; super.typ self x) in
+  {super with structure_item; expr; pat; value_binding; module_expr; class_structure; class_field; typ}
 
 
 (* Checks the nature of the file *)
@@ -579,7 +582,7 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
-    DeadLexiFi.prepare_report();
+    !DeadLexiFi.prepare_report();
     if !DeadFlag.exported.print                 then  report_unused_exported ();
     DeadObj.report();
     DeadType.report();

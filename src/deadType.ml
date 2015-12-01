@@ -100,7 +100,7 @@ let collect_export path u stock t =
         List.iter
           (fun {Types.ld_id; ld_loc; ld_type; _} ->
             save ld_id ld_loc;
-            DeadLexiFi.export_type path ld_id (_TO_STRING_ ld_type)
+            !DeadLexiFi.export_type path ld_id (_TO_STRING_ ld_type)
           )
           l
     | Type_variant l ->
@@ -154,7 +154,7 @@ let tstr typ =
         List.iter
           (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
             assoc ld_name ld_loc;
-            DeadLexiFi.tstr_type typ ld_name (_TO_STRING_ ld_type.ctyp_type)
+            !DeadLexiFi.tstr_type typ ld_name (_TO_STRING_ ld_type.ctyp_type)
           )
           l
     | Ttype_variant l ->
