@@ -1,21 +1,25 @@
 # Work in Progress
-- code cleaning (a lot to do)
-- literal objects
+- code cleaning
 
 # Waiting
+- split type section (constructors and fields, can be transformed as abstract/private)
+- literal objects
 - handle module types correctly
+- more precise on optional arguments (track dependencies)
 
 
-#Testing
+# Testing
 - \[X\] Test suite
 - \[ \] Test on big projects: see directory `results`
 - \[ \] Create more precise tests
 - \[ \] Create tests for options
 
 
-#Note
+# Note
 - The `UNUSED EXPORTED VALUES` section may have both FN and FP (none known).
-- The `OPTIONAL ARGUMENTS` section may have both FN and FP.
+- The `UNUSED CLASS FIELDS` section may have both FN and FP.
+- The `UNUSED TYPES FIELDS/CONSTRUCTORS` section may have both FN and FP.
+- The `OPTIONAL ARGUMENTS` sections may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
 ratio: **100%** succesful (over 230 unique expected results)

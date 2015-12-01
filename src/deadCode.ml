@@ -155,7 +155,7 @@ let collect_references =                          (* Tast_mapper *)
           List.iter
             (fun (_, lab, _) ->
               if exported DeadFlag.typ lab.lbl_loc then
-                hashtbl_add_to_list references lab.lbl_loc p.pat_loc)
+                DeadType.collect_references lab.lbl_loc p.pat_loc)
             l
       | Tpat_var (id, _) -> var_name := id.Ident.name
       | _ -> () end;
@@ -182,7 +182,7 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_field (_, _, {lbl_loc=loc; _})
     | Texp_construct (_, {cstr_loc=loc; _}, _)
       when not loc.Location.loc_ghost && exported DeadFlag.typ loc ->
-        hashtbl_add_to_list references loc e.exp_loc
+        DeadType.collect_references loc e.exp_loc
 
     | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
         DeadLexiFi.ttype_of e
@@ -342,9 +342,11 @@ let rec load_file fn = match kind fn with
 
       begin match cmt with
         | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
-            List.iter (fun ({Types.val_loc=loc1; _}, {Types.val_loc=loc2; _}) -> merge_locs ~add:true loc2 loc1) cmt_value_dependencies;
+            List.iter
+              (fun ({Types.val_loc=loc1; _}, {Types.val_loc=loc2; _}) -> merge_locs ~add:true loc2 loc1)
+              cmt_value_dependencies;
             ignore (collect_references.structure collect_references x);
-            List.iter (fun f -> f()) !DeadArg.later;
+            DeadArg.eom();
             if !DeadFlag.exported.print then begin
               List.iter (assoc references)
                 (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
@@ -371,6 +373,7 @@ let rec load_file fn = match kind fn with
 
 (* Prepare the list of opt_args for report *)
 let analyze_opt_args () =
+  List.iter (fun f -> f ()) !DeadArg.last;
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
 
@@ -447,61 +450,7 @@ let report_opt_args s l =
   in report_opt_args 0
 
 
-let report_unused_exported () =
-  let rec report_unused_exported nb_call =
-    let l =
-      let folder = fun acc (fn, path, loc) ->
-        let rec cut_main s pos =
-          if pos = String.length s then s
-          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
-          else cut_main s (pos + 1)
-        in
-        let test pos = match hashtbl_find_list references pos with
-          | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
-          | _ -> None
-        in
-        let test () =
-          if String.contains path '#' || DeadType.is_type path then None
-          else match test loc with
-            | None -> None
-            | opt ->
-              let locs = hashtbl_find_list corres loc in
-              match List.find (fun node -> try test node <> None with Not_found -> false) locs with
-                | exception Not_found -> opt
-                | loc -> test loc
-        in match test () with
-            | exception Not_found when nb_call = 0 ->
-                  (fn, cut_main path 0, loc, []) :: acc
-            | exception Not_found -> acc
-            | None -> acc
-            | Some l -> l
-      in
-      List.fold_left folder [] !decs
-      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
-          compare (fn1, loc1, path1) (fn2, loc2, path2))
-    in
-
-    let change =
-      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
-      dir fn
-    in
-    let pretty_print = fun (fn, path, loc, call_sites) ->
-      if change fn then print_newline ();
-      prloc ~fn loc;
-      print_string path;
-      if call_sites <> [] && !DeadFlag.exported.call_sites then print_string "    Call sites:";
-      print_newline ();
-      if !DeadFlag.exported.call_sites then begin
-        List.iter (pretty_print_call ()) call_sites;
-        if nb_call <> 0 then print_newline ()
-      end
-    in
-
-    let continue nb_call = nb_call < !DeadFlag.exported.threshold in
-    let s = if nb_call = 0 then "UNUSED EXPORTED VALUES" else "ALMOST UNUSED EXPORTED VALUES" in
-    report s l continue nb_call pretty_print report_unused_exported
-
-  in report_unused_exported 0
+let report_unused_exported () = report_basic !decs "UNUSED EXPORTED VALUES" !DeadFlag.exported
 
 
 let report_style () =

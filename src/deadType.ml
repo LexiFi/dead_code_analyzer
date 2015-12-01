@@ -16,6 +16,8 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
+let decs = ref []
+
 let dependencies = ref []   (* like the cmt value_dependencies but for types *)
 
 
@@ -74,25 +76,15 @@ and make_name path l =
   t ^ String.sub name len (String.length name - len)
 
 
-let is_type s =
-  let rec blk s p l acc =
-    try
-      if s.[p] = '.' then
-        let acc = String.sub s (p - l) l :: acc in
-        blk s (p + 1) 0 acc
-      else blk s (p + 1) (l + 1) acc
-    with _ -> String.sub s (p - l) l :: acc
-  in
-  if not (String.contains s '.') then false
-  else
-    let [@ocaml.warning "-8"] hd::cont::_ = blk s 0 0 [] in
-    String.capitalize_ascii hd = hd || String.lowercase_ascii cont = cont
-
-
 
                 (********   PROCESSING  ********)
 
 let collect_export path u stock t =
+
+  let stock =
+    if stock == DeadCommon.decs then decs
+    else stock
+  in
 
   let save id loc =
     if t.type_manifest = None then
@@ -114,6 +106,10 @@ let collect_export path u stock t =
     | Type_variant l ->
         List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
     | _ -> ()
+
+
+let collect_references loc exp_loc =
+  hashtbl_add_to_list references loc exp_loc
 
 
 (* Look for bad style typing *)
@@ -166,66 +162,7 @@ let tstr typ =
     | _ -> ()
 
 
-let report () =
-  let rec report nb_call =
-    let l =
-      let folder = fun acc (fn, path, loc) ->
-        let rec cut_main s pos =
-          if pos = String.length s then s
-          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
-          else cut_main s (pos + 1)
-        in
-        let test elt = match hashtbl_find_list references elt with
-          | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
-          | _ -> None
-        in
-        let test () =
-          if String.contains path '#' || not (is_type path) then None
-          else
-            match test loc with
-              | None -> None
-              | opt ->
-                let locs = hashtbl_find_list corres loc in
-                match List.find (fun node -> try test node <> None with Not_found -> false) locs with
-                  | exception Not_found -> opt
-                  | loc -> test loc
-        in match test () with
-          | exception Not_found when nb_call = 0 ->
-                (fn, cut_main path 0, loc, []) :: acc
-          | exception Not_found -> acc
-          | None -> acc
-          | Some l -> l
-      in
-      List.fold_left folder [] !decs
-      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
-          compare (fn1, loc1, path1) (fn2, loc2, path2))
-    in
-
-    let change =
-      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
-      dir fn
-    in
-    let pretty_print = fun (fn, path, loc, call_sites) ->
-      if change fn then print_newline ();
-      prloc ~fn loc;
-      print_string path;
-      if call_sites <> [] && !DeadFlag.typ.call_sites then print_string "    Call sites:";
-      print_newline ();
-      if !DeadFlag.typ.call_sites then begin
-        List.iter (pretty_print_call ()) call_sites;
-        if nb_call <> 0 then print_newline ()
-      end
-    in
-
-    let continue nb_call = nb_call < !DeadFlag.typ.threshold in
-    let s =
-      if nb_call = 0 then "UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS"
-      else "ALMOST UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS"
-    in
-    DeadCommon.report s l continue nb_call pretty_print report
-
-  in report 0
-
+let report () = report_basic !decs "UNUSED TYPES FIELDS/CONSTRUCTORS" !DeadFlag.typ
 
 
                 (********   WRAPPING  ********)

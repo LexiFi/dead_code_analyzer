@@ -92,17 +92,13 @@ let add_equal mb_expr =
 
                 (********   WRAPPING  ********)
 
-let wrap f x =
+let expr m =
   if [@warning "-44"]
   DeadFlag.(!exported.print || !typ.print || !obj.print) then
-    f x
+    expr m
   else ()
 
-let wrap_obj f x =
-  if !DeadFlag.obj.print then f x else ()
-
-let expr m =
-  wrap expr m
-
 let add_equal mb_expr =
-  wrap_obj add_equal mb_expr
+  if !DeadFlag.obj.print then
+    add_equal mb_expr
+  else ()

@@ -14,14 +14,13 @@ open Typedtree
 
 val later : (unit -> unit) list ref
 
+val last : (unit -> unit) list ref
+
 val depth : int ref
 
 
-val wrap :
-  ('a -> 'b -> unit)
-  -> 'a
-  -> 'b
-  -> unit
+val eom :
+  unit -> unit
 
 
 val process :

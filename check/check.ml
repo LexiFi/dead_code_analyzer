@@ -222,7 +222,7 @@ let rec sel_section () =
             print_endline (input_line !res);
             extend := ".mlio";
             sel_section (section ())
-      | ".> UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS:" as s ->
+      | ".> UNUSED TYPES FIELDS/CONSTRUCTORS:" as s ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlit" !fnames
             with _ -> ());
             print_endline s;
@@ -270,9 +270,9 @@ let rec sel_section () =
             print_endline (input_line !res);
             extend := ".mlio" ^ n;
             sel_section (section ())
-      | s when String.length s > 55 && String.sub s 0 55 = ".>->  ALMOST UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS:" ->
+      | s when String.length s > 55 && String.sub s 0 46 = ".>->  ALMOST UNUSED TYPES FIELDS/CONSTRUCTORS:" ->
             let n =
-              Scanf.sscanf s ".>->  ALMOST UNUSED RECORD FIELDS/VARIANT CONSTRUCTORS: Called %s time(s)" (fun n -> n)
+              Scanf.sscanf s ".>->  ALMOST UNUSED TYPES FIELDS/CONSTRUCTORS: Called %s time(s)" (fun n -> n)
             in
             begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mlit" ^ n) !fnames
             with _ -> () end;

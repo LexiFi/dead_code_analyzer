@@ -230,3 +230,63 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
   end;
   if continue nb_call then reporter (nb_call + 1)
   else (print_newline () |> separator)
+
+
+let report_basic ?folder decs title (flag:DeadFlag.basic) =
+  let folder = match folder with
+    | Some folder -> folder
+    | None -> fun nb_call -> fun acc (fn, path, loc) ->
+        let rec cut_main s pos =
+          if pos = String.length s then s
+          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
+          else cut_main s (pos + 1)
+        in
+        let test elt = match hashtbl_find_list references elt with
+          | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
+          | _ -> None
+        in
+        let test () = match test loc with
+          | None -> None
+          | opt ->
+              let locs = hashtbl_find_list corres loc in
+              match List.find (fun node -> try test node <> None with Not_found -> false) locs with
+                | exception Not_found -> opt
+                | loc -> test loc
+        in match test () with
+          | exception Not_found when nb_call = 0 ->
+                (fn, cut_main path 0, loc, []) :: acc
+          | exception Not_found -> acc
+          | None -> acc
+          | Some l -> l
+  in
+  let rec reportn nb_call =
+    let l =
+      List.fold_left (folder nb_call) [] decs
+      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
+          compare (fn1, loc1, path1) (fn2, loc2, path2))
+    in
+
+    let change =
+      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
+      dir fn
+    in
+    let pretty_print = fun (fn, path, loc, call_sites) ->
+      if change fn then print_newline ();
+      prloc ~fn loc;
+      print_string path;
+      if call_sites <> [] && flag.call_sites then print_string "    Call sites:";
+      print_newline ();
+      if flag.call_sites then begin
+        List.iter (pretty_print_call ()) call_sites;
+        if nb_call <> 0 then print_newline ()
+      end
+    in
+
+    let continue nb_call = nb_call < flag.threshold in
+    let s =
+      if nb_call = 0 then title
+      else "ALMOST " ^ title
+    in
+    report s l continue nb_call pretty_print reportn
+
+  in reportn 0

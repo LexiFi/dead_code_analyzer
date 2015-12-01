@@ -7,19 +7,10 @@
 (*                                                                         *)
 (***************************************************************************)
 
-let list_of_opt ?(ignore = []) str =
+let list_of_opt str =
   try
     let rec split acc pos len =
-      let jump =
-        try
-          List.find
-          (fun s -> pos >= String.length s && String.sub str (pos - String.length s) (String.length s) = s)
-          ignore
-        with Not_found -> ""
-      in
-      if jump <> "" then
-        split acc (pos - String.length jump - 1) (len + String.length jump + 1)
-      else if str.[pos] <> '+' && str.[pos] <> '-' then
+      if str.[pos] <> '+' && str.[pos] <> '-' then
         split acc (pos - 1) (len + 1)
       else let acc = (str.[pos] = '+', String.trim (String.sub str (pos + 1) len)) :: acc in
         if pos > 0 then split acc (pos - 1) 0

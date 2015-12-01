@@ -14,7 +14,16 @@ open DeadCommon
 
 
 let later = ref []
+let last = ref []
 let depth = ref (-1)
+
+let met = Hashtbl.create 512
+
+
+let eom () =
+  List.iter (fun f -> f ()) !later;
+  later := [];
+  Hashtbl.reset met
 
 
 (* Verify the optional args calls. Treat args *)
@@ -46,16 +55,23 @@ let rec process val_loc args =
         else (occur := !occur - count; locate loc.ptr)
       in
       if check_underscore lab then
-        opt_args := (locate loc, lab, has_val,
-            if expr.exp_loc.Location.loc_ghost then last_loc
-            else expr.exp_loc)
-          :: !opt_args
+        let loc = locate loc in
+        if not (Hashtbl.mem met (last_loc, loc, lab)) then begin
+          Hashtbl.add met (last_loc, loc, lab) ();
+          opt_args := (loc, lab, has_val,
+              if expr.exp_loc.Location.loc_ghost then last_loc
+              else expr.exp_loc)
+            :: !opt_args
+        end
     in
 
     List.iter
       (function
         | (Asttypes.Optional lab, Some expr, _) ->
-            if loc.ptr == loc && !depth > 0 then
+            if loc.ptr == loc
+            && (let fn = loc.loc.Location.loc_start.pos_fname in fn.[String.length fn - 1] = 'i') then
+              last := (fun () -> treat lab expr) :: !last
+            else if loc.ptr == loc && !depth > 0 then
               later := (fun () -> treat lab expr) :: !later
             else
               treat lab expr
@@ -73,17 +89,19 @@ and check e =
     | Tarrow (_, _, t, _)
     | Tlink t -> get_sig_args args t
     | _ -> args
+  in
+  let get_sig_args typ = get_sig_args [] typ
 
   in match e.exp_desc with
 
-    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, args)
-    | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, args) ->
-        process val_loc (get_sig_args args e.exp_type);
+    | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc; _}); _}, _)
+    | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=val_loc; _}); _}, _) ->
+        process val_loc (get_sig_args e.exp_type);
         if not val_loc.Location.loc_ghost then
           last_loc := val_loc
 
     | Texp_ident (_, _, {val_loc; _}) ->
-        process val_loc (get_sig_args [] e.exp_type)
+        process val_loc (get_sig_args e.exp_type)
 
     | Texp_let (* Partial application as argument may cut in two parts:
                 * let _ = partial in implicit opt_args elimination *)
@@ -125,5 +143,3 @@ let wrap f x y =
 
 let process val_loc args =
   wrap process val_loc args
-let node_build node expr =
-  wrap node_build node expr

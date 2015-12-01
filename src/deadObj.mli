@@ -34,7 +34,7 @@ val collect_export :
 
 
 val collect_references :
-  ?meth: string
+  meth: string
   -> ?path: string list
   -> expression
   -> unit
