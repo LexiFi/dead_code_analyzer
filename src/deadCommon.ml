@@ -84,7 +84,8 @@ let exported flag loc =
   let fn = loc.Location.loc_start.pos_fname in
   !flag.DeadFlag.print
   && hashtbl_find_list references loc |> List.length <= !flag.DeadFlag.threshold
-  && (!DeadFlag.internal
+  && (flag == DeadFlag.typ
+    || !DeadFlag.internal
     || fn.[String.length fn - 1] = 'i'
     || unit !current_src <> unit fn
     || try not (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> true)
@@ -306,8 +307,6 @@ module DeadLexiFi = struct
   let sig_value : (Types.value_description -> unit) ref =
     ref (fun _ -> ())
 
-  let value_binding : (Typedtree.value_binding -> unit) ref =
-    ref (fun _ -> ())
   let export_type : (Ident.t list -> Ident.t -> string -> unit) ref =
     ref (fun _ _ _ -> ())
 

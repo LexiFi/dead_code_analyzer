@@ -29,6 +29,8 @@ let dyn_rec = ref []            (* Record names used for dynamic typing and loca
 let str = Hashtbl.create 256
 let used = ref []
 
+let field_link = Hashtbl.create 256
+
 
 let export_type path ld_id typ =
   Hashtbl.add
@@ -37,22 +39,17 @@ let export_type path ld_id typ =
     typ
 
 
-let value_binding vb = match vb.vb_pat.pat_desc with
-  | Tpat_var _ -> begin match vb.vb_expr.exp_desc with
-    | Texp_constant (Asttypes.Const_string (s, _)) ->
-        hashtbl_add_to_list str s vb.vb_pat.pat_loc
-    | _ -> () end
-  | _ -> ()
 
 let sig_value (value : Types.value_description) =
 
   let add strct = match strct.pstr_desc with
-    | Pstr_eval ({pexp_desc=Pexp_constant (Const_string (s, _)); _}, _) -> hashtbl_add_to_list str s value.val_loc
+    | Pstr_eval ({pexp_desc=Pexp_constant (Const_string (s, _)); _}, _) ->
+        hashtbl_add_unique_to_list str s value.val_loc
     | _ -> ()
   in
 
   let add = function
-    | ({Asttypes.txt="mlfi.val_expr"; _}, PStr structure) ->
+    | ({Asttypes.txt="mlfi.value_approx"; _}, PStr structure) ->
         List.iter add structure
     | _ -> ()
   in
@@ -76,6 +73,7 @@ let tstr_type typ ld_name ctype =
     :: typ.typ_name.Asttypes.txt :: !mods
     @ (String.capitalize_ascii (unit !current_src):: [])
   in
+  hashtbl_add_to_list field_link (String.sub path 0 (String.length path - String.length ld_name.Asttypes.txt - 1)) path;
   if not (Hashtbl.mem fields path) then
     Hashtbl.add ftyp path ctype
 
@@ -103,16 +101,15 @@ let prepare_report () =
           else p ^ "." ^ name
         in
         let met = ref [] in
-          let rec proc name =
+        let rec proc name =
           if not (List.mem name !met) then begin
-            let len = String.length name in
             met := name :: !met;
-            Hashtbl.fold
-              (fun key loc acc ->
-                if String.length key > len && String.sub key 0 len = name && key.[len] = '.' then
-                  loc :: (try proc (Hashtbl.find ftyp key) with _ -> []) @ acc
-                else acc)
-              fields
+            hashtbl_find_list field_link name
+            |> List.fold_left
+              (fun acc key ->
+                let loc = Hashtbl.find fields key in
+                loc :: (try proc (Hashtbl.find ftyp key) with _ -> []) @ acc
+              )
               []
           end
           else []
@@ -130,7 +127,6 @@ let prepare_report () =
 
 
 let () =
-  DeadLexiFi.value_binding := value_binding;
   DeadLexiFi.sig_value := sig_value;
   DeadLexiFi.export_type := export_type;
   DeadLexiFi.type_ext := type_ext;

@@ -216,7 +216,6 @@ let collect_references =                          (* Tast_mapper *)
   let value_binding =
     wrap
       (fun self x ->
-        !DeadLexiFi.value_binding x;
         let old_later = !DeadArg.later in
         DeadArg.later := [];
         incr DeadArg.depth;
@@ -565,7 +564,7 @@ let parse () =
           \tall: bind & opt & seq & unit";
 
       "-T", String (DeadFlag.update_basic "-T" DeadFlag.typ),
-        " Enable/Disable unused record fields/variant constructors warnings.\n    \
+        " Enable/Disable unused types fields/constructors warnings.\n    \
         Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
         Options (can be used together):\n\
           \tall\n\

@@ -149,16 +149,20 @@ let tstr typ =
     with Not_found -> Hashtbl.add fields path loc
   in
 
+  let assoc name loc ctyp =
+    assoc name loc;
+    !DeadLexiFi.tstr_type typ name ctyp
+  in
+
   match typ.typ_kind with
     | Ttype_record l ->
         List.iter
-          (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
-            assoc ld_name ld_loc;
-            !DeadLexiFi.tstr_type typ ld_name (_TO_STRING_ ld_type.ctyp_type)
-          )
+          (fun {Typedtree.ld_name; ld_loc; ld_type; _} -> assoc ld_name ld_loc (_TO_STRING_ ld_type.ctyp_type))
           l
     | Ttype_variant l ->
-        List.iter (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc) l
+        List.iter
+          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc ": variant :")
+          l
     | _ -> ()
 
 
