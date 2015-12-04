@@ -31,42 +31,42 @@ let var_name = ref ""
 
 (* Go down the exp to apply args on every "child". Used for conditional branching *)
 let rec collect_export ?(mod_type = false) path u stock = function
-  | Sig_value (id, ({Types.val_loc; val_type; _} as value)) when not val_loc.Location.loc_ghost && stock == decs ->
-      (* a .cmi file can contain locations from other files.
-        For instance:
-            module M : Set.S with type elt = int
-        will create value definitions whose location is in set.mli
-      *)
-        export path u stock id val_loc;
-        DeadObj.collect_export ({id with name = id.name ^ "*"}::path) "*obj*" stock ~obj:val_type val_loc;
-        !DeadLexiFi.sig_value value
-  | Sig_type (id, {type_kind=Type_abstract; type_manifest=Some t; type_loc=loc; _}, _) when stock == decs ->
-      DeadObj.collect_export (id::path) "~type~" stock ~obj:t loc
-  | Sig_type (id, t, _) when stock == decs ->
-      DeadType.collect_export (id::path) u stock t
-  | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
-      DeadObj.collect_export (id::path) u stock ~cltyp:t loc
-  | Sig_class_type (id, {Types.clty_type = t; clty_loc = loc; _}, _) ->
-      DeadObj.collect_export (id::path) "~class type~" stock ~cltyp:t loc
-  | (Sig_module (id, {Types.md_type = t; _}, _)
-  | Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
-      let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
-      if collect then
-        DeadMod.sign t
-        |> List.iter (collect_export ~mod_type (id :: path) u stock)
+| Sig_value (id, ({Types.val_loc; val_type; _} as value)) when not val_loc.Location.loc_ghost && stock == decs ->
+    (* a .cmi file can contain locations from other files.
+      For instance:
+          module M : Set.S with type elt = int
+      will create value definitions whose location is in set.mli
+    *)
+      if !DeadFlag.exported.print then export path u stock id val_loc;
+      DeadObj.collect_export ({id with name = id.name ^ "*"}::path) _obj stock ~obj:val_type val_loc;
+      !DeadLexiFi.sig_value value
+| Sig_type (id, {type_kind=Type_abstract; type_manifest=Some t; type_loc=loc; _}, _) when stock == decs ->
+    DeadObj.collect_export (id::path) "~type~" stock ~obj:t loc
+| Sig_type (id, t, _) when stock == decs ->
+    DeadType.collect_export (id::path) u stock t
+| Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
+    DeadObj.collect_export (id::path) u stock ~cltyp:t loc
+| Sig_class_type (id, {Types.clty_type = t; clty_loc = loc; _}, _) ->
+    DeadObj.collect_export (id::path) "~class type~" stock ~cltyp:t loc
+| (Sig_module (id, {Types.md_type = t; _}, _)
+| Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
+    let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
+    if collect then
+      DeadMod.sign t
+      |> List.iter (collect_export ~mod_type (id :: path) u stock)
+| _ -> ()
 
-  | _ -> ()
 
-
-let rec treat_exp exp args = match exp.exp_desc with
+let rec treat_exp exp args =
+  match exp.exp_desc with
   | Texp_ident (_, _, {Types.val_loc; _})
   | Texp_field (_, _, {lbl_loc=val_loc; _}) ->
       DeadArg.process val_loc args
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
       begin match exp_else with
-        | Some exp -> treat_exp exp args
-        | _ -> () end
+      | Some exp -> treat_exp exp args
+      | _ -> () end
   | Texp_match (_, l1, l2, _) ->
       List.iter (fun {c_rhs=exp; _} -> treat_exp exp args) l1;
       List.iter (fun {c_rhs=exp; _} -> treat_exp exp args) l2
@@ -86,80 +86,78 @@ let collect_references =                          (* Tast_mapper *)
     let r = f self x in
     DeadObj.last_class := prev_last_class;
     last_loc := l;
-    r
-  in
+    r in
 
   let value_binding = function
-    | {
-        vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
-        vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
-        _
-      } ->
-        merge_locs ~add:true loc1 loc2
-    | {
-      vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
-        vb_expr=exp;
-        _
-      } when not loc1.loc_ghost ->
-        DeadArg.node_build (vd_node ~add:true loc1) exp;
-        DeadObj.add_var (name ^ "*") exp
-    | _ -> ()
-  in
+  | {
+    vb_pat={pat_desc=Tpat_var (_, {loc=loc1; _}); _};
+      vb_expr={exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _};
+      _
+    } ->
+      merge_locs ~add:true loc1 loc2
+  | {
+    vb_pat={pat_desc=Tpat_var ({name; _}, {loc=loc1; _}); _};
+      vb_expr=exp;
+      _
+    } when not loc1.loc_ghost ->
+      DeadArg.node_build (vd_node ~add:true loc1) exp;
+      DeadObj.add_var (name ^ "*") exp
+  | _ -> () in
 
   let structure_item self i =
     begin match i.str_desc with
-      | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
-      | Tstr_module  {mb_name={txt; _}; mb_expr; _} ->
-          mods := txt :: !mods;
-          DeadMod.add_equal mb_expr;
-          DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
-      | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
-      | Tstr_include i ->
-          let collect_include p =
-            let name = DeadMod.full_name (Path.name p) in
-            let u = "*include*"in
-            let name = Ident.create name :: [] in
-            List.iter
-              (collect_export
-                ~mod_type:true
-                name
-                u
-                incl
-              )
-              i.incl_type;
-          in
-          let rec includ mod_expr = match mod_expr.mod_desc with
-            | Tmod_ident (p, _) -> collect_include p
-            | Tmod_apply (mod_expr, _, _)
-            | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
-            | _ -> ()
-          in
-          includ i.incl_mod
-      | _ -> () end;
+    | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
+    | Tstr_module  {mb_name={txt; _}; mb_expr; _} ->
+        mods := txt :: !mods;
+        DeadMod.add_equal mb_expr;
+        DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
+    | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
+    | Tstr_include i ->
+        let collect_include p =
+          let name = DeadMod.full_name (Path.name p) in
+          let name = Ident.create name :: [] in
+          List.iter
+            (collect_export
+              ~mod_type:true
+              name
+              _include
+              incl
+            )
+            i.incl_type;
+        in
+        let rec includ mod_expr = match mod_expr.mod_desc with
+          | Tmod_ident (p, _) -> collect_include p
+          | Tmod_apply (mod_expr, _, _)
+          | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
+          | _ -> ()
+        in
+        includ i.incl_mod
+    | _ -> () end;
     let res = super.structure_item self i in
     begin match i.str_desc with
-      | Tstr_module _ -> mods := List.tl !mods
-      | _ -> () end;
+    | Tstr_module _ -> mods := List.tl !mods
+    | _ -> () end;
     res
   in
 
   let pat self p =
     let u s = style := (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) :: !style in
     begin if DeadType.is_unit p.pat_type && !DeadFlag.style.unit_pat then match p.pat_desc with (* look for unit pattern *)
-      | Tpat_construct _ -> ()
-      | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
-      | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
-      | Tpat_any -> if not !DeadFlag.underscore then u "_"
-      | _ -> u "" end;
+    | Tpat_construct _ -> ()
+    | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
+    | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
+    | Tpat_any -> if not !DeadFlag.underscore then u "_"
+    | _ -> u "" end;
     begin match p.pat_desc with
-      | Tpat_record (l, _) ->
-          List.iter
-            (fun (_, lab, _) ->
-              if exported DeadFlag.typ lab.lbl_loc then
-                DeadType.collect_references lab.lbl_loc p.pat_loc)
-            l
-      | Tpat_var (id, _) -> var_name := id.Ident.name
-      | _ -> () end;
+    | Tpat_record (l, _) ->
+        List.iter
+          (fun (_, lab, _) ->
+            if exported DeadFlag.typ lab.lbl_loc then
+              DeadType.collect_references lab.lbl_loc p.pat_loc
+          )
+          l
+    | Tpat_var (id, _) -> var_name := id.Ident.name
+    | _ -> () end;
     super.pat self p
   in
 
@@ -167,15 +165,15 @@ let collect_references =                          (* Tast_mapper *)
     | Texp_apply (exp, args) ->
         if DeadFlag.(!opt.always || !opt.never) then treat_exp exp args;
         begin match exp.exp_desc with
-          | Texp_ident (_, _, {Types.val_loc; _})
-          when val_loc.Location.loc_ghost -> (* The application is due to lookup preparation
+        | Texp_ident (_, _, {Types.val_loc; _})
+          when val_loc.Location.loc_ghost -> (* The node is due to lookup preparation
               * anticipated in the typedtree, wich is a case we do not want to treat
               * otherwise all object's content would be marked as used at this point... *)
-              ()
-          | Texp_ident (_, _, {val_type; _}) ->
-              DeadObj.arg val_type args
-          | _ ->
-              DeadObj.arg exp.exp_type args end
+            ()
+        | Texp_ident (_, _, {val_type; _}) ->
+            DeadObj.arg val_type args
+        | _ ->
+            DeadObj.arg exp.exp_type args end
 
     | Texp_ident (_, _, {Types.val_loc=loc; _})
       when not loc.Location.loc_ghost && exported DeadFlag.exported loc ->
@@ -218,12 +216,12 @@ let collect_references =                          (* Tast_mapper *)
       (fun self x ->
         let old_later = !DeadArg.later in
         DeadArg.later := [];
-        incr DeadArg.depth;
+        incr depth;
         value_binding x;
         let res = super.value_binding self x in
         List.iter (fun f -> f()) !DeadArg.later;
         DeadArg.later := old_later;
-        decr DeadArg.depth;
+        decr depth;
         res
       )
       (fun x -> x.vb_expr.exp_loc)
@@ -322,9 +320,9 @@ let rec load_file fn = match kind fn with
       (* Used if the cmt is valid. Associates the two value|type dependencies *)
       let assoc references (vd1, vd2) =
         let fn1 = vd1.Location.loc_start.pos_fname and fn2 = vd2.Location.loc_start.pos_fname in
-        let is_implem fn = fn <> "_none_" && fn.[String.length fn - 1] <> 'i' in
+        let is_implem fn = fn <> _none && fn.[String.length fn - 1] <> 'i' in
         let has_iface fn =
-          fn <> "_none_" && (fn.[String.length fn - 1] = 'i'
+          fn <> _none && (fn.[String.length fn - 1] = 'i'
             ||  try Sys.file_exists (find_abspath fn ^ "i")
                 with Not_found -> false)
         in
@@ -332,32 +330,48 @@ let rec load_file fn = match kind fn with
           hashtbl_merge_list references vd2 references vd1;
           hashtbl_add_to_list references vd1 vd2
         end
-        else if not (is_implem fn1 && has_iface fn1) then begin
-          hashtbl_add_to_list corres vd1 vd2;
+        else if not (is_implem fn1 && has_iface fn1) then
           hashtbl_merge_list references vd1 references vd2
-        end
         else begin
-          hashtbl_add_to_list corres vd2 vd1;
-          hashtbl_merge_list references vd2 references vd1
+          hashtbl_merge_list references vd2 references vd1;
+          if fn1 = fn2 && is_implem fn1 && has_iface fn1 then
+            hashtbl_remove_list references vd1
         end
       in
 
       begin match cmt with
-        | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
+      | Some {cmt_annots=Implementation x; cmt_value_dependencies; _} ->
+          List.iter
+            (fun ({Types.val_loc=loc1; _}, {Types.val_loc=loc2; _}) ->
+              merge_locs ~add:true loc2 loc1;
+              Hashtbl.add keep_loc loc1 ();
+              Hashtbl.add keep_loc loc2 ();
+            )
+            cmt_value_dependencies;
+          ignore (collect_references.structure collect_references x);
+          DeadArg.eom();
+          if !DeadFlag.exported.print then begin
             List.iter
-              (fun ({Types.val_loc=loc1; _}, {Types.val_loc=loc2; _}) -> merge_locs ~add:true loc2 loc1)
-              cmt_value_dependencies;
-            ignore (collect_references.structure collect_references x);
-            DeadArg.eom();
-            if !DeadFlag.exported.print then begin
-              List.iter (assoc references)
-                (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
-              List.iter (assoc references) !DeadType.dependencies
-            end;
-            DeadType.dependencies := [];
-            incl := [];
-            DeadObj.eom ()
-        | _ -> ()  (* todo: support partial_implementation? *)
+              (assoc references)
+              (List.rev_map (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc)) cmt_value_dependencies);
+            List.iter (assoc references) !DeadType.dependencies
+          end;
+          List.iter
+            (fun loc ->
+              if not (Hashtbl.mem decs loc) && not (Hashtbl.mem keep_loc loc) then begin
+                try
+                  List.iter (fun lab -> DeadArg.clean loc lab) (vd_node loc).opt_args;
+                  Hashtbl.remove vd_nodes loc
+                with _ -> ()
+              end
+            )
+            !local_locs;
+          local_locs := [];
+          DeadType.dependencies := [];
+          Hashtbl.reset keep_loc;
+          Hashtbl.reset incl;
+          DeadObj.eom ()
+      | _ -> ()  (* todo: support partial_implementation? *)
       end
 
   | `Dir when not (is_excluded_dir fn) ->
@@ -421,7 +435,7 @@ let report_opt_args s l =
     in
 
     let change =
-      let (loc, _, _, _, _) = try List.hd l with _ -> (!last_loc, "_none_", [], 0., 0) in
+      let (loc, _, _, _, _) = try List.hd l with _ -> (!last_loc, _none, [], 0., 0) in
       dir (DeadCommon.abs loc)
     in
 
@@ -452,7 +466,7 @@ let report_opt_args s l =
   in report_opt_args 0
 
 
-let report_unused_exported () = report_basic !decs "UNUSED EXPORTED VALUES" !DeadFlag.exported
+let report_unused_exported () = report_basic decs "UNUSED EXPORTED VALUES" !DeadFlag.exported
 
 
 let report_style () =
@@ -581,15 +595,15 @@ let () =
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
-    !DeadLexiFi.prepare_report();
+    !DeadLexiFi.prepare_report DeadType.decs;
     if !DeadFlag.exported.print                 then  report_unused_exported ();
     DeadObj.report();
     DeadType.report();
     if DeadFlag.(!opt.always || !opt.never)     then  begin let tmp = analyze_opt_args () in
                 if !DeadFlag.opt.always         then  report_opt_args "ALWAYS" tmp;
                 if !DeadFlag.opt.never          then  report_opt_args "NEVER" tmp end;
-    if !DeadFlag.style.opt_arg || !DeadFlag.style.unit_pat
-    || !DeadFlag.style.seq || !DeadFlag.style.binding            then  report_style ();
+    if DeadFlag.(!style.opt_arg || !style.unit_pat
+    || !style.seq || !style.binding)            then  report_style ();
 
     if !bad_files <> [] then begin
       let oc = open_out_bin "remove_bad_files.sh" in

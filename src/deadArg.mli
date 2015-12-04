@@ -11,12 +11,21 @@
 open Typedtree
 
 
-
+(* Functions needing a location in the current file to be processed
+ * before being executed.
+ * It is known that this location will have been processed at the end of
+ * the binding.
+ * Needed because the Tast_mapper run through sequences from the end
+ * because tuples are built from right to left*)
 val later : (unit -> unit) list ref
 
+(* Functions needing a location out of the current file to be processed
+ * before being executed. *)
 val last : (unit -> unit) list ref
 
-val depth : int ref
+
+val clean :
+  Location.t -> string -> unit
 
 
 val eom :

@@ -26,7 +26,7 @@ val eom :
 val collect_export :
   Ident.t list
   -> string
-  -> (string * string * Location.t) list ref
+  -> (Location.t, string * string) Hashtbl.t
   -> ?obj: Types.type_expr
   -> ?cltyp: Types.class_type
   -> Location.t

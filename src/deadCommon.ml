@@ -9,15 +9,14 @@
 
                 (********   ATTRIBUTES   ********)
 
-let abspath : (string, string) Hashtbl.t = Hashtbl.create 512                  (* longest paths known *)
+let abspath : (string, string) Hashtbl.t = Hashtbl.create 256                  (* longest paths known *)
 
 
-let decs : (string * string * Location.t) list ref = ref []                         (* all exported value declarations *)
+let decs : (Location.t, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
 
-let incl : (string * string * Location.t) list ref = ref []                         (* all exported value declarations *)
+let incl : (Location.t, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
 
 let references : (Location.t, Location.t) Hashtbl.t  = Hashtbl.create 256      (* all value references *)
-let corres : (Location.t, Location.t) Hashtbl.t = Hashtbl.create 256           (* link from dec to def *)
 
 let fields : (string, Location.t) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
 
@@ -27,6 +26,12 @@ let current_src = ref ""
 let mods : string list ref = ref []                                                 (* module path *)
 
 
+let depth = ref (-1)
+
+let _none = "_none_"
+let _obj = "*obj*"
+let _include = "*include*"
+let _variant = ": variant :"
 
                 (********   HELPERS   ********)
 
@@ -149,6 +154,12 @@ let opt_args : (Location.t * string * bool * Location.t) list ref = ref []
 
                 (********   NODE MANIPULATION   ********)
 
+
+let local_locs = ref []
+
+let keep_loc : (Location.t, unit) Hashtbl.t = Hashtbl.create 32
+
+
 (* Get or create a vd_node corresponding to the location *)
 let vd_node ?(add = false) loc =
   assert (not loc.Location.loc_ghost);
@@ -157,13 +168,36 @@ let vd_node ?(add = false) loc =
     let rec r = {loc; ptr = r; opt_args = []} in
     if add then
       Hashtbl.add vd_nodes loc r;
+    let fn = loc.Location.loc_start.pos_fname in
+    if add
+    && (!depth > 0 && unit fn = unit !current_src
+        || !depth = 0 && fn.[String.length fn - 1] <> 'i'
+        && try (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> false) then
+      local_locs := loc :: !local_locs;
     r
-
 
 (* Locations l1 and l2 are part of a binding from one to another *)
 let merge_locs ?add l1 l2 =
-  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-    (vd_node ?add l1).ptr.ptr <- (vd_node l2).ptr
+  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then begin
+
+    let vd1 = vd_node ?add l1 in
+    let vd2 = vd_node l2 in
+
+    let keep loc =
+      local_locs := List.filter ((<>) loc) !local_locs
+    in
+    let met = Hashtbl.create 8 in
+    let rec keep_repr node =
+      keep node.loc;
+      if node.ptr != node && not (Hashtbl.mem met node) then begin
+        Hashtbl.add met node ();
+        keep_repr node.ptr
+      end
+    in
+
+    vd1.ptr.ptr <- vd2.ptr;
+    keep_repr vd1;
+  end
 
 
 
@@ -176,9 +210,9 @@ let export ?(sep = ".") path u stock id loc =
     ^ id.Ident.name
   in
   if not loc.Location.loc_ghost
-  && (u = unit loc.Location.loc_start.Lexing.pos_fname || u = "*include*")
+  && (u = unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore id.Ident.name then
-    stock := (!current_src, value, loc) :: !stock
+    hashtbl_add_to_list stock loc (!current_src, value)
 
 
 
@@ -236,7 +270,7 @@ let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
 let report_basic ?folder decs title (flag:DeadFlag.basic) =
   let folder = match folder with
     | Some folder -> folder
-    | None -> fun nb_call -> fun acc (fn, path, loc) ->
+    | None -> fun nb_call -> fun loc (fn, path) acc ->
         let rec cut_main s pos =
           if pos = String.length s then s
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
@@ -245,15 +279,7 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
         let test elt = match hashtbl_find_list references elt with
           | l when check_length nb_call l -> Some ((fn, cut_main path 0, loc, l) :: acc)
           | _ -> None
-        in
-        let test () = match test loc with
-          | None -> None
-          | opt ->
-              let locs = hashtbl_find_list corres loc in
-              match List.find (fun node -> try test node <> None with Not_found -> false) locs with
-                | exception Not_found -> opt
-                | loc -> test loc
-        in match test () with
+        in match test loc with
           | exception Not_found when nb_call = 0 ->
                 (fn, cut_main path 0, loc, []) :: acc
           | exception Not_found -> acc
@@ -262,13 +288,13 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
   in
   let rec reportn nb_call =
     let l =
-      List.fold_left (folder nb_call) [] decs
+     Hashtbl.fold (folder nb_call) decs []
       |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
           compare (fn1, loc1, path1) (fn2, loc2, path2))
     in
 
     let change =
-      let (fn, _, _, _) = try List.hd l with _ -> ("_none_", "", !last_loc, []) in
+      let (fn, _, _, _) = try List.hd l with _ -> (_none, "", !last_loc, []) in
       dir fn
     in
     let pretty_print = fun (fn, path, loc, call_sites) ->
@@ -307,18 +333,18 @@ module DeadLexiFi = struct
   let sig_value : (Types.value_description -> unit) ref =
     ref (fun _ -> ())
 
-  let export_type : (Ident.t list -> Ident.t -> string -> unit) ref =
-    ref (fun _ _ _ -> ())
+  let export_type : (Location.t -> string -> unit) ref =
+    ref (fun _ _ -> ())
 
   let type_ext : (Typedtree.core_type -> unit) ref =
     ref (fun _ -> ())
 
-  let tstr_type : (Typedtree.type_declaration -> string Asttypes.loc -> string -> unit) ref =
-    ref (fun _ _ _ -> ())
+  let tstr_type : (Typedtree.type_declaration -> string -> unit) ref =
+    ref (fun _ _ -> ())
 
   let ttype_of : (Typedtree.expression -> unit) ref =
     ref (fun _ -> ())
 
-  let prepare_report : (unit -> unit) ref =
+  let prepare_report : ((Location.t, string * string) Hashtbl.t -> unit) ref =
     ref (fun _ -> ())
 end

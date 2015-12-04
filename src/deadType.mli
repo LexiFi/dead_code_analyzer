@@ -7,6 +7,8 @@
 (*                                                                         *)
 (***************************************************************************)
 
+val decs : (Location.t, string * string) Hashtbl.t
+
 val dependencies : (Location.t * Location.t) list ref
 
 val _TO_STRING_ : Types.type_expr -> string
@@ -22,7 +24,7 @@ val is_unit : Types.type_expr -> bool
 val collect_export :
   Ident.t list
   -> string
-  -> (string * string * Location.t) list ref
+  -> (Location.t, string * string) Hashtbl.t
   -> Types.type_declaration
   -> unit
 

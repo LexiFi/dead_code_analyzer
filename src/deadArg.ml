@@ -15,7 +15,6 @@ open DeadCommon
 
 let later = ref []
 let last = ref []
-let depth = ref (-1)
 
 let met = Hashtbl.create 512
 
@@ -25,6 +24,23 @@ let eom () =
   later := [];
   Hashtbl.reset met
 
+
+let clean loc lab =
+  try
+    let l1 = List.filter (fun (pos, name, has_val, _) -> has_val && pos = loc && name = lab) !opt_args in
+    let l2 = List.filter (fun (pos, name, has_val, _) -> not has_val && pos = loc && name = lab) !opt_args in
+    let l1 = l1 |> List.length in
+    let l2 = l2 |> List.length in
+    let ratio1 = float_of_int l1 /. float_of_int (l1 + l2) in
+    let ratio2 = float_of_int l2 /. float_of_int (l1 + l2) in
+    let good ratio len =
+      if !DeadFlag.opt.threshold.optional = `Both then
+        ratio >= !DeadFlag.opt.threshold.percentage && len <= !DeadFlag.opt.threshold.exceptions
+      else ratio >= !DeadFlag.opt.threshold.percentage
+    in
+    if not (good ratio1 l2 || good ratio2 l1) then
+      opt_args := List.filter (fun (pos, name, _, _) -> loc <> pos && lab <> name) !opt_args
+  with _ -> ()
 
 (* Verify the optional args calls. Treat args *)
 let rec process val_loc args =
@@ -49,10 +65,11 @@ let rec process val_loc args =
         with Not_found -> Hashtbl.add tbl lab 1; 1
       in
       let count x l = List.length @@ List.find_all (( = ) x) l in
+      let locs = Hashtbl.create 8 in
       let rec locate loc =
         let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
-        if loc == loc.ptr || count >= !occur then loc.loc
-        else (occur := !occur - count; locate loc.ptr)
+        if loc == loc.ptr || Hashtbl.mem locs loc || count >= !occur then loc.loc
+        else (occur := !occur - count; Hashtbl.add locs loc (); locate loc.ptr)
       in
       if check_underscore lab then
         let loc = locate loc in
@@ -83,7 +100,8 @@ let rec process val_loc args =
 (* Verify the nature of the argument to detect and treat function applications and uses *)
 and check e =
   (* Optional arguments used to match a signature are considered used *)
-  let rec get_sig_args args typ = match typ.desc with
+  let rec get_sig_args args typ =
+    match typ.desc with
     | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
         get_sig_args ((arg, Some {e with exp_desc=Texp_constant (Asttypes.Const_int 0)}, Optional)::args) t
     | Tarrow (_, _, t, _)
@@ -122,15 +140,18 @@ let rec node_build node expr = match expr.exp_desc with
       DeadType.check_style pat_type expr.exp_loc;
       begin match lab with
         | Asttypes.Optional s ->
-            node.opt_args <- s::node.opt_args;
+            if !DeadFlag.opt.never || !DeadFlag.opt.always then
+              node.opt_args <- s::node.opt_args;
             node_build node exp
         | _ -> () end
   | Texp_apply ({exp_desc=Texp_ident (_, _, {val_loc=loc2; _}); _}, args)
-  | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=loc2; _}); _}, args) ->
+  | Texp_apply ({exp_desc=Texp_field (_, _, {lbl_loc=loc2; _}); _}, args)
+    when!DeadFlag.opt.never || !DeadFlag.opt.always ->
       process loc2 args;
       merge_locs node.loc loc2
   | Texp_ident (_, _, {val_loc=loc2; _}) ->
-      merge_locs node.loc loc2
+      if !DeadFlag.opt.never || !DeadFlag.opt.always then
+        merge_locs node.loc loc2
   | _ -> ()
 
 

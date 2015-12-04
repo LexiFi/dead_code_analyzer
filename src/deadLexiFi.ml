@@ -24,20 +24,18 @@ open DeadCommon
 
                 (********   ATTRIBUTES   ********)
 
-let ftyp = Hashtbl.create 256   (* Link from field to type *)
 let dyn_rec = ref []            (* Record names used for dynamic typing and locations of those uses *)
 let str = Hashtbl.create 256
 let used = ref []
 
 let field_link = Hashtbl.create 256
+let dyn_used = Hashtbl.create 256
 
-
-let export_type path ld_id typ =
-  Hashtbl.add
-    ftyp
-    (String.concat "." (List.rev_map (fun id -> id.Ident.name) (ld_id::path)))
-    typ
-
+let is_user_defined s =
+  let l = [_variant; "bool"; "float"; "int"; "string"; "unit"] in
+  not (String.contains s ' ')
+  && (s <> String.capitalize_ascii s && not (List.mem s l)
+    || String.contains s '.' && string_cut '.' s <> "Pervasives")
 
 
 let sig_value (value : Types.value_description) =
@@ -67,15 +65,14 @@ let type_ext ct = match ct.ctyp_desc with
     | _ -> ()
 
 
-let tstr_type typ ld_name ctype =
+let tstr_type typ ctype =
   let path = String.concat "." @@ List.rev @@
-    ld_name.Asttypes.txt
-    :: typ.typ_name.Asttypes.txt :: !mods
+    typ.typ_name.Asttypes.txt :: !mods
     @ (String.capitalize_ascii (unit !current_src):: [])
   in
-  hashtbl_add_to_list field_link (String.sub path 0 (String.length path - String.length ld_name.Asttypes.txt - 1)) path;
-  if not (Hashtbl.mem fields path) then
-    Hashtbl.add ftyp path ctype
+  if is_user_defined ctype then begin
+    hashtbl_add_to_list field_link path ctype;
+  end
 
 
 let ttype_of e =
@@ -85,11 +82,11 @@ let ttype_of e =
   dyn_rec := (name, e.exp_type, (if e.exp_loc.Location.loc_ghost then !last_loc else e.exp_loc)) :: !dyn_rec
 
 
-let prepare_report () =
+let prepare_report decs =
   List.iter
     (fun (strin, pos) ->
       hashtbl_find_list str strin
-      |> List.iter (fun loc -> hashtbl_add_to_list references loc pos)
+      |> List.iter (fun loc -> if exported DeadFlag.typ loc then hashtbl_add_to_list references loc pos)
     )
     !used;
   let rec process (p, typ, call_site) = match typ.desc with
@@ -104,31 +101,36 @@ let prepare_report () =
         let rec proc name =
           if not (List.mem name !met) then begin
             met := name :: !met;
-            hashtbl_find_list field_link name
-            |> List.fold_left
-              (fun acc key ->
-                let loc = Hashtbl.find fields key in
-                loc :: (try proc (Hashtbl.find ftyp key) with _ -> []) @ acc
-              )
-              []
+            name :: List.fold_left (fun acc name -> acc @ (proc name)) [] (hashtbl_find_list field_link name)
           end
           else []
         in
         List.iter
-          (fun loc ->
-            hashtbl_add_to_list references loc call_site
+          (fun typ ->
+            hashtbl_add_to_list dyn_used typ call_site
           )
           (proc name);
     | _ -> ()
   in
-  List.iter process !dyn_rec
+  List.iter process !dyn_rec;
+  Hashtbl.iter
+    (fun loc (_, path) ->
+      let rec get_type s pos =
+        if pos = 0 then s
+        else if s.[pos] = '.' then String.sub s 0 pos
+        else get_type s (pos - 1)
+      in
+      List.iter
+        (if exported DeadFlag.typ loc then hashtbl_add_to_list references loc else ignore)
+        (hashtbl_find_list dyn_used (get_type path (String.length path - 1)))
+    )
+    decs
 
 
 
 
 let () =
   DeadLexiFi.sig_value := sig_value;
-  DeadLexiFi.export_type := export_type;
   DeadLexiFi.type_ext := type_ext;
   DeadLexiFi.tstr_type := tstr_type;
   DeadLexiFi.ttype_of := ttype_of;

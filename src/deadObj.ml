@@ -16,7 +16,7 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let decs = ref []
+let decs = Hashtbl.create 256
 
 let references = Hashtbl.create 512                     (* references by path#name *)
 
@@ -40,9 +40,9 @@ let defined = Hashtbl.create 32                         (* all classes defined i
 
 let aliases = Hashtbl.create 32                         (* aliases on class names *)
 
-let last_class = ref "*none*"                           (* last class met *)
+let last_class = ref _none                              (* last class met *)
 
-let last_field = ref "*none*"                           (* last field met *)
+let last_field = ref _none                              (* last field met *)
 
 
 
@@ -68,7 +68,7 @@ let rec treat_fields action typ = match typ.desc with
 
 let full_name name =
   try
-    List.map (fun (_, path, _) -> path) !incl
+    Hashtbl.fold (fun _ (_, path) acc -> path::acc) incl []
     |> find_path name ~sep:'.'
   with Not_found ->
     let rec full_name intent name =
@@ -112,7 +112,7 @@ let rec make_path ?(hiera = false) e =
     | Texp_instvar (_, path, _) -> make_name e.exp_type (Path.name path)
 
     | _ as desc -> match make_name e.exp_type "" with
-        | "*obj*" :: [] -> begin match desc with
+        | _obj :: [] -> begin match desc with
           | Texp_apply (e, _) -> make_path ~hiera e
           | _ -> [] end
         | l -> l
@@ -308,8 +308,8 @@ let class_field f =
         let name = full_name name in
         hashtbl_add_unique_to_list inheritances !last_class name;
         begin match s with
-          | Some s -> add_alias s name
-          | None -> () end;
+        | Some s -> add_alias s name
+        | None -> () end;
         List.iter
           (fun (s, _) ->
             update_overr false s)
@@ -457,7 +457,9 @@ let prepare_report () =
     in
     if not (overr || List.mem f !met) then begin
       met := f :: !met;
-      decs := List.filter (fun (_, path, _) -> path <> self) !decs;
+      let loc = Hashtbl.fold (fun loc (_, path) acc -> if path = self then loc else acc) decs Location.none in
+      let keep = hashtbl_find_list decs loc |> List.filter (fun (_, path) -> path <> self) in
+      hashtbl_replace_list decs loc keep;
       hashtbl_merge_unique_list references super references self;
       hashtbl_merge_unique_list self_ref self self_ref super;
       hashtbl_merge_unique_list super_ref self super_ref super
@@ -540,7 +542,7 @@ let prepare_report () =
 let report () =
   prepare_report ();
 
-  let folder nb_call = fun acc (fn, path, loc) ->
+  let folder nb_call = fun loc (fn, path) acc ->
     let rec cut_main s pos =
       if pos = String.length s then s
       else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
@@ -554,7 +556,7 @@ let report () =
       | _ -> acc
   in
 
-  report_basic ~folder !decs "UNUSED CLASS FIELDS" !DeadFlag.obj
+  report_basic ~folder decs "UNUSED CLASS FIELDS" !DeadFlag.obj
 
 
 

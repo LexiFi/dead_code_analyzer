@@ -61,7 +61,7 @@ let rec make_arg typ =
   |> List.flatten
 
 
-let rec name ?(default = "_none_") e = match e.mod_desc with
+let rec name ?(default = _none) e = match e.mod_desc with
   | Tmod_apply (e, _, _)
   | Tmod_functor (_, _, _, e) -> name ~default e
   | Tmod_ident (path, _) -> Path.name path

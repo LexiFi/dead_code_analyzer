@@ -16,7 +16,7 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let decs = ref []
+let decs = Hashtbl.create 256
 
 let dependencies = ref []   (* like the cmt value_dependencies but for types *)
 
@@ -33,8 +33,8 @@ let rec _TO_STRING_ typ = begin [@warning "-11"] match typ.desc with
   | Tvar i -> begin match i with Some id -> id | None -> "'a" end
   | Tarrow (_, t1, t2, _) ->
       begin match t1.desc with
-        | Tarrow _ -> "(" ^ _TO_STRING_ t1 ^ ")"
-        | _ -> _TO_STRING_ t1 end
+      | Tarrow _ -> "(" ^ _TO_STRING_ t1 ^ ")"
+      | _ -> _TO_STRING_ t1 end
       ^ " -> " ^ _TO_STRING_ t2
   | Ttuple l -> begin match l with
       | e::l ->
@@ -46,8 +46,8 @@ let rec _TO_STRING_ typ = begin [@warning "-11"] match typ.desc with
       if Btype.field_kind_repr k = Fpresent then
         s
         ^ begin match t1.desc with
-            | Tfield _ -> "; " ^ _TO_STRING_ t1
-            | _ -> "" end
+          | Tfield _ -> "; " ^ _TO_STRING_ t1
+          | _ -> "" end
       else _TO_STRING_ t1
   | Tnil -> "Tnil"
   | Tlink t -> _TO_STRING_ t
@@ -65,15 +65,7 @@ and make_name path l =
     | _ -> List.fold_left (fun prev typ -> prev ^ _TO_STRING_ typ ^ " ") "" l;
   in
   let name = Path.name path in
-  let len =
-    let open Path in
-    let rec len path = match path with
-      | Pident id when id.Ident.name = "Pervasives" -> String.length "Pervasives."
-      | Papply (_, _) | Pident _ -> 0
-      | Pdot (path, _, _) -> len path
-    in len path
-  in
-  t ^ String.sub name len (String.length name - len)
+  t ^ name
 
 
 
@@ -90,8 +82,6 @@ let collect_export path u stock t =
     if t.type_manifest = None then
       export path u stock id loc;
     let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (id::path) in
-    if Hashtbl.mem fields path then
-      hashtbl_add_to_list corres loc (Hashtbl.find fields path);
     Hashtbl.replace fields path loc
   in
 
@@ -100,7 +90,7 @@ let collect_export path u stock t =
         List.iter
           (fun {Types.ld_id; ld_loc; ld_type; _} ->
             save ld_id ld_loc;
-            !DeadLexiFi.export_type path ld_id (_TO_STRING_ ld_type)
+            !DeadLexiFi.export_type ld_loc (_TO_STRING_ ld_type)
           )
           l
     | Type_variant l ->
@@ -151,7 +141,7 @@ let tstr typ =
 
   let assoc name loc ctyp =
     assoc name loc;
-    !DeadLexiFi.tstr_type typ name ctyp
+    !DeadLexiFi.tstr_type typ ctyp
   in
 
   match typ.typ_kind with
@@ -161,12 +151,12 @@ let tstr typ =
           l
     | Ttype_variant l ->
         List.iter
-          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc ": variant :")
+          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc _variant)
           l
     | _ -> ()
 
 
-let report () = report_basic !decs "UNUSED TYPES FIELDS/CONSTRUCTORS" !DeadFlag.typ
+let report () = report_basic decs "UNUSED TYPES FIELDS/CONSTRUCTORS" !DeadFlag.typ
 
 
                 (********   WRAPPING  ********)
