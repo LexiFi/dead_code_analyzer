@@ -11,6 +11,7 @@
 open Typedtree
 
 
+
 (* Functions needing a location in the current file to be processed
  * before being executed.
  * It is known that this location will have been processed at the end of
@@ -24,18 +25,24 @@ val later : (unit -> unit) list ref
 val last : (unit -> unit) list ref
 
 
+(* Delete the optional argument if it does not satisfy user's constraints *)
 val clean :
   Location.t -> string -> unit
 
 
+(* Self cleaning *)
 val eom :
   unit -> unit
 
 
+(* Add all optional arguments met if they are used to match a signature or the location
+ * is not a ghost and they are part of the application (w/ or w/o value) *)
 val process :
   Location.t
   -> (Asttypes.arg_label * expression option * optional) list
   -> unit
 
+
+(* Constructs the opt_args field of the given node *)
 val node_build :
   DeadCommon.vd_node -> Typedtree.expression -> unit
