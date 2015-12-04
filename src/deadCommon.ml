@@ -209,6 +209,11 @@ let export ?(sep = ".") path u stock id loc =
     ^ sep
     ^ id.Ident.name
   in
+  (* a .cmi file can contain locations from other files.
+    For instance:
+        module M : Set.S with type elt = int
+    will create value definitions whose location is in set.mli
+  *)
   if not loc.Location.loc_ghost
   && (u = unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore id.Ident.name then
