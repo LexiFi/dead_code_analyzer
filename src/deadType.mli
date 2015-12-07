@@ -21,6 +21,8 @@ val tstr : Typedtree.type_declaration -> unit
 
 val is_unit : Types.type_expr -> bool
 
+val is_type : string -> bool
+
 val collect_export :
   Ident.t list
   -> string

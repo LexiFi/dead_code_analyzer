@@ -115,7 +115,8 @@ let separator () =
 
 
 (* Location printer: `filename:line: ' *)
-let prloc ?fn (loc : Location.t) = begin match fn with
+let prloc ?(call_site = false) ?fn (loc : Location.t) =
+  begin match fn with
   | Some s ->
       print_string (Filename.dirname s ^ "/" ^ Filename.basename loc.loc_start.pos_fname)
   | _ -> match find_abspath loc.loc_start.pos_fname with
@@ -124,7 +125,12 @@ let prloc ?fn (loc : Location.t) = begin match fn with
   end;
   print_char ':';
   print_int loc.loc_start.pos_lnum;
-  print_string ": "
+  if call_site then begin
+    print_char ':';
+    print_int (loc.loc_start.pos_cnum - loc.loc_start.pos_bol)
+  end
+  else
+    print_string ": "
 
 
 
@@ -247,9 +253,9 @@ let rec check_length len = function
 let pretty_print_call () = let ghost = ref false in function
   | {Location.loc_ghost=true; _} when !ghost -> ()
   | loc when not loc.Location.loc_ghost ->
-      print_string "         "; prloc loc |> print_newline
+      prloc ~call_site:true loc |> print_newline
   | _ ->          (* first ghost met *)
-      print_endline "        |~ ghost";
+      print_endline "~ ghost ~";
       ghost := true
 
 
@@ -309,7 +315,8 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
       if call_sites <> [] && flag.call_sites then print_string "    Call sites:";
       print_newline ();
       if flag.call_sites then begin
-        List.iter (pretty_print_call ()) call_sites;
+        List.fast_sort compare call_sites
+        |> List.iter (pretty_print_call ());
         if nb_call <> 0 then print_newline ()
       end
     in

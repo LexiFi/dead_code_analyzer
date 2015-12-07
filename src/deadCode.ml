@@ -179,7 +179,7 @@ let expr super self e =
 
   | Texp_ident (_, _, {Types.val_loc = loc; _})
     when not loc.Location.loc_ghost && exported DeadFlag.exported loc ->
-      hashtbl_add_to_list references loc e.exp_loc
+      hashtbl_add_unique_to_list references loc e.exp_loc
 
   | Texp_field (_, _, {lbl_loc = loc; _})
   | Texp_construct (_, {cstr_loc = loc; _}, _)
@@ -277,7 +277,7 @@ let kind fn =
 
 let regabs fn =
   current_src := fn;
-  hashtbl_add_to_list abspath (unit fn) fn
+  hashtbl_add_unique_to_list abspath (unit fn) fn
 
 
 let exclude_dir, is_excluded_dir =
@@ -327,23 +327,28 @@ let assoc references (loc1, loc2) =
         with Not_found -> false
   in
   if fn1 <> _none && fn2 <> _none then
-    if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then begin
-      hashtbl_merge_list references loc2 references loc1;
-      hashtbl_add_to_list references loc1 loc2
-    end
+    if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
+      hashtbl_merge_list references loc2 references loc1
     else if not (is_implem fn1 && has_iface fn1) then
       hashtbl_merge_list references loc1 references loc2
-    else begin
-      hashtbl_merge_list references loc2 references loc1;
-      if fn1 = fn2 && is_implem fn1 && has_iface fn1 then
-        hashtbl_remove_list references loc1
-    end
+    else
+      hashtbl_merge_list references loc2 references loc1
 
+
+let clean references loc =
+  let fn = loc.Location.loc_start.pos_fname in
+  if (fn.[String.length fn - 1] <> 'i' && unit fn = unit !current_src) then
+    hashtbl_remove_list references loc
 
 let eom loc_dep =
   DeadArg.eom();
   List.iter (assoc references) loc_dep;
   List.iter (assoc references) !DeadType.dependencies;
+  if Sys.file_exists (!current_src ^ "i") then begin
+    let clean = List.iter (fun (loc1, loc2) -> clean references loc1; clean references loc2) in
+    clean loc_dep;
+    clean !DeadType.dependencies;
+  end;
   let clean loc =
     if not (Hashtbl.mem decs loc) && not (Hashtbl.mem keep_loc loc) then begin
         List.iter (fun lab -> DeadArg.clean loc lab) (vd_node loc).opt_args;

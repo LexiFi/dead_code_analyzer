@@ -39,7 +39,7 @@ val eom :
  * is not a ghost and they are part of the application (w/ or w/o value) *)
 val process :
   Location.t
-  -> (Asttypes.arg_label * expression option * optional) list
+  -> (Asttypes.arg_label * expression option) list
   -> unit
 
 

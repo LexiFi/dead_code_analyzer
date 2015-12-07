@@ -73,7 +73,14 @@ let expr m = match m.mod_desc with
       let l1 = make_arg m1.mod_type |> List.map (fun (x, _) -> x) in
       let l2 = make_content m2.mod_type in
       List.iter
-        (fun (x, loc) -> if List.mem x l1 || l1 = [] then hashtbl_add_to_list references loc m.mod_loc)
+        (fun (x, loc) ->
+          let is_obj = String.contains x '#' in
+          let is_type = not is_obj && DeadType.is_type x in
+          if (List.mem x l1 || l1 = [])
+          && (is_obj && !DeadFlag.obj.print
+              || not is_obj && is_type && exported DeadFlag.typ loc
+              || not is_obj && not is_type && exported DeadFlag.exported loc) then
+            hashtbl_add_to_list references loc m.mod_loc)
         l2
   | _ -> ()
 

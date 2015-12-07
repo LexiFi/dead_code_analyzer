@@ -57,7 +57,7 @@ val class_field :
 
 
 val arg :
-  Types.type_expr -> (Asttypes.arg_label * expression option * optional) list -> unit
+  Types.type_expr -> (Asttypes.arg_label * expression option) list -> unit
 
 
 val report :

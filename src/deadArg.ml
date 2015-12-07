@@ -81,8 +81,8 @@ let rec process val_loc args =
 
   List.iter       (* treat each arg's expression before all (even if ghost) *)
     (function
-      | (_, None, _) -> ()
-      | (_, Some e, _) -> check e)
+      | (_, None) -> ()
+      | (_, Some e) -> check e)
     args;
 
   if val_loc.Location.loc_ghost then ()   (* Ghostbuster *)
@@ -93,7 +93,7 @@ let rec process val_loc args =
       (* last_loc fixed to avoid side effects if added to later/last *)
     let add lab expr = add lab expr loc last_loc nb_occur in
     let add = function
-      | (Asttypes.Optional lab, Some expr, _) ->
+      | (Asttypes.Optional lab, Some expr) ->
           if loc.ptr == loc
           && (let fn = loc.loc.Location.loc_start.pos_fname in fn.[String.length fn - 1] = 'i') then
             last := (fun () -> add lab expr) :: !last
@@ -114,7 +114,7 @@ and check e =
     let rec loop args typ =
       match typ.desc with
       | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
-          loop ((arg, Some {e with exp_desc = Texp_constant (Asttypes.Const_int 0)}, Optional)::args) t
+          loop ((arg, Some {e with exp_desc = Texp_constant (Asttypes.Const_int 0)})::args) t
       | Tarrow (_, _, t, _)
       | Tlink t -> loop args t
       | _ -> args

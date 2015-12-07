@@ -7,9 +7,10 @@
 (*                                                                         *)
 (***************************************************************************)
 
-(** Dead code anlyzing tool. It only reports unused exported values by default.
-  Options can enable reporting of optional arguments always/never used and bad style of code.
-  In addition to selecting which reports are to be displayed, the threshold of authorized
+(** Dead code anlyzing tool. It only reports unused exported values, types fields/constructors
+  and class_fields by default.
+  Options can enable reporting of optional arguments always/never used as bad style of code.
+  In addition to selecting which reports are to be displayed, the limit of authorized
   occurences needed to be reported can be selected (default is 0).
 
   It assumes .mli/.mfi are compiled with {e -keep-locs} and .ml/.mf are compiled with {e -bin-annot}.
@@ -18,6 +19,30 @@
   {2 Unused Exported Values}
 
   This section reports the following when exported:
+
+  - Values never accessed.
+      e.g. {[
+        let x = 0
+        let () = ()
+      ]}
+      Here, [x] will be reported as it is declared but never used
+
+  As this section focuses on exported values, internal calls are ignored by default.
+  This will lead the analyzer to focus on values that are uselessly exported.
+  To keep track of all uses, call the {e internal} option.
+
+  The {e thresholdE} option can be used to report values the rules above most of the time.
+  e.g. calling the dead code analyzer with {e --thresholdE 1} on
+     {[
+        let x = 0
+        let () = ignore x
+      ]}
+  will lead to reporting [x] in the almost unused subsection because its number of use <= 1.
+
+  The {e call-sites} option can be used to print the call sites of values reported as almost unused.
+
+
+  {2 Unused Types Fields/Constructors}
 
   - Record fields not read.
       e.g. {[
@@ -28,7 +53,7 @@
       ]}
       Here, [t.bar] will be reported.
 
-  - Variant constructors never constructed.
+  - Constructors never constructed.
       e.g. {[
         type 'a option = Foo | Bar
         let x = Foo
@@ -38,29 +63,39 @@
       ]}
       Here, [t.Bar] will be reported as it is never built.
 
-  - Values never accessed.
+  Types are studied as a whole and iff they are explicitly declared as their own types.
+  Consequently, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
+
+  The {e thresholdT} option work similarily to the {e thresholdE}
+  and the {e call-sites} option can also be used
+
+
+  {2 Unused Class Fields}
+
+  - Record fields not read.
       e.g. {[
-        let x = 0
-        let () = ()
+        type t = {foo: int; bar: bool}
+        let r = {foo = 0; bar = false}
+        let x = {r with bar = true}
+        let () = ignore x.foo
       ]}
-      Here, [x] will be reported as it is declared but never used
+      Here, [t.bar] will be reported.
+
+  - Constructors never constructed.
+      e.g. {[
+        type 'a option = Foo | Bar
+        let x = Foo
+        let () = match x with
+          | Bar -> ()
+          | _ -> ()
+      ]}
+      Here, [t.Bar] will be reported as it is never built.
 
   Types are studied as a whole and iff they are explicitly declared as their own types.
   Consequently, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
 
-  As this section focuses on exported values, internal calls are ignored by default.
-  This will lead the analyzer to focus on values that are uselessly exported.
-  To keep track of all uses, call the {e internal} option.
-
-  The {e threshold} option can be used to report values and types respecting the rules above
-  most of the time. e.g. calling the dead code analyzer with {e --threshold +1} on
-     {[
-        let x = 0
-        let () = ignore x
-      ]}
-  will lead to reporting [x] in the almost unused subsection because its number of use <= 1.
-
-  The {e call-sites} option can be used to print the call sites of values reported as almost unused.
+  The {e thresholdT} option work similarily to the {e thresholdE}
+  and the {e call-sites} option can also be used
 
 
   {2 Optional Arguments}

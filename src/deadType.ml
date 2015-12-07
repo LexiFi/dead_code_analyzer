@@ -68,6 +68,21 @@ and make_name path l =
   t ^ name
 
 
+let is_type s =
+  let rec blk s p l acc =
+    try
+      if s.[p] = '.' then
+        let acc = String.sub s (p - l) l :: acc in
+        blk s (p + 1) 0 acc
+      else blk s (p + 1) (l + 1) acc
+    with _ -> String.sub s (p - l) l :: acc
+  in
+  if not (String.contains s '.') then false
+  else
+    let [@ocaml.warning "-8"] hd::cont::_ = blk s 0 0 [] in
+    String.capitalize_ascii hd = hd || String.lowercase_ascii cont = cont
+
+
 
                 (********   PROCESSING  ********)
 

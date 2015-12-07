@@ -351,13 +351,13 @@ let arg typ args =
       | Tarrow (_, _, typ, _) ->
           arg self typ args
       | Tobject _ ->
-          let _, e, _ = List.hd args in
+          let _, e = List.hd args in
           begin match e with
           | Some e ->
               treat_fields (fun s -> collect_references ~meth:s e) typ
           | None -> () end
       | Tconstr (p, _, _) ->
-          let _, e, _ = List.hd args in
+          let _, e = List.hd args in
           begin match e with
           | Some e ->
               let p = full_name (Path.name p) in
@@ -373,7 +373,7 @@ let arg typ args =
                 else collect ()
           | None -> () end
       | Tvar _ when not self->
-          let _, e, _ = List.hd args in
+          let _, e = List.hd args in
           begin match e with
           | Some e -> arg true e.exp_type args
           | _ -> () end
