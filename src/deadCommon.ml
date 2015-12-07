@@ -38,11 +38,7 @@ let _variant = ": variant :"
 let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
 
 
-let rec string_cut c s pos len =
-  if len = String.length s then s
-  else if s.[pos] = c then String.sub s (pos - len) len
-  else string_cut c s (pos + 1) (len + 1)
-let string_cut c s = string_cut c s 0 0
+let string_cut = DeadFlag.string_cut
 
 
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
@@ -259,17 +255,18 @@ let pretty_print_call () = let ghost = ref false in function
       ghost := true
 
 
-let percent base = 1. -. (float_of_int base) *. (1. -. !DeadFlag.opt.threshold.percentage) /. 10.
+let percent (opt : DeadFlag.opt) base =
+  1. -. (float_of_int base) *. (1. -. opt.threshold.percentage) /. 10.
 
 
 (* Base pattern for reports *)
-let report s ?(extra = "Called") l continue nb_call pretty_print reporter =
+let report s ~(opt: DeadFlag.opt) ?(extra = "Called") l continue nb_call pretty_print reporter =
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if !DeadFlag.opt.threshold.optional = `Both || extra = "Called" then
+        else if opt.threshold.optional = `Both || extra = "Called" then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
-        else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent nb_call));
+        else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent opt nb_call));
     List.iter pretty_print l;
     if continue nb_call then
       (if l <> [] then print_endline "--------" else ()) |> print_newline |> print_newline
@@ -326,7 +323,7 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
       if nb_call = 0 then title
       else "ALMOST " ^ title
     in
-    report s l continue nb_call pretty_print reportn
+    report s ~opt:(!DeadFlag.opta) l continue nb_call pretty_print reportn
 
   in reportn 0
 

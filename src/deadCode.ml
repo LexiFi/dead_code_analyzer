@@ -192,7 +192,7 @@ let expr super self e =
 
 
   | Texp_apply (exp, args) ->
-      if DeadFlag.(!opt.always || !opt.never) then treat_exp exp args;
+      if DeadFlag.(!opta.print || !optn.print) then treat_exp exp args;
       begin match exp.exp_desc with
       | Texp_ident (_, _, {Types.val_loc; _})
         when val_loc.Location.loc_ghost -> (* The node is due to lookup preparation
@@ -445,13 +445,18 @@ let analyze_opt_args () =
 
 
 let report_opt_args s l =
+  let opt =
+    if s = "NEVER" then !DeadFlag.optn
+    else !DeadFlag.opta
+  in
+  let percent = percent opt in
   let rec report_opt_args nb_call =
     let l = List.filter
         (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
-          if !DeadFlag.opt.threshold.optional = `Both then
-            ratio >= !DeadFlag.opt.threshold.percentage && check_length nb_call slot
+          if opt.threshold.optional = `Both then
+            ratio >= opt.threshold.percentage && check_length nb_call slot
           else ratio >= percent nb_call
-            && (!DeadFlag.opt.threshold.percentage >= 1. || ratio < (percent (nb_call - 1))))
+            && (opt.threshold.percentage >= 1. || ratio < (percent (nb_call - 1))))
       @@ List.map
         (fun (loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
@@ -473,24 +478,24 @@ let report_opt_args s l =
       prloc loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
-        if !DeadFlag.opt.call_sites then print_string "  Exceptions:"
+        if opt.call_sites then print_string "  Exceptions:"
       end;
       print_newline ();
-      if !DeadFlag.opt.call_sites then begin
+      if opt.call_sites then begin
         List.iter (pretty_print_call ()) slot;
         if nb_call <> 0 then print_newline ()
       end
     in
 
     let continue nb_call =
-      !DeadFlag.opt.threshold.optional = `Both && nb_call < !DeadFlag.opt.threshold.exceptions
-      || !DeadFlag.opt.threshold.optional = `Percent && percent nb_call > !DeadFlag.opt.threshold.percentage
+      opt.threshold.optional = `Both && nb_call < opt.threshold.exceptions
+      || opt.threshold.optional = `Percent && percent nb_call > opt.threshold.percentage
     in
     let s =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
       else "OPTIONAL ARGUMENTS: ") ^ s
     in
-    report s ~extra:"Except" l continue nb_call pretty_print report_opt_args;
+    report s ~opt ~extra:"Except" l continue nb_call pretty_print report_opt_args;
 
   in report_opt_args 0
 
@@ -518,12 +523,14 @@ let report_style () =
 
 (* Option parsing and processing *)
 let parse () =
-  let update_all b () = DeadFlag.(
-    update_style (b ^ "all");
-    update_basic "-E" DeadFlag.exported (b ^ "all");
-    update_basic "-C" obj (b ^ "all");
-    update_basic "-T" typ (b ^ "all");
-    update_opt (b ^ "all"))
+  let update_all print () =
+    DeadFlag.(
+    update_style ((if print = "all" then "+" else "-") ^ "all");
+    update_basic "-E" DeadFlag.exported print;
+    update_basic "-C" obj print;
+    update_basic "-T" typ print;
+    update_opt opta print;
+    update_opt optn print)
   in
 
   (* any extra argument can be accepted by any option using some
@@ -536,65 +543,43 @@ let parse () =
       "--verbose", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
       "-v", Unit DeadFlag.set_verbose, " See --verbose";
 
-      "--thresholdC", Int (DeadFlag.update_threshold "--thresholdC" DeadFlag.obj),
-        "<integer>  Report class fields used up to the given integer";
-
-      "--thresholdE", Int (DeadFlag.update_threshold "--thresholdE" DeadFlag.exported),
-        "<integer>  Report values used up to the given integer";
-
-      "--thresholdO", String DeadFlag.update_opt_threshold,
-        " Report optional arguments almost always/never used.\n    \
-          Delimiters '+' and '-' can both be used.\n    \
-          Options (can be used together):\n\
-          \t<integer>: Maximum number of exceptions. Default is 0.\n\
-          \t<float>: Minimum percentage (between 0.0 and 1.0) of valid cases (for optional arguments). Default is 1.0.\n\
-          \tpercent: Optional arguments have to respect the percentage only. Default behaviour\n\
-          \tboth: Optional arguments have to respect both constraints";
-
-      "--thresholdT", Int (DeadFlag.update_threshold "--thresholdT" DeadFlag.typ),
-        "<integer>  Report values used up to the given integer";
-
-      "--call-sites", String DeadFlag.update_call_sites,
-        " Reports call sites for exceptions in the given category (only useful when used with the threshold option).\n    \
-          Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
-          Options (can be used together):\n\
-          \tC: Equivalent to -C +calls.\n\
-          \tE: Equivalent to -E +calls.\n\
-          \tO: Equivalent to -O +calls.\n\
-          \tT: Equivalent to -T +calls.\n\
-          \tall: C & E & O & T";
-
       "--internal", Unit DeadFlag.set_internal,
         " Keep internal uses as exported values uses when the interface is given. \
           This is the default behaviour when only the implementation is found";
 
-      "--nothing", Unit (update_all "-"), " Disable all warnings";
-      "-a", Unit (update_all "-"), " See --nothing";
-      "--all", Unit (update_all "+"), " Enable all warnings";
-      "-A", Unit (update_all "+"), " See --all";
+      "--nothing", Unit (update_all "nothing"), " Disable all warnings";
+      "-a", Unit (update_all "nothing"), " See --nothing";
+      "--all", Unit (update_all "all"), " Enable all warnings";
+      "-A", Unit (update_all "all"), " See --all";
 
       "-C", String (DeadFlag.update_basic "-C" DeadFlag.obj),
-        " Enable/Disable unused class fields warnings.\n    \
-        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
-        Options (can be used together):\n\
+        "<display>  Enable/Disable unused class fields warnings.\n    \
+        <display> can be:\n\
           \tall\n\
-          \tcalls: show call sites";
+          \tnothing\n\
+          \t\"threshold:<integer>\": report elements used up to the given integer\n\
+          \t\"calls:<integer>\": like threshold + show call sites";
 
       "-E", String (DeadFlag.update_basic "-E" DeadFlag.exported),
-        " Enable/Disable unused exported values warnings.\n    \
-        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
-        Options (can be used together):\n\
-          \tall\n\
-          \tcalls: show call sites";
+        "<display>  Enable/Disable unused exported values warnings.\n    \
+        See option -C for the syntax of <display>";
 
-      "-O", String (DeadFlag.update_opt),
-        " Enable/Disable optional arguments warnings.\n    \
-        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
-        Options (can be used together):\n\
-          \talways\n\
-          \tnever\n\
-          \tall: always & never\n\
-          \tcalls: show call sites";
+      "-Oa", String (DeadFlag.update_opt DeadFlag.opta),
+        "<display>  Enable/Disable optional arguments always used warnings.\n    \
+        <display> can be:\n\
+          \tall\n\
+          \tnothing\n\
+          \t<threshold>\n\
+          \t\"calls:<threshold>\" like <threshold> + show call sites\n    \
+        <threshold> can be:\n\
+          \t\"both:<integer>,<float>\": both the number max of exceptions \
+          (given through the integer) and the percent of valid cases (given as a float) \
+          must be respected for the element to be reported\n\
+          \t\"percent:<float>\": percent of valid cases to be reported";
+
+      "-On", String (DeadFlag.update_opt DeadFlag.optn),
+        "<display>  Enable/Disable optional arguments never used warnings.\n    \
+        See option -Oa for the syntax of <display>";
 
       "-S", String (DeadFlag.update_style),
         " Enable/Disable coding style warnings.\n    \
@@ -607,11 +592,8 @@ let parse () =
           \tall: bind & opt & seq & unit";
 
       "-T", String (DeadFlag.update_basic "-T" DeadFlag.typ),
-        " Enable/Disable unused types fields/constructors warnings.\n    \
-        Delimiters '+' and '-' determine if the following option is to enable or disable.\n    \
-        Options (can be used together):\n\
-          \tall\n\
-          \tcalls: show call sites";
+        "<display>  Enable/Disable unused types fields/constructors warnings.\n    \
+        See option -C for the syntax of <display>";
 
     ]
     (Printf.eprintf "Scanning files...\n%!";
@@ -628,9 +610,9 @@ let () =
     if !DeadFlag.exported.print                 then  report_unused_exported ();
     DeadObj.report();
     DeadType.report();
-    if DeadFlag.(!opt.always || !opt.never)     then  begin let tmp = analyze_opt_args () in
-                if !DeadFlag.opt.always         then  report_opt_args "ALWAYS" tmp;
-                if !DeadFlag.opt.never          then  report_opt_args "NEVER" tmp end;
+    if DeadFlag.(!opta.print || !optn.print)     then  begin let tmp = analyze_opt_args () in
+                if !DeadFlag.opta.print         then  report_opt_args "ALWAYS" tmp;
+                if !DeadFlag.optn.print          then  report_opt_args "NEVER" tmp end;
     if [@warning "-44"] DeadFlag.(!style.opt_arg || !style.unit_pat
     || !style.seq || !style.binding)            then  report_style ();
 

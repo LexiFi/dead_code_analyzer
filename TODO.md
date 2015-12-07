@@ -1,4 +1,5 @@
 # Work in Progress
+- update doc
 - code cleaning
 
 # Waiting

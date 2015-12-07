@@ -36,12 +36,13 @@ let clean loc lab =
     let l2 = List.length l2 in
     let ratio1 = float_of_int l1 /. float_of_int (l1 + l2) in
     let ratio2 = float_of_int l2 /. float_of_int (l1 + l2) in
-    let good ratio len =
-      (!DeadFlag.opt.threshold.optional <> `Both || len <= !DeadFlag.opt.threshold.exceptions)
-      && ratio >= !DeadFlag.opt.threshold.percentage
+    let good (opt: DeadFlag.opt) ratio len =
+      (opt.threshold.optional <> `Both || len <= opt.threshold.exceptions)
+      && ratio >= opt.threshold.percentage
     in
 
-    if not (good ratio1 l2 || good ratio2 l1) then
+    if not (good !DeadFlag.opta ratio1 l2 || good !DeadFlag.opta ratio2 l1
+        || good !DeadFlag.optn ratio1 l2 || good !DeadFlag.optn ratio2 l1) then
       opt_args := List.filter (fun (pos, name, _, _) -> loc <> pos && lab <> name) !opt_args
   with _ -> ()
 
@@ -147,17 +148,17 @@ let rec node_build node expr =
       DeadType.check_style pat_type expr.exp_loc;
       begin match lab with
       | Asttypes.Optional s ->
-          if !DeadFlag.opt.never || !DeadFlag.opt.always then
+          if !DeadFlag.optn.print || !DeadFlag.opta.print then
             node.opt_args <- s :: node.opt_args;
           node_build node exp
       | _ -> () end
   | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, args)
   | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, args)
-    when !DeadFlag.opt.never || !DeadFlag.opt.always ->
+    when !DeadFlag.optn.print || !DeadFlag.opta.print ->
       process loc2 args;
       merge_locs node.loc loc2
   | Texp_ident (_, _, {val_loc = loc2; _})
-    when !DeadFlag.opt.never || !DeadFlag.opt.always ->
+    when !DeadFlag.optn.print || !DeadFlag.opta.print ->
       merge_locs node.loc loc2
   | _ -> ()
 
@@ -167,7 +168,7 @@ let rec node_build node expr =
 
 
 let wrap f x y =
-  if DeadFlag.(!opt.never || !opt.always) then f x y else ()
+  if DeadFlag.(!optn.print || !opta.print) then f x y else ()
 
 let process val_loc args =
   wrap process val_loc args
