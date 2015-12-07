@@ -422,7 +422,7 @@ let analyze_opt_args () =
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
 
-  let analyze = fun (loc, lab, has_val, callsite) ->
+  let analyze = fun (loc, lab, has_val, call_site) ->
     let slot =
       try Hashtbl.find tbl (loc, lab)
       with Not_found ->
@@ -431,8 +431,8 @@ let analyze_opt_args () =
         Hashtbl.add tbl (loc, lab) r;
         r
     in
-    if has_val then slot.with_val <- callsite :: slot.with_val
-    else slot.without_val <- callsite :: slot.without_val
+    if has_val then slot.with_val <- call_site :: slot.with_val
+    else slot.without_val <- call_site :: slot.without_val
   in
 
   List.iter analyze !opt_args;

@@ -92,9 +92,9 @@ let rec make_name t path = match t.desc with
   | _ -> hashtbl_find_list aliases path
 
 
-let rec make_path ?(hiera = false) e =
+let rec make_path ?(hiera = false) exp =
 
-  let classes = match e.exp_desc with
+  let classes = match exp.exp_desc with
     | Texp_ident (path, _, typ) ->
         let path = Path.name path in
         if hiera then match typ.val_kind with
@@ -106,19 +106,19 @@ let rec make_path ?(hiera = false) e =
         else if List.mem (full_name (path ^ "*")) !literals then
           (path ^ "*")::[]
         else
-          make_name e.exp_type path
+          make_name exp.exp_type path
     | Texp_new (path, _, _) -> Path.name path :: []
 
-    | Texp_instvar (_, path, _) -> make_name e.exp_type (Path.name path)
+    | Texp_instvar (_, path, _) -> make_name exp.exp_type (Path.name path)
 
-    | _ as desc -> match make_name e.exp_type "" with
+    | _ as desc -> match make_name exp.exp_type "" with
         | _obj :: [] -> begin match desc with
-          | Texp_apply (e, _) -> make_path ~hiera e
+          | Texp_apply (exp, _) -> make_path ~hiera exp
           | _ -> [] end
         | l -> l
   in
 
-  match e.exp_extra with
+  match exp.exp_extra with
     | (Texp_coerce (_, typ), _, _)::_ ->
         let names = make_name typ.ctyp_type "" in
         let names = List.map full_name names
@@ -241,13 +241,13 @@ let tstr ({ci_id_class_type=name; ci_expr; _}, _) =
   make_dep ci_expr
 
 
-let add_var name e =
-  let rec is_obj e = match e.exp_desc with
+let add_var name exp =
+  let rec is_obj exp = match exp.exp_desc with
     | Texp_object _ -> true
-    | Texp_function (_, {c_rhs=e; _}::_, _) -> is_obj e
+    | Texp_function (_, {c_rhs=exp; _}::_, _) -> is_obj exp
     | _ -> false
   in
-  if is_obj e then begin
+  if is_obj exp then begin
     Hashtbl.add defined name name;
     last_class := full_name name;
     literals := !last_class :: !literals
@@ -276,7 +276,9 @@ let class_structure cl_struct =
         | (Tpat_constraint {ctyp_desc=Ttyp_class (p, _, _); _}, _, _) ->
             let name = clean_sharp (Path.name p) 0 in
             let name = full_name name in
-            Hashtbl.iter (fun a e -> if e = !last_class then add_alias a name) aliases;
+            Hashtbl.iter
+              (fun alias clas -> if clas = !last_class then add_alias alias name)
+              aliases;
             hashtbl_add_unique_to_list dependencies !last_class name
         | _ -> ()
       )
@@ -341,6 +343,10 @@ let class_field f =
 
 
 let arg typ args =
+  let apply_to_exp f = function
+    | (_, Some exp) :: _ -> f exp
+    | _ -> ()
+  in
   let rec arg self typ args =
     if args <> [] then match typ.desc with
       | Tlink t -> arg self t args
@@ -351,32 +357,26 @@ let arg typ args =
       | Tarrow (_, _, typ, _) ->
           arg self typ args
       | Tobject _ ->
-          let _, e = List.hd args in
-          begin match e with
-          | Some e ->
-              treat_fields (fun s -> collect_references ~meth:s e) typ
-          | None -> () end
+          let f exp = treat_fields (fun s -> collect_references ~meth:s exp) typ in
+          apply_to_exp f args
       | Tconstr (p, _, _) ->
-          let _, e = List.hd args in
-          begin match e with
-          | Some e ->
-              let p = full_name (Path.name p) in
-              let path = make_path e in
-              let collect () =
-                List.iter
-                  (fun (_, s) -> collect_references ~meth:s ~path e)
-                  (hashtbl_find_list content p)
-              in
-              if path <> [] then
-                if hashtbl_find_list content p = [] then
-                  later := collect :: !later
-                else collect ()
-          | None -> () end
+          let f exp =
+            let p = full_name (Path.name p) in
+            let path = make_path exp in
+            let collect () =
+              List.iter
+                (fun (_, s) -> collect_references ~meth:s ~path exp)
+                (hashtbl_find_list content p)
+            in
+            if path <> [] then
+              if hashtbl_find_list content p = [] then
+                later := collect :: !later
+              else collect ()
+          in
+          apply_to_exp f args
       | Tvar _ when not self->
-          let _, e = List.hd args in
-          begin match e with
-          | Some e -> arg true e.exp_type args
-          | _ -> () end
+          let f exp = arg true exp.exp_type args in
+          apply_to_exp f args
       | _ -> ()
   in arg false typ args
 
@@ -575,14 +575,14 @@ let eom () =
 let collect_export path u stock ?obj ?cltyp loc =
   wrap (collect_export path u stock ?obj ?cltyp) loc
 
-let collect_references ~meth ?path expr =
-  wrap (collect_references ~meth ?path) expr
+let collect_references ~meth ?path exp =
+  wrap (collect_references ~meth ?path) exp
 
 let tstr cl_dec =
   wrap tstr cl_dec
 
-let add_var name expr =
-  wrap (add_var name) expr
+let add_var name exp =
+  wrap (add_var name) exp
 
 let class_structure cl_struct =
   wrap class_structure cl_struct

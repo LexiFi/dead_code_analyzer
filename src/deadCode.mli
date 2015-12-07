@@ -25,13 +25,13 @@
         let x = 0
         let () = ()
       ]}
-      Here, [x] will be reported as it is declared but never used
+      Here, [x] will be reported.
 
   As this section focuses on exported values, internal calls are ignored by default.
   This will lead the analyzer to focus on values that are uselessly exported.
   To keep track of all uses, call the {e internal} option.
 
-  The {e thresholdE} option can be used to report values the rules above most of the time.
+  The {e thresholdE} option can be used to report values the rule respecting above most of the time.
   e.g. calling the dead code analyzer with {e --thresholdE 1} on
      {[
         let x = 0
@@ -55,13 +55,13 @@
 
   - Constructors never constructed.
       e.g. {[
-        type 'a option = Foo | Bar
+        type t = Foo | Bar
         let x = Foo
         let () = match x with
           | Bar -> ()
           | _ -> ()
       ]}
-      Here, [t.Bar] will be reported as it is never built.
+      Here, [t.Bar] will be reported.
 
   Types are studied as a whole and iff they are explicitly declared as their own types.
   Consequently, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
@@ -72,29 +72,23 @@
 
   {2 Unused Class Fields}
 
-  - Record fields not read.
+  - Public fields never called.
       e.g. {[
-        type t = {foo: int; bar: bool}
-        let r = {foo = 0; bar = false}
-        let x = {r with bar = true}
-        let () = ignore x.foo
+        class p = object
+          method f = ()
+        end
+        class c = object
+          inherit p
+          method g = ()
+        end
+        let () = c#f
       ]}
-      Here, [t.bar] will be reported.
+      Here, [c#g] will be reported.
 
-  - Constructors never constructed.
-      e.g. {[
-        type 'a option = Foo | Bar
-        let x = Foo
-        let () = match x with
-          | Bar -> ()
-          | _ -> ()
-      ]}
-      Here, [t.Bar] will be reported as it is never built.
+  It has to be noted that calling [c#f] is in fact the same as calling [p#f].
+  The owner is considered to be the one who defines the function.
 
-  Types are studied as a whole and iff they are explicitly declared as their own types.
-  Consequently, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
-
-  The {e thresholdT} option work similarily to the {e thresholdE}
+  The {e thresholdC} option work similarily to the {e thresholdE}
   and the {e call-sites} option can also be used
 
 
