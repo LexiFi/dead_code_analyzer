@@ -157,14 +157,27 @@ let opt_args : (Location.t * string * bool * Location.t) list ref = ref []
                 (********   NODE MANIPULATION   ********)
 
 
+let links = Hashtbl.create 256
+
 let local_locs = ref []
 
-let keep_loc : (Location.t, unit) Hashtbl.t = Hashtbl.create 32
+
+let last_link loc =
+  let met = Hashtbl.create 8 in
+  let rec loop loc =
+    Hashtbl.add met loc ();
+    if Hashtbl.mem links loc then
+      let next = Hashtbl.find links loc in
+      if Hashtbl.mem met next then loc
+      else loop next
+    else loc
+  in loop loc
 
 
 (* Get or create a vd_node corresponding to the location *)
 let vd_node ?(add = false) loc =
   assert (not loc.Location.loc_ghost);
+  let loc = last_link loc in
   try (Hashtbl.find vd_nodes loc)
   with Not_found ->
     let rec r = {loc; ptr = r; opt_args = []} in
@@ -180,26 +193,15 @@ let vd_node ?(add = false) loc =
 
 (* Locations l1 and l2 are part of a binding from one to another *)
 let merge_locs ?add l1 l2 =
-  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then begin
+  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
 
     let vd1 = vd_node ?add l1 in
-    let vd2 = vd_node l2 in
-
-    let keep loc =
-      local_locs := List.filter ((<>) loc) !local_locs
-    in
-    let met = Hashtbl.create 8 in
-    let rec keep_repr node =
-      keep node.loc;
-      if node.ptr != node && not (Hashtbl.mem met node) then begin
-        Hashtbl.add met node ();
-        keep_repr node.ptr
-      end
-    in
-
-    vd1.ptr.ptr <- vd2.ptr;
-    keep_repr vd1;
-  end
+    if vd1.opt_args = [] then begin
+      Hashtbl.replace links (last_link l1) (last_link l2);
+    end
+    else
+      let vd2 = vd_node l2 in
+      vd1.ptr.ptr <- vd2.ptr
 
 
 
