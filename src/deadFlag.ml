@@ -81,6 +81,7 @@ let update_opt opt s =
   | "all" -> opt := {!opt with print = true}
   | "nothing" -> opt := {!opt with print = false}
   | s ->
+      opt := {!opt with print = true};
       let s =
         if String.length s > 6 && String.sub s 0 6 = "calls:" then
           String.sub s 6 (String.length s - 6)
