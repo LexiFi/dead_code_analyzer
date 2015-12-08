@@ -57,7 +57,8 @@ let optn = ref
 
 let update_opt opt s =
   let threshold s =
-    if String.sub s 0 5 = "both:" then begin
+    let len = String.length s in
+    if len > 5 && String.sub s 0 5 = "both:" then begin
       let limits = String.sub s 5 (String.length s - 5) in
       let thr = string_cut ',' limits in
       let pos = String.length thr + 1 in
@@ -70,7 +71,7 @@ let update_opt opt s =
         opt := {!opt with threshold = {!opt.threshold with percentage = float_of_string pct}}
       with Failure _ -> raise (Arg.Bad ("-Ox: wrong arguments: " ^ limits))
     end
-    else if String.sub s 0 8 = "percent:" then
+    else if len > 8 && String.sub s 0 8 = "percent:" then
       let pct = String.sub s 8 (String.length s - 8) |> String.trim in
       try opt := {!opt with threshold={!opt.threshold with percentage = float_of_string pct}}
       with Failure _ -> raise (Arg.Bad ("-Ox: wrong argument: " ^ pct))
@@ -81,7 +82,7 @@ let update_opt opt s =
   | "nothing" -> opt := {!opt with print = false}
   | s ->
       let s =
-        if String.sub s 0 6 = "calls:" then
+        if String.length s > 6 && String.sub s 0 6 = "calls:" then
           String.sub s 6 (String.length s - 6)
         else s
       in
@@ -120,40 +121,41 @@ let update_style s =
 
 
 type basic = {print: bool; call_sites: bool; threshold: int}
-let exported = ref
-  {
+let exported : basic ref = ref
+  ({
     print = true;
     call_sites = false;
     threshold = 0
-  }
+  } : basic)
 
 
 let obj = ref
-  {
+  ({
     print = true;
     call_sites = false;
     threshold = 0;
-  }
+  } : basic)
 
 
-let typ = ref
-  {
+let typ : basic ref = ref
+  ({
     print = true;
     call_sites = false;
     threshold = 0
-  }
+  } : basic)
 
 
-let update_basic opt flag = function
+let update_basic opt (flag : basic ref) = function
     | "all" -> flag := {!flag with print = true}
     | "nothing" -> flag := {!flag with print = false}
     | s ->
         let threshold =
-          if String.sub s 0 6 = "calls:" then begin
+          let len = String.length s in
+          if len > 6 && String.sub s 0 6 = "calls:" then begin
             flag := {!flag with call_sites = true};
             String.sub s 6 (String.length s - 6)
           end
-          else if String.sub s 0 10 = "threshold:" then
+          else if len > 10 && String.sub s 0 10 = "threshold:" then
             String.sub s 10 (String.length s - 10)
           else raise (Arg.Bad (opt ^ ": unknown option: " ^ s))
         in

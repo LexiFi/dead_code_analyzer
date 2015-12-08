@@ -81,7 +81,7 @@ let find_abspath fn =
 
 
 
-let exported flag loc =
+let exported (flag : DeadFlag.basic ref) loc =
   let fn = loc.Location.loc_start.pos_fname in
   !flag.DeadFlag.print
   && hashtbl_find_list references loc |> List.length <= !flag.DeadFlag.threshold
