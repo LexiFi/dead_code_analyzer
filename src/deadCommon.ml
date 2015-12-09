@@ -132,16 +132,6 @@ let prloc ?(call_site = false) ?fn (loc : Location.t) =
 
                 (********   TYPES   *********)
 
-type vd_node =
-  {
-    loc: Location.t;
-    mutable opt_args: string list;
-    mutable ptr: vd_node;               (* points to itself if not a binding to another known value *)
-  }
-
-
-let vd_nodes = Hashtbl.create 256
-
 
 type opt_arg =
   {
@@ -156,54 +146,80 @@ let opt_args : (Location.t * string * bool * Location.t) list ref = ref []
 
                 (********   NODE MANIPULATION   ********)
 
+module VdNode = struct
 
-let links = Hashtbl.create 256
+  type t = (string list * Location.t option)
 
-let local_locs = ref []
-
-
-let last_link loc =
-  let met = Hashtbl.create 8 in
-  let rec loop loc =
-    Hashtbl.add met loc ();
-    if Hashtbl.mem links loc then
-      let next = Hashtbl.find links loc in
-      if Hashtbl.mem met next then loc
-      else loop next
-    else loc
-  in loop loc
+  let vd_nodes = Hashtbl.create 256
 
 
-(* Get or create a vd_node corresponding to the location *)
-let vd_node ?(add = false) loc =
-  assert (not loc.Location.loc_ghost);
-  let loc = last_link loc in
-  try (Hashtbl.find vd_nodes loc)
-  with Not_found ->
-    let rec r = {loc; ptr = r; opt_args = []} in
-    if add then
+  (* Get or create a vd_node corresponding to the location *)
+  let get loc =
+    assert (not loc.Location.loc_ghost);
+    try (Hashtbl.find vd_nodes loc)
+    with Not_found ->
+      let r = ([], None) in
       Hashtbl.add vd_nodes loc r;
-    let fn = loc.Location.loc_start.pos_fname in
-    if add
-    && (!depth > 0 && unit fn = unit !current_src
-        || !depth = 0 && fn.[String.length fn - 1] <> 'i'
-        && try (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> false) then
-      local_locs := loc :: !local_locs;
-    r
-
-(* Locations l1 and l2 are part of a binding from one to another *)
-let merge_locs ?add l1 l2 =
-  if not l1.Location.loc_ghost && not l2.Location.loc_ghost then
-
-    let vd1 = vd_node ?add l1 in
-    if vd1.opt_args = [] then begin
-      Hashtbl.replace links (last_link l1) (last_link l2);
-    end
-    else
-      let vd2 = vd_node l2 in
-      vd1.ptr.ptr <- vd2.ptr
+      r
 
 
+  let get_opts loc =
+    fst (get loc)
+
+  let get_next loc =
+    snd (get loc)
+
+  let update loc node =
+    Hashtbl.replace vd_nodes loc node
+
+  let is_end loc =
+    get_next loc = None
+
+  let rec repr loc=
+    match get loc with
+    | _, Some loc -> repr loc
+    | _ -> loc
+
+
+  let rec func loc =
+    match get loc with
+    | [], Some loc -> func loc
+    | _ -> loc
+
+
+  (* Locations l1 and l2 are part of a binding from one to another *)
+  let merge_locs loc1 loc2 =
+    if not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then
+      let loc1 = repr loc1 in
+      let loc2 = func loc2 in
+      if loc1 <> loc2 then
+        let opts, _ = get loc1 in
+        update loc1 (opts, Some loc2)
+
+
+  let find loc lab occur =
+    let met = Hashtbl.create 8 in
+    let rec loop loc lab occur =
+      let count =
+        if is_end loc then 0
+        else List.filter (( = ) lab) (get_opts loc) |> List.length
+      in
+      if is_end loc || Hashtbl.mem met loc || count >= !occur then loc
+      else begin
+        occur := !occur - count;
+        Hashtbl.add met loc ();
+        match get_next loc with
+        | Some next -> loop (func next) lab occur
+        | None ->
+            let loc =
+              loc.Location.loc_start.pos_fname ^ ":"
+              ^ (string_of_int loc.Location.loc_start.pos_lnum)
+            in
+              failwith (loc ^ ": optional argument `" ^ lab ^ "' unlinked")
+      end
+    in loop (func loc) lab occur
+
+end
 
                 (********   PROCESSING  ********)
 

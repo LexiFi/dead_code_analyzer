@@ -59,46 +59,35 @@ let add lab expr loc last_loc nb_occur =
       Hashtbl.find nb_occur lab
     in ref occur
   in
-  let count x l = List.find_all (( = ) x) l |> List.length in
-  let locs = Hashtbl.create 8 in
-  let rec locate loc =
-    let count = if loc == loc.ptr then 0 else count lab loc.opt_args in
-    if loc == loc.ptr || Hashtbl.mem locs loc || count >= !occur then loc.loc
-    else (occur := !occur - count; Hashtbl.add locs loc (); locate loc.ptr)
-  in
-  let call_site =
-    if expr.exp_loc.Location.loc_ghost then last_loc
-    else expr.exp_loc
-  in
+  let call_site = if expr.exp_loc.Location.loc_ghost then last_loc else expr.exp_loc in
   if check_underscore lab then
-    let loc = locate loc in
+    let loc = VdNode.find loc lab occur in
     if not (Hashtbl.mem met (last_loc, loc, lab)) then begin
       Hashtbl.add met (last_loc, loc, lab) ();
       opt_args := (loc, lab, has_val, call_site) :: !opt_args
     end
 
 
-let rec process val_loc args =
+let rec process loc args =
 
   List.iter       (* treat each arg's expression before all (even if ghost) *)
     (function
-      | (_, None) -> ()
-      | (_, Some e) -> check e)
+      | (_, Some e) -> check e
+      | _ -> ())
     args;
 
-  if val_loc.Location.loc_ghost then ()   (* Ghostbuster *)
+  if loc.Location.loc_ghost then ()   (* Ghostbuster *)
   else begin                              (* else: `begin ... end' for aesthetics *)
-    let loc = vd_node val_loc in
     let nb_occur = Hashtbl.create 256 in
     let last_loc = !last_loc in
       (* last_loc fixed to avoid side effects if added to later/last *)
     let add lab expr = add lab expr loc last_loc nb_occur in
     let add = function
       | (Asttypes.Optional lab, Some expr) ->
-          if loc.ptr == loc
-          && (let fn = loc.loc.Location.loc_start.pos_fname in fn.[String.length fn - 1] = 'i') then
+          if VdNode.is_end loc
+          && (let fn = loc.Location.loc_start.pos_fname in fn.[String.length fn - 1] = 'i') then
             last := (fun () -> add lab expr) :: !last
-          else if loc.ptr == loc && !depth > 0 then
+          else if VdNode.is_end loc && !depth > 0 then
             later := (fun () -> add lab expr) :: !later
           else
             add lab expr
@@ -142,24 +131,25 @@ and check e =
   | _ -> ()
 
 
-let rec node_build node expr =
+let rec node_build loc expr =
   match expr.exp_desc with
   | Texp_function (lab, [{c_lhs = {pat_type; _}; c_rhs = exp; _}], _) ->
       DeadType.check_style pat_type expr.exp_loc;
       begin match lab with
       | Asttypes.Optional s ->
           if !DeadFlag.optn.print || !DeadFlag.opta.print then
-            node.opt_args <- s :: node.opt_args;
-          node_build node exp
+            let (opts, next) = VdNode.get loc in
+            VdNode.update loc (s :: opts, next);
+          node_build loc exp
       | _ -> () end
   | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, args)
   | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, args)
     when !DeadFlag.optn.print || !DeadFlag.opta.print ->
       process loc2 args;
-      merge_locs node.loc loc2
+      VdNode.merge_locs loc loc2
   | Texp_ident (_, _, {val_loc = loc2; _})
     when !DeadFlag.optn.print || !DeadFlag.opta.print ->
-      merge_locs node.loc loc2
+      VdNode.merge_locs loc loc2
   | _ -> ()
 
 

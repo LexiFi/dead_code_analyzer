@@ -45,4 +45,4 @@ val process :
 
 (* Constructs the opt_args field of the given node *)
 val node_build :
-  DeadCommon.vd_node -> Typedtree.expression -> unit
+  Location.t -> Typedtree.expression -> unit

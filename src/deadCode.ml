@@ -94,12 +94,12 @@ let value_binding super self x =
       vb_expr = {exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _};
       _
     } ->
-      merge_locs loc1 loc2
-  | { vb_pat = {pat_desc = Tpat_var ({name; _}, {loc = loc1; _}); _};
+      VdNode.merge_locs loc1 loc2
+  | { vb_pat = {pat_desc = Tpat_var ({name; _}, {loc = loc; _}); _};
       vb_expr = exp;
       _
-    } when not loc1.loc_ghost ->
-      DeadArg.node_build (vd_node ~add:true loc1) exp;
+    } when not loc.loc_ghost ->
+      DeadArg.node_build loc exp;
       DeadObj.add_var (name ^ "*") exp
   | _ -> ()
   end;
@@ -349,12 +349,6 @@ let eom loc_dep =
     clean loc_dep;
     clean !DeadType.dependencies;
   end;
-  let clean loc =
-    if (vd_node loc).opt_args = [] then
-      Hashtbl.remove vd_nodes loc
-  in
-  List.iter clean !local_locs;
-  local_locs := [];
   DeadType.dependencies := [];
   Hashtbl.reset incl;
   DeadObj.eom ()
@@ -380,7 +374,7 @@ let rec load_file fn = match kind fn with
       begin match cmt with
       | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
           let prepare {Types.val_loc = loc1; _} {Types.val_loc = loc2; _} =
-            merge_locs loc2 loc1
+            VdNode.merge_locs loc2 loc1
           in
           List.iter (fun (vd1, vd2) -> prepare vd1 vd2) cmt_value_dependencies;
 
