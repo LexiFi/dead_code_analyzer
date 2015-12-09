@@ -349,6 +349,7 @@ let eom loc_dep =
     clean loc_dep;
     clean !DeadType.dependencies;
   end;
+  VdNode.eom ();
   DeadType.dependencies := [];
   Hashtbl.reset incl;
   DeadObj.eom ()

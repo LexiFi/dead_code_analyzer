@@ -152,6 +152,8 @@ module VdNode = struct
 
   let vd_nodes = Hashtbl.create 256
 
+  let parents = Hashtbl.create 256
+
 
   (* Get or create a vd_node corresponding to the location *)
   let get loc =
@@ -192,9 +194,11 @@ module VdNode = struct
     if not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then
       let loc1 = repr loc1 in
       let loc2 = func loc2 in
-      if loc1 <> loc2 then
+      if loc1 <> loc2 then begin
         let opts, _ = get loc1 in
-        update loc1 (opts, Some loc2)
+        update loc1 (opts, Some loc2);
+        Hashtbl.add parents loc2 loc1
+      end
 
 
   let find loc lab occur =
@@ -218,6 +222,24 @@ module VdNode = struct
               failwith (loc ^ ": optional argument `" ^ lab ^ "' unlinked")
       end
     in loop (func loc) lab occur
+
+
+  let delete loc =
+    let met = Hashtbl.create 64 in
+    let rec loop loc =
+      if not (Hashtbl.mem met loc) then begin
+        hashtbl_find_list parents loc
+        |> List.iter loop;
+        if not (Hashtbl.mem decs loc)
+        && Hashtbl.mem parents loc && hashtbl_find_list parents loc = [] then
+          Hashtbl.remove parents loc
+      end
+    in loop loc
+
+  let eom () =
+    Hashtbl.fold (fun loc _ acc -> loc :: acc) parents []
+    |> List.sort_uniq compare |> List.iter delete
+
 
 end
 
