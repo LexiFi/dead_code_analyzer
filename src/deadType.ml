@@ -29,6 +29,14 @@ let is_unit t = match (Ctype.repr t).desc with
   | _ -> false
 
 
+let nb_args typ =
+  let rec loop n = function
+    | Tarrow (_, _, typ, _) -> loop (n + 1) typ.desc
+    | _ -> n
+  in
+  loop 0 typ.desc
+
+
 let rec _TO_STRING_ typ = begin [@warning "-11"] match typ.desc with
   | Tvar i -> begin match i with Some id -> id | None -> "'a" end
   | Tarrow (_, t1, t2, _) ->

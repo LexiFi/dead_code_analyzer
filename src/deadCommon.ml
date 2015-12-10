@@ -154,6 +154,8 @@ module VdNode = struct
 
   let parents = Hashtbl.create 256
 
+  let removed = ref []
+
 
   (* Get or create a vd_node corresponding to the location *)
   let get loc =
@@ -164,6 +166,10 @@ module VdNode = struct
       Hashtbl.add vd_nodes loc r;
       r
 
+  let remove loc =
+    if Hashtbl.mem vd_nodes loc then
+      Hashtbl.remove vd_nodes loc;
+    removed := loc :: !removed
 
   let get_opts loc =
     fst (get loc)
@@ -171,22 +177,47 @@ module VdNode = struct
   let get_next loc =
     snd (get loc)
 
-  let update loc node =
+  let update loc ((_, loc2) as node) =
+    let _, loc1 = get loc in
+    begin match loc1 with
+    | Some loc1 ->
+        hashtbl_find_list parents loc1
+        |> List.filter (( <> ) loc)
+        |> hashtbl_replace_list parents loc1
+    | None -> ()
+    end;
+    begin match loc2 with
+    | Some loc2 -> Hashtbl.add parents loc2 loc
+    | None -> ()
+    end;
     Hashtbl.replace vd_nodes loc node
 
   let is_end loc =
     get_next loc = None
 
-  let rec repr loc=
-    match get loc with
-    | _, Some loc -> repr loc
-    | _ -> loc
+  let repr loc =
+    let met = Hashtbl.create 8 in
+    let rec loop loc =
+      Hashtbl.add met loc ();
+      match get loc with
+      | _, Some loc when not (Hashtbl.mem met loc) -> loop loc
+      | _ -> loc
+    in loop loc
 
-
-  let rec func loc =
-    match get loc with
-    | [], Some loc -> func loc
-    | _ -> loc
+  let func loc =
+    let met = Hashtbl.create 8 in
+    let seen loc =
+      try ignore (find_abspath loc.Location.loc_start.pos_fname); true
+      with Not_found -> false
+    in
+    let rec loop loc =
+      Hashtbl.add met loc ();
+      match get loc with
+      | [], Some loc
+      when not (Hashtbl.mem met loc) && seen loc ->
+          loop loc
+      | _ -> loc
+    in loop loc
 
 
   (* Locations l1 and l2 are part of a binding from one to another *)
@@ -197,7 +228,6 @@ module VdNode = struct
       if loc1 <> loc2 then begin
         let opts, _ = get loc1 in
         update loc1 (opts, Some loc2);
-        Hashtbl.add parents loc2 loc1
       end
 
 
@@ -225,20 +255,62 @@ module VdNode = struct
 
 
   let delete loc =
+    if not (Hashtbl.mem decs loc) && unit loc.Location.loc_start.pos_fname = unit !current_src then
+      let met = Hashtbl.create 64 in
+      let rec loop loc =
+        if not (Hashtbl.mem met loc) then begin
+          Hashtbl.add met loc ();
+          hashtbl_find_list parents loc
+          |> List.iter loop;
+          let pts = hashtbl_find_list parents loc |> List.filter (Hashtbl.mem vd_nodes) in
+          if pts = [] then begin
+            if Hashtbl.mem parents loc then
+              hashtbl_remove_list parents loc;
+            Hashtbl.remove vd_nodes loc;
+          end
+        end
+      in loop loc
+
+
+  let simplify loc =
     let met = Hashtbl.create 64 in
     let rec loop loc =
       if not (Hashtbl.mem met loc) then begin
-        hashtbl_find_list parents loc
-        |> List.iter loop;
-        if not (Hashtbl.mem decs loc)
-        && Hashtbl.mem parents loc && hashtbl_find_list parents loc = [] then
-          Hashtbl.remove parents loc
-      end
+        Hashtbl.add met loc ();
+      if not (is_end loc) then
+        update loc (get_opts loc, Some (func loc));
+      hashtbl_find_list parents loc
+      |> List.iter loop
+    end
     in loop loc
 
   let eom () =
-    Hashtbl.fold (fun loc _ acc -> loc :: acc) parents []
-    |> List.sort_uniq compare |> List.iter delete
+
+    let remove loc =
+      let met = Hashtbl.create 8 in
+      let rec loop loc =
+        if not (Hashtbl.mem met loc) then begin
+          Hashtbl.add met loc ();
+          let update loc =
+            let opts, _ = get loc in
+            if opts = [] then
+              loop loc
+            else
+              update loc (opts, None)
+          in
+          hashtbl_find_list parents loc |> List.iter update
+        end
+      in loop loc
+    in
+    List.iter remove !removed;
+    removed := [];
+
+    let sons =
+      Hashtbl.fold (fun loc _ acc -> loc :: acc) parents []
+      |> List.sort_uniq compare
+    in
+    List.iter delete sons
+
 
 
 end

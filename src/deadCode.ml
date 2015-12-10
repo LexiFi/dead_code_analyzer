@@ -68,7 +68,8 @@ let rec treat_exp exp args =
   | Texp_apply (exp, in_args) -> treat_exp exp (in_args @ args)
 
   | Texp_ident (_, _, {Types.val_loc; _})
-  | Texp_field (_, _, {lbl_loc = val_loc; _}) -> DeadArg.process val_loc args
+  | Texp_field (_, _, {lbl_loc = val_loc; _}) ->
+      DeadArg.process val_loc args;
 
   | Texp_match (_, l1, l2, _) ->
       List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l1;
@@ -95,7 +96,7 @@ let value_binding super self x =
       _
     } ->
       VdNode.merge_locs loc1 loc2
-  | { vb_pat = {pat_desc = Tpat_var ({name; _}, {loc = loc; _}); _};
+  | { vb_pat = {pat_desc = Tpat_var ({name; _}, {loc; _}); _};
       vb_expr = exp;
       _
     } when not loc.loc_ghost ->

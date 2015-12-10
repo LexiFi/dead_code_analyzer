@@ -131,26 +131,30 @@ and check e =
   | _ -> ()
 
 
-let rec node_build loc expr =
-  match expr.exp_desc with
-  | Texp_function (lab, [{c_lhs = {pat_type; _}; c_rhs = exp; _}], _) ->
-      DeadType.check_style pat_type expr.exp_loc;
-      begin match lab with
-      | Asttypes.Optional s ->
-          if !DeadFlag.optn.print || !DeadFlag.opta.print then
-            let (opts, next) = VdNode.get loc in
-            VdNode.update loc (s :: opts, next);
-          node_build loc exp
-      | _ -> () end
-  | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, args)
-  | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, args)
-    when !DeadFlag.optn.print || !DeadFlag.opta.print ->
-      process loc2 args;
-      VdNode.merge_locs loc loc2
-  | Texp_ident (_, _, {val_loc = loc2; _})
-    when !DeadFlag.optn.print || !DeadFlag.opta.print ->
-      VdNode.merge_locs loc loc2
-  | _ -> ()
+let node_build loc expr =
+  let rec loop loc expr =
+    match expr.exp_desc with
+    | Texp_function (lab, [{c_lhs = {pat_type; _}; c_rhs = exp; _}], _) ->
+        DeadType.check_style pat_type expr.exp_loc;
+        begin match lab with
+        | Asttypes.Optional s ->
+            if !DeadFlag.optn.print || !DeadFlag.opta.print then
+              let opts, next = VdNode.get loc in
+              VdNode.update loc (s :: opts, next);
+            loop loc exp
+        | _ -> () end
+    | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, _)
+    | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, _)
+      when (!DeadFlag.optn.print || !DeadFlag.opta.print) && DeadType.nb_args expr.exp_type > 0 ->
+        VdNode.merge_locs loc loc2
+    | Texp_ident (_, _, {val_loc = loc2; _})
+      when !DeadFlag.optn.print || !DeadFlag.opta.print ->
+        VdNode.merge_locs loc loc2
+    | _ -> ()
+  in loop loc expr;
+  let opts, next = VdNode.get loc in
+  if opts = [] && next = None then
+    VdNode.remove loc
 
 
 
