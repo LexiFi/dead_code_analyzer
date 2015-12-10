@@ -25,28 +25,6 @@ let eom () =
   Hashtbl.reset met
 
 
-let clean loc lab =
-  assert (unit loc.Location.loc_start.pos_fname = unit !current_src);
-  try
-    let filter used = fun (pos, name, has_val, _) ->
-      has_val = used && pos = loc && name = lab in
-    let l1 = List.filter (filter true) !opt_args in
-    let l2 = List.filter (filter false) !opt_args in
-    let l1 = List.length l1 in
-    let l2 = List.length l2 in
-    let ratio1 = float_of_int l1 /. float_of_int (l1 + l2) in
-    let ratio2 = float_of_int l2 /. float_of_int (l1 + l2) in
-    let good (opt: DeadFlag.opt) ratio len =
-      (opt.threshold.optional <> `Both || len <= opt.threshold.exceptions)
-      && ratio >= opt.threshold.percentage
-    in
-
-    if not (good !DeadFlag.opta ratio1 l2 || good !DeadFlag.opta ratio2 l1
-        || good !DeadFlag.optn ratio1 l2 || good !DeadFlag.optn ratio2 l1) then
-      opt_args := List.filter (fun (pos, name, _, _) -> loc <> pos && lab <> name) !opt_args
-  with _ -> ()
-
-
 let add lab expr loc last_loc nb_occur =
   let has_val = match expr.exp_desc with
     | Texp_construct (_, {cstr_name = "None"; _}, _) -> false
@@ -145,10 +123,10 @@ let node_build loc expr =
         | _ -> () end
     | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, _)
     | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, _)
-      when (!DeadFlag.optn.print || !DeadFlag.opta.print) && DeadType.nb_args expr.exp_type > 0 ->
+      when (!DeadFlag.optn.print || !DeadFlag.opta.print) && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
         VdNode.merge_locs loc loc2
     | Texp_ident (_, _, {val_loc = loc2; _})
-      when !DeadFlag.optn.print || !DeadFlag.opta.print ->
+      when !DeadFlag.optn.print || !DeadFlag.opta.print && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
         VdNode.merge_locs loc loc2
     | _ -> ()
   in loop loc expr;

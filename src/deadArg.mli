@@ -25,11 +25,6 @@ val later : (unit -> unit) list ref
 val last : (unit -> unit) list ref
 
 
-(* Delete the optional argument if it does not satisfy user's constraints *)
-val clean :
-  Location.t -> string -> unit
-
-
 (* Self cleaning *)
 val eom :
   unit -> unit

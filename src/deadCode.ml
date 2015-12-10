@@ -376,7 +376,7 @@ let rec load_file fn = match kind fn with
       begin match cmt with
       | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
           let prepare {Types.val_loc = loc1; _} {Types.val_loc = loc2; _} =
-            VdNode.merge_locs loc2 loc1
+            VdNode.merge_locs ~force:true loc2 loc1
           in
           List.iter (fun (vd1, vd2) -> prepare vd1 vd2) cmt_value_dependencies;
 

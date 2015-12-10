@@ -29,9 +29,13 @@ let is_unit t = match (Ctype.repr t).desc with
   | _ -> false
 
 
-let nb_args typ =
+let nb_args ?(keep = `All) typ =
   let rec loop n = function
-    | Tarrow (_, _, typ, _) -> loop (n + 1) typ.desc
+    | Tarrow (_, _, typ, _) when keep = `All -> loop (n + 1) typ.desc
+    | Tarrow (Labelled _, _, typ, _) when keep = `Lbl -> loop (n + 1) typ.desc 
+    | Tarrow (Optional _, _, typ, _) when keep = `Opt -> loop (n + 1) typ.desc 
+    | Tarrow (Nolabel, _, typ, _) when keep = `Reg -> loop (n + 1) typ.desc 
+    | Tarrow (_, _, typ, _) -> loop n typ.desc
     | _ -> n
   in
   loop 0 typ.desc

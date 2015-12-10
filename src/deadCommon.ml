@@ -33,6 +33,7 @@ let _obj = "*obj*"
 let _include = "*include*"
 let _variant = ": variant :"
 
+
                 (********   HELPERS   ********)
 
 let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
@@ -166,6 +167,9 @@ module VdNode = struct
       Hashtbl.add vd_nodes loc r;
       r
 
+  let exists loc =
+    Hashtbl.mem vd_nodes loc
+
   let remove loc =
     if Hashtbl.mem vd_nodes loc then
       Hashtbl.remove vd_nodes loc;
@@ -204,12 +208,14 @@ module VdNode = struct
       | _ -> loc
     in loop loc
 
+
+  let seen loc =
+    try ignore (find_abspath loc.Location.loc_start.pos_fname); true
+    with Not_found -> false
+
+
   let func loc =
     let met = Hashtbl.create 8 in
-    let seen loc =
-      try ignore (find_abspath loc.Location.loc_start.pos_fname); true
-      with Not_found -> false
-    in
     let rec loop loc =
       Hashtbl.add met loc ();
       match get loc with
@@ -221,14 +227,15 @@ module VdNode = struct
 
 
   (* Locations l1 and l2 are part of a binding from one to another *)
-  let merge_locs loc1 loc2 =
+  let merge_locs ?(force = false) loc1 loc2 =
     if not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then
-      let loc1 = repr loc1 in
       let loc2 = func loc2 in
-      if loc1 <> loc2 then begin
-        let opts, _ = get loc1 in
-        update loc1 (opts, Some loc2);
-      end
+      if force || not (is_end loc2) || get_opts loc2 <> [] || not (seen loc2) then
+        let loc1 = repr loc1 in
+        if loc1 <> loc2 then begin
+          let opts, _ = get loc1 in
+          update loc1 (opts, Some loc2);
+        end
 
 
   let find loc lab occur =
@@ -255,7 +262,7 @@ module VdNode = struct
 
 
   let delete loc =
-    if not (Hashtbl.mem decs loc) && unit loc.Location.loc_start.pos_fname = unit !current_src then
+    if seen loc then
       let met = Hashtbl.create 64 in
       let rec loop loc =
         if not (Hashtbl.mem met loc) then begin
@@ -284,6 +291,7 @@ module VdNode = struct
     end
     in loop loc
 
+
   let eom () =
 
     let remove loc =
@@ -309,8 +317,25 @@ module VdNode = struct
       Hashtbl.fold (fun loc _ acc -> loc :: acc) parents []
       |> List.sort_uniq compare
     in
-    List.iter delete sons
+    List.iter delete sons;
 
+    let delete loc =
+      let met = Hashtbl.create 64 in
+      let rec loop loc =
+        if unit loc.Location.loc_start.pos_fname <> unit !current_src then true
+        else begin
+          Hashtbl.add met loc ();
+          let deletable =
+            hashtbl_find_list parents loc
+            |> List.fold_left (fun acc loc -> acc || loop loc) false
+          in
+          if deletable then
+            hashtbl_remove_list parents loc;
+          deletable
+        end
+      in ignore (loop loc)
+    in
+    List.iter delete sons
 
 
 end
