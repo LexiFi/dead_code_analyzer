@@ -309,7 +309,7 @@ let read_interface fn src = let open Cmi_format in
   try
     regabs src;
     let u = unit fn in
-    if !DeadFlag.exported.print then
+    if !DeadFlag.exported.print || !DeadFlag.obj.print || !DeadFlag.typ.print then
       let f = collect_export [Ident.create (String.capitalize_ascii u)] u decs in
       List.iter f (read_cmi fn).cmi_sign
   with Cmi_format.Error (Wrong_version_interface _) ->
