@@ -33,6 +33,7 @@ clean:
 	make -C man clean
 	make -C examples clean
 	make -C check clean
+	rm -rf build
 
 check:
 	make -C check

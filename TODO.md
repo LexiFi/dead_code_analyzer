@@ -1,11 +1,12 @@
 # Work in Progress
-- update doc
+- finish class fields
 - code cleaning
 
 # Waiting
-- split type section (constructors and fields, can be transformed as abstract/private)
+- update doc
 - literal objects
-- handle module types correctly
+- handle module types better
+- improve optional arguments memory cost
 - more precise on optional arguments (track dependencies)
 
 

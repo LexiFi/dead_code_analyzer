@@ -19,19 +19,19 @@ opt:
 	make EXT=opt
 
 internal: prepare check.$(EXT)$(EXE)
-	../src/deadCode.$(EXT)$(EXE) -A --internal ../examples > $(TARGET)
+	../build/deadCode.$(EXT)$(EXE) -A --internal ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./internal $(TARGET)
 
 classic: prepare check.$(EXT)$(EXE)
-	../src/deadCode.$(EXT)$(EXE) -A ../examples > $(TARGET)
+	../build/deadCode.$(EXT)$(EXE) -A ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./classic $(TARGET)
 
 threshold-1: prepare check.$(EXT)$(EXE)
-	../src/deadCode.$(EXT)$(EXE) -A --internal -E threshold:1 -C threshold:1 -T threshold:1 ../examples > $(TARGET)
+	../build/deadCode.$(EXT)$(EXE) -A --internal -E threshold:1 -C threshold:1 -T threshold:1 ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
 
 threshold-3-0.5: prepare check.$(EXT)$(EXE)
-	../src/deadCode.$(EXT)$(EXE) -A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -C threshold:3 -T threshold:3 ../examples > $(TARGET)
+	../build/deadCode.$(EXT)$(EXE) -A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -C threshold:3 -T threshold:3 ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
 
 prepare:

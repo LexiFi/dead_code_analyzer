@@ -151,7 +151,7 @@ and [?b] in the almost always used subsection.
 
 
   {2 Usage}
-  {e ./dead_code.byt <options> <directory|file>}
+  {e ./deadCode.<ext> <options> <directory|file>}
 
   For more informations use the {e --help} option
 

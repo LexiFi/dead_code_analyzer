@@ -12,8 +12,12 @@ about suspicious code:
    the implementation if there is no internal use -- which will be reported
    by standard OCaml warnings).
 
+ - Types fields and constructors never used. (Can be dropped from the type)
+
+ - Class fields never used. (Can be dropped from the signature)
+
  - Optional arguments for which either all call sites or none of them
-   provide a value. (The argument can be made mandatory or dropped.)
+   provide a value (other than `None`. (The argument can be made mandatory or dropped.)
 
  - Other stylistic issues:  patterns matching a value of type `unit`
    which are not `()` (typically, `_` or a variable);  let-binding
@@ -24,13 +28,13 @@ about suspicious code:
 
 The tool assumes that .mli files are compiled with -keep-locs and .ml
 files with -bin-annot.  Exported values are collected by reading .cmi or .cmt
-files (depending on the existence of an explicit .mli interfaces).
+files (depending on the existence of an explicit .mli interface).
 References to such values are collected by reading typed trees from .cmt files
 
 
 ## Requirements
 
-- OCaml >=4.03.0
+- Currently tested and working on OCaml 4.03.0+trunk
 
 
 ## Install and Use
@@ -38,7 +42,7 @@ References to such values are collected by reading typed trees from .cmt files
 1. Download the sources.
 2. Run `make` to generate the `deadCode.byt` bytecode executable file;
 Run `make opt` to generate the `deadCode.opt` native-code executable file.
-Both will be produced the `src` directory.
+Both will be produced in the `build` directory.
 3. Execute the analyzer on the desired sources.
 
 For more information about the usage, use the *-help* option.
@@ -82,7 +86,7 @@ There has been no official release yet.
 
 ## Limitations
 
-...
+Tracking the optional arguments uses may consume a lot of memory.
 
 
 ## Contact

@@ -8,7 +8,7 @@ SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
 	record.mli record.ml variant.mli variant.ml
 
 all: build
-	../src/deadCode.byt $(DEADFLAGS) .
+	../build/deadCode.byt $(DEADFLAGS) .
 
 build:
 	$(OCAMLC) -c $(SRC)
