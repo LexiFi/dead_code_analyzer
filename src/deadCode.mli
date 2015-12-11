@@ -7,8 +7,8 @@
 (*                                                                         *)
 (***************************************************************************)
 
-(** Dead code anlyzing tool. It only reports unused exported values, types fields/constructors
-  and class_fields by default.
+(** Dead code anlyzing tool. It only reports unused exported values, constructors/record fields
+  and methods by default.
   Options can enable reporting of optional arguments always/never used as bad style of code.
   In addition to selecting which reports are to be displayed, the limit of authorized
   occurences needed to be reported can be selected (default is 0).
@@ -42,7 +42,7 @@
   The {e call-sites} option can be used to print the call sites of values reported as almost unused.
 
 
-  {2 Unused Types Fields/Constructors}
+  {2 Unused Constructors/Record Fields}
 
   - Record fields not read.
       e.g. {[
@@ -70,9 +70,9 @@
   and the {e call-sites} option can also be used
 
 
-  {2 Unused Class Fields}
+  {2 Unused Methods}
 
-  - Public fields never called.
+  - Public methods never called.
       e.g. {[
         class p = object
           method f = ()

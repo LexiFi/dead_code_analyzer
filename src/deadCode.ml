@@ -7,8 +7,8 @@
 (*                                                                         *)
 (***************************************************************************)
 
-(** Dead code anlyzing tool. It only reports unused exported values, types fields/constructors
-  and class_fields by default.
+(** Dead code anlyzing tool. It only reports unused exported values, constructors/record fields
+  and methods by default.
   Options can enable reporting of optional arguments always/never used as bad style of code.
   In addition to selecting which reports are to be displayed, the limit of authorized
   occurences needed to be reported can be selected (default is 0).
@@ -37,7 +37,7 @@ let rec collect_export ?(mod_type = false) path u stock = function
     when not val_loc.Location.loc_ghost && stock == decs ->
       if !DeadFlag.exported.print then export path u stock id val_loc;
       let path = {id with name = id.name ^ "*"} :: path in
-      DeadObj.collect_export path _obj stock ~obj:val_type val_loc;
+      DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
 
   | Sig_type (id, {type_kind = Type_abstract; type_manifest = Some t; type_loc = loc; _}, _)
@@ -546,8 +546,8 @@ let parse () =
       "--all", Unit (update_all "all"), " Enable all warnings";
       "-A", Unit (update_all "all"), " See --all";
 
-      "-C", String (DeadFlag.update_basic "-C" DeadFlag.obj),
-        "<display>  Enable/Disable unused class fields warnings.\n    \
+      "-M", String (DeadFlag.update_basic "-M" DeadFlag.obj),
+        "<display>  Enable/Disable unused methods warnings.\n    \
         <display> can be:\n\
           \tall\n\
           \tnothing\n\
@@ -586,7 +586,7 @@ let parse () =
           \tall: bind & opt & seq & unit";
 
       "-T", String (DeadFlag.update_basic "-T" DeadFlag.typ),
-        "<display>  Enable/Disable unused types fields/constructors warnings.\n    \
+        "<display>  Enable/Disable unused constructors/records fields warnings.\n    \
         See option -C for the syntax of <display>";
 
     ]

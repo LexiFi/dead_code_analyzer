@@ -215,14 +215,14 @@ let rec sel_section () =
             print_endline (input_line !res);
             extend := ".mli";
             sel_section (section ())
-      | ".> UNUSED CLASS FIELDS:" as s ->
+      | ".> UNUSED METHODS:" as s ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlio" !fnames
             with _ -> ());
             print_endline s;
             print_endline (input_line !res);
             extend := ".mlio";
             sel_section (section ())
-      | ".> UNUSED TYPES FIELDS/CONSTRUCTORS:" as s ->
+      | ".> UNUSED CONSTRUCTORS/RECORD FIELDS:" as s ->
             (try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" ".mlit" !fnames
             with _ -> ());
             print_endline s;
@@ -260,9 +260,9 @@ let rec sel_section () =
             print_endline (input_line !res);
             extend := ".mli" ^ n;
             sel_section (section ())
-      | s when String.length s > 33 && String.sub s 0 33 = ".>->  ALMOST UNUSED CLASS FIELDS:" ->
+      | s when String.length s > 33 && String.sub s 0 28 = ".>->  ALMOST UNUSED METHODS:" ->
             let n =
-              Scanf.sscanf s ".>->  ALMOST UNUSED CLASS FIELDS: Called %s time(s)" (fun n -> n)
+              Scanf.sscanf s ".>->  ALMOST UNUSED METHODS: Called %s time(s)" (fun n -> n)
             in
             begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mlio" ^ n) !fnames
             with _ -> () end;
@@ -270,9 +270,10 @@ let rec sel_section () =
             print_endline (input_line !res);
             extend := ".mlio" ^ n;
             sel_section (section ())
-      | s when String.length s > 55 && String.sub s 0 46 = ".>->  ALMOST UNUSED TYPES FIELDS/CONSTRUCTORS:" ->
+      | s when String.length s > 55
+        && String.sub s 0 47 = ".>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS:" ->
             let n =
-              Scanf.sscanf s ".>->  ALMOST UNUSED TYPES FIELDS/CONSTRUCTORS: Called %s time(s)" (fun n -> n)
+              Scanf.sscanf s ".>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called %s time(s)" (fun n -> n)
             in
             begin try fnames := empty_fnames ~regexp:"\\.ml[a-z0-9]*$" (".mlit" ^ n) !fnames
             with _ -> () end;

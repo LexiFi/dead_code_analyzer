@@ -588,20 +588,31 @@ let report () =
   prepare_report ();
 
   let folder nb_call = fun loc (fn, path) acc ->
-    let rec cut_main s pos =
-      if pos = String.length s then s
-      else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
-      else cut_main s (pos + 1)
+    let cut_main s =
+      let rec loop s pos =
+        if pos = String.length s then s
+        else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
+        else loop s (pos + 1)
+      in loop s 0
     in
+    let no_star s =
+      let rec loop s pos =
+        if pos = String.length s then s
+        else if s.[pos] = '*' then
+          String.sub s 0 pos ^ String.sub s (pos + 1) (String.length s - pos - 1)
+        else loop s (pos + 1)
+      in cut_main (loop s 0)
+    in
+
     match hashtbl_find_list references path with
       | exception Not_found when nb_call = 0 ->
-            (fn, cut_main path 0, loc, []) :: acc
+            (fn, no_star path, loc, []) :: acc
       | exception Not_found -> acc
-      | l when check_length nb_call l -> (fn, cut_main path 0, loc, l) :: acc
+      | l when check_length nb_call l -> (fn, no_star path, loc, l) :: acc
       | _ -> acc
   in
 
-  report_basic ~folder decs "UNUSED CLASS FIELDS" !DeadFlag.obj
+  report_basic ~folder decs "UNUSED METHODS" !DeadFlag.obj
 
 
 

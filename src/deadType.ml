@@ -183,7 +183,7 @@ let tstr typ =
     | _ -> ()
 
 
-let report () = report_basic decs "UNUSED TYPES FIELDS/CONSTRUCTORS" !DeadFlag.typ
+let report () = report_basic decs "UNUSED CONSTRUCTORS/RECORD FIELDS" !DeadFlag.typ
 
 
                 (********   WRAPPING  ********)

@@ -150,6 +150,7 @@ let update_basic opt (flag : basic ref) = function
     | "all" -> flag := {!flag with print = true}
     | "nothing" -> flag := {!flag with print = false}
     | s ->
+        flag := {!flag with print = true};
         let threshold =
           let len = String.length s in
           if len > 6 && String.sub s 0 6 = "calls:" then begin
