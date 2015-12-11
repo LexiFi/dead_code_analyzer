@@ -124,7 +124,9 @@ let structure_item super self i =
       let collect_include p =
         let name = DeadMod.full_name (Path.name p) in
         let name = Ident.create name :: [] in
+        let prev_last_loc = !last_loc in
         List.iter (collect_export ~mod_type:true name _include incl) i.incl_type;
+        last_loc := prev_last_loc;
       in
       let rec includ mod_expr =
         match mod_expr.mod_desc with
@@ -311,7 +313,8 @@ let read_interface fn src = let open Cmi_format in
     let u = unit fn in
     if !DeadFlag.exported.print || !DeadFlag.obj.print || !DeadFlag.typ.print then
       let f = collect_export [Ident.create (String.capitalize_ascii u)] u decs in
-      List.iter f (read_cmi fn).cmi_sign
+      List.iter f (read_cmi fn).cmi_sign;
+      last_loc := Location.none
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
     bad_files := fn :: !bad_files

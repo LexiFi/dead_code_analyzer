@@ -8,6 +8,7 @@
 - handle module types better
 - improve optional arguments memory cost
 - more precise on optional arguments (track dependencies)
+- make check/\*.ml Str independent
 
 
 # Testing
