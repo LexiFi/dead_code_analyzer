@@ -62,7 +62,7 @@ let rec treat_fields action typ = match typ.desc with
   | Tarrow (_, _, t, _)
   | Tlink t -> treat_fields action t
   | Tfield (s, k, _, t) ->
-      if Btype.field_kind_repr k = Fpresent then
+      if Btype.field_kind_repr k = Fpresent && s.[0] > 'Z' then
         action s;
       treat_fields action t
   | _ -> ()
@@ -327,6 +327,10 @@ let class_field f =
             update_overr false s)
           l
 
+    | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
+        hashtbl_find_list content !last_class
+        |> List.filter (fun (_, f) -> f <> txt)
+        |>hashtbl_replace_list content !last_class
     | Tcf_method ({txt; _}, _, _) ->
         update_overr true txt;
         last_field := txt
