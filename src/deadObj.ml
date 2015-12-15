@@ -20,7 +20,9 @@ let decs = Hashtbl.create 256
 
 let references = Hashtbl.create 512                 (* references by loc->method->uses *)
 
-let self_ref = Hashtbl.create 512                   (* references by loc->name->name to itself *)
+let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
+
+let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
 
 let content = Hashtbl.create 512                    (* loc -> [field names] *)
 
@@ -103,7 +105,7 @@ let rec locate expr =
   match expr.exp_desc with
   | Texp_instvar (_, _, {Asttypes.loc; _})
   | Texp_new (_, _, {Types.cty_loc=loc; _})
-  | Texp_ident (_, _, {Types.val_loc=loc; _}) -> loc
+  | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
   | Texp_apply (expr, _) -> locate expr
   | _ -> Location.none
 
@@ -230,12 +232,15 @@ let class_structure cl_struct =
 let class_field f =
 
   let rec locate cl_exp = match cl_exp.cl_desc with
-    | Tcl_ident (path, _, _) -> Path.name path
+    | Tcl_ident (path, _, _) ->
+        let path = Path.name path in
+        if Hashtbl.mem defined path then Hashtbl.find defined path
+        else path
     | Tcl_fun (_, _, _, cl_exp, _)
     | Tcl_apply (cl_exp, _)
     | Tcl_let (_, _, _, cl_exp)
     | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp
-    | _ -> _none
+    | Tcl_structure _ -> _none
   in
 
   let update_overr b s =
@@ -247,15 +252,14 @@ let class_field f =
   begin match f.cf_desc with
   | Tcf_inherit (_, cl_exp, _, _, l) ->
       let path = locate cl_exp in
-      if path != _none then
+      if path != _none then begin
         hashtbl_add_unique_to_list inheritances !last_class path;
-      List.iter
-        (fun (s, _) -> update_overr false s)
-        l;
-      let loc = get_loc path in
-      let equal () = add_equal cl_exp.cl_loc (get_loc path) in
-      if loc == Location.none then later := equal :: !later
-      else equal ()
+        let loc = get_loc path in
+        let equal () = add_equal cl_exp.cl_loc (get_loc path) in  (* for uses inside class def *)
+        if loc == Location.none then later := equal :: !later
+        else equal ()
+      end;
+      List.iter (fun (s, _) -> update_overr false s) l
 
   | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
       let erase_from_tbl tbl =
