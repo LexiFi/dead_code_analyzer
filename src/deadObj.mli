@@ -12,15 +12,7 @@ open Typedtree
 
 
 
-val last_class : string ref
-
-
-val add_alias :
-  string -> string -> unit
-
-
-val eom :
-  unit -> unit
+val last_class : Location.t ref
 
 
 val collect_export :
@@ -35,7 +27,7 @@ val collect_export :
 
 val collect_references :
   meth: string
-  -> ?path: string list
+  -> call_site: Location.t
   -> expression
   -> unit
 
@@ -45,10 +37,10 @@ val tstr :
 
 
 val add_var :
-  string -> expression -> unit
+  Location.t -> expression -> unit
 
 
-val class_structure :
+val class_structure:
   class_structure -> unit
 
 
@@ -58,6 +50,10 @@ val class_field :
 
 val arg :
   Types.type_expr -> (Asttypes.arg_label * expression option) list -> unit
+
+
+val eom :
+  unit -> unit
 
 
 val report :

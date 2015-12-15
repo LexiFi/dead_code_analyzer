@@ -96,12 +96,12 @@ let value_binding super self x =
       _
     } ->
       VdNode.merge_locs loc1 loc2
-  | { vb_pat = {pat_desc = Tpat_var ({name; _}, {loc; _}); _};
+  | { vb_pat = {pat_desc = Tpat_var (_, {loc; _}); _};
       vb_expr = exp;
       _
     } when not loc.loc_ghost ->
       DeadArg.node_build loc exp;
-      DeadObj.add_var (name ^ "*") exp
+      DeadObj.add_var loc exp
   | _ -> ()
   end;
 
@@ -175,8 +175,6 @@ let pat super self p =
 let expr super self e =
   begin match e.exp_desc with
 
-  | Texp_override (_, _) -> DeadObj.add_alias !var_name !DeadObj.last_class
-
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
       !DeadLexiFi.ttype_of e
 
@@ -189,9 +187,9 @@ let expr super self e =
     when not loc.Location.loc_ghost && exported DeadFlag.typ loc ->
       DeadType.collect_references loc e.exp_loc
 
-  | Texp_send (e, Tmeth_name s, _)
-  | Texp_send (e, Tmeth_val {name = s; _}, _) ->
-      DeadObj.collect_references ~meth:s e
+  | Texp_send (e2, Tmeth_name s, _)
+  | Texp_send (e2, Tmeth_val {name = s; _}, _) ->
+      DeadObj.collect_references ~meth:s ~call_site:e.exp_loc e2
 
 
   | Texp_apply (exp, args) ->
@@ -252,9 +250,11 @@ let collect_references =                          (* Tast_mapper *)
       (fun self x -> DeadMod.expr x; super.module_expr self x)
       (fun x -> x.mod_loc)
   in
-  let class_structure = (fun self x -> DeadObj.class_structure x; super.class_structure self x) in
   let class_field = (fun self x -> DeadObj.class_field x; super.class_field self x) in
   let class_field = wrap class_field (fun x -> x.cf_loc) in
+  let class_structure =
+    (fun self x -> DeadObj.class_structure x; super.class_structure self x)
+  in
   let typ = (fun self x -> !DeadLexiFi.type_ext x; super.typ self x) in
   {super with
     structure_item; expr; pat; value_binding; module_expr; class_structure; class_field; typ}
@@ -355,8 +355,7 @@ let eom loc_dep =
   end;
   VdNode.eom ();
   DeadType.dependencies := [];
-  Hashtbl.reset incl;
-  DeadObj.eom ()
+  Hashtbl.reset incl
 
 
 (* Starting point *)
