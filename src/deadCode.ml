@@ -596,7 +596,7 @@ let parse () =
 
 
 let () =
-  try
+(*  try *)
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
 
@@ -619,6 +619,7 @@ let () =
       close_out oc;
       Printf.eprintf "*** INFO: Several binary files cannot be read.  Please run ./remove_bad_files.sh to remove them.\n%!"
     end
-  with exn ->
+(*  with exn ->
     Location.report_exception Format.err_formatter exn;
     exit 2
+*)

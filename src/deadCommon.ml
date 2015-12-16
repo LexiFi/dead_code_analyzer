@@ -300,19 +300,19 @@ module VdNode = struct
 
     let delete loc =
       let met = Hashtbl.create 64 in
-      let rec loop loc =
-        if unit loc.Location.loc_start.pos_fname <> unit !current_src then true
-        else begin
-          Hashtbl.add met loc ();
-          let deletable =
-            hashtbl_find_list parents loc
-            |> List.fold_left (fun acc loc -> acc || loop loc) false
-          in
-          if deletable then
-            hashtbl_remove_list parents loc;
-          deletable
-        end
-      in ignore (loop loc)
+      let rec loop worklist loc_list =
+        match worklist with
+         | [] -> ()
+         | loc :: wl ->
+           if unit loc.Location.loc_start.pos_fname <> unit !current_src then
+           begin
+            List.iter (hashtbl_remove_list parents) loc_list;
+           end else begin
+            Hashtbl.add met loc ();
+            let my_parents = hashtbl_find_list parents loc in
+            loop (my_parents @ wl) (loc :: loc_list)
+           end
+      in loop [loc] []
     in
     List.iter delete sons
 

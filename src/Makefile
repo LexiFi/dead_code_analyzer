@@ -4,7 +4,7 @@ SRCFST=deadCode.mli deadFlag.ml deadCommon.ml deadArg.mli deadType.mli deadObj.m
 SRCSND=deadType.ml deadArg.ml deadMod.ml deadObj.ml deadCode.ml
 LIBS=ocamlcommon.cma
 
-COMPFLAGS=-w +A-4-9-40-42 -I +compiler-libs -bin-annot -keep-locs
+COMPFLAGS=-w +A-4-9-40-42 -I +compiler-libs -bin-annot -keep-locs -g
 OCAMLC=ocamlc $(COMPFLAGS)
 OCAMLOPT=ocamlopt $(COMPFLAGS)
 
