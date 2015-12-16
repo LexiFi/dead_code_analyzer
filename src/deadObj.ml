@@ -22,8 +22,6 @@ let references = Hashtbl.create 512                 (* references by loc->method
 
 let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
 
-let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
-
 let content = Hashtbl.create 512                    (* loc -> [field names] *)
 
 let inheritances = Hashtbl.create 512               (* inheritance links loc-> loc *)
@@ -48,12 +46,27 @@ let rec repr_loc loc =
   else loc
 
 
+let meth_tbl tbl loc =
+  if not (Hashtbl.mem tbl loc) then
+    Hashtbl.add tbl loc (Hashtbl.create 16);
+  Hashtbl.find tbl loc
+
+
+let meth_ref = meth_tbl references
+let meth_self_ref = meth_tbl self_ref
+
+
 let add_path path loc =
   Hashtbl.replace path2loc path loc
 
 
 let get_loc path =
-  let path = try Hashtbl.find defined path with Not_found -> path in
+  let path =
+    try
+      Hashtbl.fold (fun _ (_, path) acc -> path::acc) incl []
+      |> find_path path ~sep:'.'
+    with Not_found -> try Hashtbl.find defined path with Not_found -> path
+  in
   try repr_loc (Hashtbl.find path2loc path) with Not_found -> Location.none
 
 
@@ -71,7 +84,27 @@ let get_method s =
 
 
 let add_equal loc1 loc2 =
-  Hashtbl.replace equals loc1 (repr_loc loc2)
+  let loc1 = repr_loc loc1
+  and loc2 = repr_loc loc2 in
+  Hashtbl.replace equals loc1 loc2;
+  if loc1 = !last_class then
+    last_class := loc2;
+  let meths =
+    let res = hashtbl_find_list content loc2 in
+    if res = [] then hashtbl_find_list content loc1
+    else res
+  in
+  List.iter
+    (fun (_, meth) ->
+      hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
+      hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth
+    )
+    meths;
+  hashtbl_merge_unique_list inheritances loc2 inheritances loc1;
+  hashtbl_remove_list inheritances loc1;
+  hashtbl_remove_list references loc1;
+  hashtbl_remove_list decs loc1;
+  hashtbl_remove_list content loc1
 
 
 let rec sign = function
@@ -91,23 +124,28 @@ let rec treat_fields action typ = match typ.desc with
   | _ -> ()
 
 
-let meth_tbl tbl loc =
-  if not (Hashtbl.mem tbl loc) then
-    Hashtbl.add tbl loc (Hashtbl.create 16);
-  Hashtbl.find tbl loc
-
-
-let meth_ref = meth_tbl references
-let meth_self_ref = meth_tbl self_ref
-
-
 let rec locate expr =
-  match expr.exp_desc with
-  | Texp_instvar (_, _, {Asttypes.loc; _})
-  | Texp_new (_, _, {Types.cty_loc=loc; _})
-  | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
-  | Texp_apply (expr, _) -> locate expr
-  | _ -> Location.none
+  let rec extra = function
+    | (Texp_coerce (_, typ), _, _)::_ ->
+        let rec path typ =
+          match typ.ctyp_desc with
+          | Ttyp_var path -> path
+          | Ttyp_constr (path, _, _)
+          | Ttyp_class (path, _, _) -> Path.name path
+          | Ttyp_alias (typ, _)
+          | Ttyp_arrow (_, _, typ) -> path typ
+          | _ -> _none
+        in
+        get_loc (path typ)
+    | _::l -> extra l
+    | [] ->
+        match expr.exp_desc with
+        | Texp_instvar (_, _, {Asttypes.loc; _})
+        | Texp_new (_, _, {Types.cty_loc=loc; _})
+        | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
+        | Texp_apply (expr, _) -> locate expr
+        | _ -> Location.none
+  in extra expr.exp_extra
 
 
 let eom () =
@@ -174,7 +212,7 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
     (List.rev !mods |> String.concat ".")
     ^ (if !mods <> [] then "." else "") ^ name
   in
-  let path = String.capitalize_ascii !current_src ^ "." ^ short in
+  let path = String.capitalize_ascii (unit !current_src) ^ "." ^ short in
   if not (Hashtbl.mem defined short) then
     Hashtbl.add defined short path
   else
@@ -317,11 +355,21 @@ let arg typ args =
   in arg false typ args
 
 
+let coerce expr typ =
+  let loc = locate expr in
+  let use meth =
+    hashtbl_add_unique_to_list (meth_ref loc) meth expr.exp_loc
+  in
+  treat_fields use typ
+
+
 let prepare_report () =
 
   List.iter (fun f -> f ()) !later;
 
   let apply_self meth loc1 loc2 =
+    let loc1 = repr_loc loc1
+    and loc2 = repr_loc loc2 in
     hashtbl_merge_unique_list (meth_ref loc2) meth (meth_self_ref loc1) meth;
     hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth;
   in

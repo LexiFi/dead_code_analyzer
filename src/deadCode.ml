@@ -125,7 +125,9 @@ let structure_item super self i =
         let name = DeadMod.full_name (Path.name p) in
         let name = Ident.create name :: [] in
         let prev_last_loc = !last_loc in
-        List.iter (collect_export ~mod_type:true name _include incl) i.incl_type;
+        List.iter
+          (collect_export ~mod_type:true name _include incl)
+          (DeadMod.sign i.incl_mod.mod_type);
         last_loc := prev_last_loc;
       in
       let rec includ mod_expr =
@@ -173,6 +175,12 @@ let pat super self p =
 
 
 let expr super self e =
+  let rec extra = function
+    | [] -> ()
+    | (Texp_coerce (_, typ), _, _)::l -> DeadObj.coerce e typ.ctyp_type; extra l
+    | _::l -> extra l
+  in
+  extra e.exp_extra;
   begin match e.exp_desc with
 
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->

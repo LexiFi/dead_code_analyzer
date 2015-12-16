@@ -52,6 +52,10 @@ val arg :
   Types.type_expr -> (Asttypes.arg_label * expression option) list -> unit
 
 
+val coerce:
+  expression -> Types.type_expr -> unit
+
+
 val eom :
   unit -> unit
 
