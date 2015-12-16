@@ -8,6 +8,7 @@
 - handle module types better
 - improve optional arguments memory cost
 - more precise on optional arguments (track dependencies)
+- handle branching (for methods and opt args)
 - make check/\*.ml Str independent
 
 
@@ -25,4 +26,4 @@
 - The `OPTIONAL ARGUMENTS` sections may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 236 unique expected results)
+ratio: **99.153%** succesful (over 236 unique expected results)
