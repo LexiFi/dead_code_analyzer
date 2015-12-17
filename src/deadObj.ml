@@ -159,15 +159,13 @@ let eom () =
 
 let collect_export path u stock ?obj ?cltyp loc =
 
-  last_class := loc;
-
   begin match List.rev_map (fun id -> id.Ident.name) path with
-  | [] -> ()
-  | h :: t ->
+  | h :: t when !last_class == Location.none || !last_class <= loc || decs != incl ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
       Hashtbl.add defined short path;
       add_path path loc
+  | _ -> ()
   end;
 
   let stock =
@@ -175,9 +173,13 @@ let collect_export path u stock ?obj ?cltyp loc =
       export (List.tl path) u stock (List.hd path) loc;
       stock
     end
-    else
+    else begin
       decs
+    end
   in
+
+  last_class := loc;
+
 
   let save id =
     if not (Sys.file_exists (Filename.chop_extension !current_src ^ ".csml")) then

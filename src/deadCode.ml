@@ -40,18 +40,11 @@ let rec collect_export ?(mod_type = false) path u stock = function
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
 
-  | Sig_type (id, {type_kind = Type_abstract; type_manifest = Some t; type_loc = loc; _}, _)
-    when not loc.Location.loc_ghost && stock == decs ->
-      DeadObj.collect_export (id :: path) "~type~" stock ~obj:t loc
-
   | Sig_type (id, t, _) when stock == decs ->
       DeadType.collect_export (id :: path) u stock t
 
   | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
       DeadObj.collect_export (id :: path) u stock ~cltyp:t loc
-
-  | Sig_class_type (id, {Types.clty_type = t; clty_loc = loc; _}, _) ->
-      DeadObj.collect_export (id :: path) "~class type~" stock ~cltyp:t loc
 
   | (Sig_module (id, {Types.md_type = t; _}, _)
   | Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
@@ -121,19 +114,20 @@ let structure_item super self i =
       DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
   | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
   | Tstr_include i ->
-      let collect_include p =
-        let name = DeadMod.full_name (Path.name p) in
-        let name = Ident.create name :: [] in
+      let collect_include signature =
         let prev_last_loc = !last_loc in
         List.iter
-          (collect_export ~mod_type:true name _include incl)
-          (DeadMod.sign i.incl_mod.mod_type);
+          (collect_export ~mod_type:true [Ident.create (unit !current_src)] _include incl)
+          signature;
         last_loc := prev_last_loc;
       in
       let rec includ mod_expr =
         match mod_expr.mod_desc with
-        | Tmod_ident (p, _) -> collect_include p
-        | Tmod_apply (mod_expr, _, _)
+        | Tmod_ident (_, _) -> collect_include (DeadMod.sign mod_expr.mod_type)
+        | Tmod_structure structure -> collect_include structure.str_type
+        | Tmod_unpack (_, mod_type) -> collect_include (DeadMod.sign mod_type)
+        | Tmod_functor (_, _, _, mod_expr)
+        | Tmod_apply (_, mod_expr, _)
         | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
         | _ -> ()
       in

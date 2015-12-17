@@ -1,6 +1,5 @@
 # Work in Progress
 - finish methods
-- fix methods name collisions for litteral objects
 - code cleaning
 
 # Waiting
@@ -26,4 +25,4 @@
 - The `OPTIONAL ARGUMENTS` sections may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **99.145%** succesful (over 234 unique expected results)
+ratio: **100%** succesful (over 233 unique expected results)
