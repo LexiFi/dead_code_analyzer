@@ -7,26 +7,6 @@
 (*                                                                         *)
 (***************************************************************************)
 
-let list_of_opt str =
-  try
-    let rec split acc pos len =
-      if str.[pos] <> '+' && str.[pos] <> '-' then
-        split acc (pos - 1) (len + 1)
-      else let acc = (str.[pos] = '+', String.trim (String.sub str (pos + 1) len)) :: acc in
-        if pos > 0 then split acc (pos - 1) 0
-        else acc
-    in split [] (String.length str - 1) 0
-  with _ -> raise (Arg.Bad ("options' arguments must start with a delimiter (`+' or `-')"))
-
-
-let string_cut c s =
-  let rec loop c s pos len =
-    if len = String.length s then s
-    else if s.[pos] = c then String.sub s (pos - len) len
-    else loop c s (pos + 1) (len + 1)
-  in loop c s 0 0
-
-
 type threshold = {exceptions: int; percentage: float; optional: [`Percent | `Both]}
 
 
@@ -60,7 +40,13 @@ let update_opt opt s =
     let len = String.length s in
     if len > 5 && String.sub s 0 5 = "both:" then begin
       let limits = String.sub s 5 (String.length s - 5) in
-      let thr = string_cut ',' limits in
+      let thr =
+        let rec loop s pos len =
+          if len = String.length s then s
+          else if s.[pos] = ',' then String.sub s (pos - len) len
+          else loop s (pos + 1) (len + 1)
+        in loop limits 0 0
+      in
       let pos = String.length thr + 1 in
       let pct = String.sub limits pos (String.length limits - pos) in
       opt := {!opt with threshold={!opt.threshold with optional = `Both}};
@@ -118,7 +104,19 @@ let update_style s =
     | (_, "")::l -> aux l
     | (_, s)::_ -> raise (Arg.Bad ("-S: unknown option: " ^ s))
     | [] -> ()
-  in aux (list_of_opt s)
+  in
+  let list_of_opt str =
+    try
+      let rec split acc pos len =
+        if str.[pos] <> '+' && str.[pos] <> '-' then
+          split acc (pos - 1) (len + 1)
+        else let acc = (str.[pos] = '+', String.trim (String.sub str (pos + 1) len)) :: acc in
+          if pos > 0 then split acc (pos - 1) 0
+          else acc
+      in split [] (String.length str - 1) 0
+    with _ -> raise (Arg.Bad ("options' arguments must start with a delimiter (`+' or `-')"))
+  in
+  aux (list_of_opt s)
 
 
 type basic = {print: bool; call_sites: bool; threshold: int}

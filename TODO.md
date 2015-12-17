@@ -20,8 +20,8 @@
 
 # Note
 - The `UNUSED EXPORTED VALUES` section may have both FN and FP (none known).
-- The `UNUSED CLASS FIELDS` section may have both FN and FP.
-- The `UNUSED TYPES FIELDS/CONSTRUCTORS` section may have both FN and FP.
+- The `UNUSED METHODS` section may have both FN and FP.
+- The `UNUSED CONSTRUCTORS/RECORD FIELDS` section may have both FN and FP (none known).
 - The `OPTIONAL ARGUMENTS` sections may have both FN and FP.
 - The `CODING STYLE` section may have both FN and FP (none known).
 

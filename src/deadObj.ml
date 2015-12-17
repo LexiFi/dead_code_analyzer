@@ -41,9 +41,20 @@ let defined = Hashtbl.create 16
                 (********   HELPERS   ********)
 
 
-let rec repr_loc loc =
-  if Hashtbl.mem equals loc then repr_loc (Hashtbl.find equals loc)
-  else loc
+let repr_loc loc =
+  let met = Hashtbl.create 8 in
+  let rec loop loc =
+    if Hashtbl.mem equals loc then
+      let next = Hashtbl.find equals loc in
+      if not (Hashtbl.mem met next) then begin
+        Hashtbl.add met loc ();
+        loop next
+      end
+      else loc
+    else loc
+  in
+  Hashtbl.add met loc ();
+  loop loc
 
 
 let meth_tbl tbl loc =
@@ -86,25 +97,27 @@ let get_method s =
 let add_equal loc1 loc2 =
   let loc1 = repr_loc loc1
   and loc2 = repr_loc loc2 in
-  Hashtbl.replace equals loc1 loc2;
-  if loc1 = !last_class then
-    last_class := loc2;
-  let meths =
-    let res = hashtbl_find_list content loc2 in
-    if res = [] then hashtbl_find_list content loc1
-    else res
-  in
-  List.iter
-    (fun (_, meth) ->
-      hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
-      hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth
-    )
-    meths;
-  hashtbl_merge_unique_list inheritances loc2 inheritances loc1;
-  hashtbl_remove_list inheritances loc1;
-  hashtbl_remove_list references loc1;
-  hashtbl_remove_list decs loc1;
-  hashtbl_remove_list content loc1
+  if loc1 <> loc2 && not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then begin
+    Hashtbl.replace equals loc1 loc2;
+    if loc1 = !last_class then
+      last_class := loc2;
+    let meths =
+      let res = hashtbl_find_list content loc2 in
+      if res = [] then hashtbl_find_list content loc1
+      else res
+    in
+    List.iter
+      (fun (_, meth) ->
+        hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
+        hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth
+      )
+      meths;
+    hashtbl_merge_unique_list inheritances loc2 inheritances loc1;
+    hashtbl_remove_list inheritances loc1;
+    hashtbl_remove_list references loc1;
+    hashtbl_remove_list decs loc1;
+    hashtbl_remove_list content loc1
+  end
 
 
 let rec sign = function
@@ -157,7 +170,7 @@ let eom () =
                 (********   PROCESSING  ********)
 
 
-let collect_export path u stock ?obj ?cltyp loc =
+let collect_export path u stock ~obj ~cltyp loc =
 
   begin match List.rev_map (fun id -> id.Ident.name) path with
   | h :: t when !last_class == Location.none || !last_class <= loc || decs != incl ->
@@ -243,6 +256,7 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
 
 let add_var loc expr =
   let rec kind expr = match expr.exp_desc with
+    | Texp_sequence (_, expr)
     | Texp_function (_, {c_rhs=expr; _}::_, _) -> kind expr
     | Texp_object _ -> `Obj
     | Texp_new (_, _, {cty_loc; _}) -> `New cty_loc
@@ -476,7 +490,7 @@ let wrap f x =
   if !DeadFlag.obj.print then f x else ()
 
 let collect_export path u stock ?obj ?cltyp loc =
-  wrap (collect_export path u stock ?obj ?cltyp) loc
+  wrap (collect_export path u stock ~obj ~cltyp) loc
 
 let collect_references ~meth ~call_site exp =
   wrap (collect_references ~meth ~call_site) exp

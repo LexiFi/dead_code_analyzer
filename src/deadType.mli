@@ -21,7 +21,7 @@ val tstr : Typedtree.type_declaration -> unit
 
 val is_unit : Types.type_expr -> bool
 
-val nb_args : ?keep:[> `All | `Lbl | `Opt | `Reg ] -> Types.type_expr -> int
+val nb_args : keep:[> `All | `Lbl | `Opt | `Reg ] -> Types.type_expr -> int
 
 val is_type : string -> bool
 

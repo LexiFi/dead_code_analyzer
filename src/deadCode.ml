@@ -108,9 +108,8 @@ let value_binding super self x =
 let structure_item super self i =
   begin match i.str_desc with
   | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
-  | Tstr_module  {mb_name = {txt; _}; mb_expr; _} ->
+  | Tstr_module  {mb_name = {txt; _}; _} ->
       mods := txt :: !mods;
-      DeadMod.add_equal mb_expr;
       DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
   | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
   | Tstr_include i ->
@@ -129,7 +128,6 @@ let structure_item super self i =
         | Tmod_functor (_, _, _, mod_expr)
         | Tmod_apply (_, mod_expr, _)
         | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
-        | _ -> ()
       in
       includ i.incl_mod
   | _ -> ()
@@ -356,6 +354,7 @@ let eom loc_dep =
     clean !DeadType.dependencies;
   end;
   VdNode.eom ();
+  DeadObj.eom ();
   DeadType.dependencies := [];
   Hashtbl.reset incl
 

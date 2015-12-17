@@ -15,18 +15,7 @@ open DeadCommon
 
 
 
-let equal : (string, string) Hashtbl.t = Hashtbl.create 16
-
 let defined : string list ref = ref []
-
-let content : (string, (string * Location.t)) Hashtbl.t = Hashtbl.create 16
-
-
-let full_name name =
-  if List.mem name !defined then
-    String.capitalize_ascii (unit !current_src) ^ "." ^ name
-  else
-    name
 
 
 let rec sign ?(isfunc = false) = function
@@ -38,7 +27,7 @@ let rec sign ?(isfunc = false) = function
   | _ -> []
 
 
-let item ?(clas = false) maker = function
+let item maker = function
   | Sig_value ({name; _}, {val_loc = loc; _}) -> (name, loc)::[]
   | Sig_type ({name=t; _}, {type_kind; _}, _) -> begin match type_kind with
     | Type_record (l, _) -> List.map (fun {Types.ld_id={name; _}; ld_loc; _} -> (t ^ "." ^ name, ld_loc)) l
@@ -47,25 +36,17 @@ let item ?(clas = false) maker = function
   | Sig_module ({name; _}, {md_type; _}, _)
   | Sig_modtype ({name; _}, {mtd_type = Some md_type; _}) ->
     List.map (fun (n, l) -> (name ^ "." ^ n, l)) (maker md_type)
-  | Sig_class ({name; _}, {cty_loc = loc; _}, _)
-  | Sig_class_type ({name; _}, {clty_loc = loc; _}, _) when clas -> (name ^ "#", loc) :: []
+  | Sig_class ({name; _}, {cty_loc = loc; _}, _) -> (name ^ "#", loc) :: []
   | _ -> []
 
-let rec make_content ?clas typ =
-  List.map (item ?clas (make_content ?clas)) (sign typ)
+let rec make_content typ =
+  List.map (item make_content) (sign typ)
   |> List.flatten
 
 
 let rec make_arg typ =
   List.map (item make_arg) (sign ~isfunc:true typ)
   |> List.flatten
-
-
-let rec name ?(default = _none) e = match e.mod_desc with
-  | Tmod_apply (e, _, _)
-  | Tmod_functor (_, _, _, e) -> name ~default e
-  | Tmod_ident (path, _) -> Path.name path
-  | _ -> default
 
 
 let expr m = match m.mod_desc with
@@ -84,18 +65,6 @@ let expr m = match m.mod_desc with
         l2
   | _ -> ()
 
-let add_equal mb_expr =
-
-  let path = String.capitalize_ascii (unit !current_src) :: List.rev !mods |> String.concat "." in
-
-  let name = name ~default:path mb_expr in
-  let name = full_name name in
-  if path <> name then
-    hashtbl_add_to_list equal path name;
-  make_content ~clas:true mb_expr.mod_type
-  |> hashtbl_replace_list content path
-
-
 
                 (********   WRAPPING  ********)
 
@@ -103,9 +72,4 @@ let expr m =
   if [@warning "-44"]
   DeadFlag.(!exported.print || !typ.print || !obj.print) then
     expr m
-  else ()
-
-let add_equal mb_expr =
-  if !DeadFlag.obj.print then
-    add_equal mb_expr
   else ()

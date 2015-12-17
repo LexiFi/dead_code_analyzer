@@ -39,9 +39,6 @@ let _variant = ": variant :"
 let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
 
 
-let string_cut = DeadFlag.string_cut
-
-
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
 
 
@@ -167,9 +164,6 @@ module VdNode = struct
       Hashtbl.add vd_nodes loc r;
       r
 
-  let exists loc =
-    Hashtbl.mem vd_nodes loc
-
   let remove loc =
     if Hashtbl.mem vd_nodes loc then
       Hashtbl.remove vd_nodes loc;
@@ -199,16 +193,6 @@ module VdNode = struct
   let is_end loc =
     get_next loc = None
 
-  let repr loc =
-    let met = Hashtbl.create 8 in
-    let rec loop loc =
-      Hashtbl.add met loc ();
-      match get loc with
-      | _, Some loc when not (Hashtbl.mem met loc) -> loop loc
-      | _ -> loc
-    in loop loc
-
-
   let seen loc =
     try ignore (find_abspath loc.Location.loc_start.pos_fname); true
     with Not_found -> false
@@ -231,6 +215,15 @@ module VdNode = struct
     if not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then
       let loc2 = func loc2 in
       if force || not (is_end loc2) || get_opts loc2 <> [] || not (seen loc2) then
+        let repr loc =
+          let met = Hashtbl.create 8 in
+          let rec loop loc =
+            Hashtbl.add met loc ();
+            match get loc with
+            | _, Some loc when not (Hashtbl.mem met loc) -> loop loc
+            | _ -> loc
+          in loop loc
+        in
         let loc1 = repr loc1 in
         if loc1 <> loc2 then begin
           let opts, _ = get loc1 in
@@ -261,40 +254,9 @@ module VdNode = struct
     in loop (func loc) lab occur
 
 
-  let delete loc =
-    if seen loc then
-      let met = Hashtbl.create 64 in
-      let rec loop loc =
-        if not (Hashtbl.mem met loc) then begin
-          Hashtbl.add met loc ();
-          hashtbl_find_list parents loc
-          |> List.iter loop;
-          let pts = hashtbl_find_list parents loc |> List.filter (Hashtbl.mem vd_nodes) in
-          if pts = [] then begin
-            if Hashtbl.mem parents loc then
-              hashtbl_remove_list parents loc;
-            Hashtbl.remove vd_nodes loc;
-          end
-        end
-      in loop loc
-
-
-  let simplify loc =
-    let met = Hashtbl.create 64 in
-    let rec loop loc =
-      if not (Hashtbl.mem met loc) then begin
-        Hashtbl.add met loc ();
-      if not (is_end loc) then
-        update loc (get_opts loc, Some (func loc));
-      hashtbl_find_list parents loc
-      |> List.iter loop
-    end
-    in loop loc
-
-
   let eom () =
 
-    let remove loc =
+    let delete loc =
       let met = Hashtbl.create 8 in
       let rec loop loc =
         if not (Hashtbl.mem met loc) then begin
@@ -310,12 +272,29 @@ module VdNode = struct
         end
       in loop loc
     in
-    List.iter remove !removed;
+    List.iter delete !removed;
     removed := [];
-
     let sons =
       Hashtbl.fold (fun loc _ acc -> loc :: acc) parents []
       |> List.sort_uniq compare
+    in
+
+    let delete loc =
+      if seen loc then
+        let met = Hashtbl.create 64 in
+        let rec loop loc =
+          if not (Hashtbl.mem met loc) then begin
+            Hashtbl.add met loc ();
+            hashtbl_find_list parents loc
+            |> List.iter loop;
+            let pts = hashtbl_find_list parents loc |> List.filter (Hashtbl.mem vd_nodes) in
+            if pts = [] then begin
+              if Hashtbl.mem parents loc then
+                hashtbl_remove_list parents loc;
+              Hashtbl.remove vd_nodes loc;
+            end
+          end
+        in loop loc
     in
     List.iter delete sons;
 
