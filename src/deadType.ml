@@ -127,7 +127,7 @@ let collect_export path u stock t =
 
 
 let collect_references loc exp_loc =
-  hashtbl_add_to_list references loc exp_loc
+  LocHash.add_set references loc exp_loc
 
 
 (* Look for bad style typing *)

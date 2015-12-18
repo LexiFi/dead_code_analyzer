@@ -187,7 +187,7 @@ let expr super self e =
 
   | Texp_ident (_, _, {Types.val_loc = loc; _})
     when not loc.Location.loc_ghost && exported DeadFlag.exported loc ->
-      hashtbl_add_unique_to_list references loc e.exp_loc
+      LocHash.add_set references loc e.exp_loc
 
   | Texp_field (_, _, {lbl_loc = loc; _})
   | Texp_construct (_, {cstr_loc = loc; _}, _)
@@ -355,17 +355,17 @@ let assoc references (loc1, loc2) =
   in
   if fn1 <> _none && fn2 <> _none then
     if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      hashtbl_merge_list references loc2 references loc1
+      DeadCommon.LocHash.merge_set references loc2 references loc1
     else if not (is_implem fn1 && has_iface fn1) then
-      hashtbl_merge_list references loc1 references loc2
+      DeadCommon.LocHash.merge_set references loc1 references loc2
     else
-      hashtbl_merge_list references loc2 references loc1
+      DeadCommon.LocHash.merge_set references loc2 references loc1
 
 
 let clean references loc =
   let fn = loc.Location.loc_start.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && unit fn = unit !current_src) then
-    hashtbl_remove_list references loc
+    LocHash.remove references loc
 
 let eom loc_dep =
   DeadArg.eom();
