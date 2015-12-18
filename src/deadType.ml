@@ -7,6 +7,7 @@
 (*                                                                         *)
 (***************************************************************************)
 
+open Asttypes
 open Types
 open Typedtree
 
@@ -130,13 +131,19 @@ let collect_references loc exp_loc =
 
 
 (* Look for bad style typing *)
-let rec check_style t loc = if !DeadFlag.style.opt_arg then match t.desc with
-  | Tlink t -> check_style t loc
-  | Tarrow (lab, _, t, _) -> begin match lab with
-    | Optional lab when check_underscore lab ->
-        style := (!current_src, loc, "val f: ... -> (... -> ?_:_ -> ...) -> ...") :: !style
-    | _ -> check_style t loc end
-  | _ -> ()
+let rec check_style t loc =
+  if !DeadFlag.style.DeadFlag.opt_arg then
+    match t.desc with
+      | Tlink t -> check_style t loc
+      | Tarrow (lab, _, t, _) -> begin
+          match lab with
+            | Optional lab when check_underscore lab ->
+                style :=
+                  (!current_src, loc,
+                   "val f: ... -> (... -> ?_:_ -> ...) -> ...")
+                  :: !style
+            | _ -> check_style t loc end
+      | _ -> ()
 
 
 let tstr typ =
@@ -189,7 +196,7 @@ let report () = report_basic decs "UNUSED CONSTRUCTORS/RECORD FIELDS" !DeadFlag.
                 (********   WRAPPING  ********)
 
 let wrap f x =
-  if !DeadFlag.typ.print then f x else ()
+  if DeadFlag.(!typ.print) then f x else ()
 
 let collect_export path u stock t = wrap (collect_export path u stock) t
 let tstr typ = wrap tstr typ

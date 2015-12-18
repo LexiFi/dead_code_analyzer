@@ -80,7 +80,7 @@ let find_abspath fn =
 
 
 let exported (flag : DeadFlag.basic ref) loc =
-  let fn = loc.Location.loc_start.pos_fname in
+  let fn = loc.Location.loc_start.Lexing.pos_fname in
   !flag.DeadFlag.print
   && hashtbl_find_list references loc |> List.length <= !flag.DeadFlag.threshold
   && (flag == DeadFlag.typ
@@ -110,18 +110,24 @@ let separator () =
 
 (* Location printer: `filename:line: ' *)
 let prloc ?(call_site = false) ?fn (loc : Location.t) =
+  let file = loc.Location.loc_start.Lexing.pos_fname in
+  let line = loc.Location.loc_start.Lexing.pos_lnum in
+  let col =
+    Location.(loc.loc_start.Lexing.pos_cnum - loc.loc_start.Lexing.pos_bol)
+  in
   begin match fn with
   | Some s ->
-      print_string (Filename.dirname s ^ "/" ^ Filename.basename loc.loc_start.pos_fname)
-  | _ -> match find_abspath loc.loc_start.pos_fname with
+      print_string (Filename.dirname s ^ "/" ^ file)
+  | _ -> match find_abspath file with
     | s -> print_string s
-    | exception Not_found -> Printf.printf "!!UNKNOWN<%s>!!%!" loc.loc_start.pos_fname
+    | exception Not_found ->
+                Printf.printf "!!UNKNOWN<%s>!!%!" file
   end;
   print_char ':';
-  print_int loc.loc_start.pos_lnum;
+  print_int line;
   if call_site then begin
     print_char ':';
-    print_int (loc.loc_start.pos_cnum - loc.loc_start.pos_bol)
+    print_int col
   end
   else
     print_string ": "
@@ -194,7 +200,7 @@ module VdNode = struct
     get_next loc = None
 
   let seen loc =
-    try ignore (find_abspath loc.Location.loc_start.pos_fname); true
+    try ignore (find_abspath loc.Location.loc_start.Lexing.pos_fname); true
     with Not_found -> false
 
 
@@ -246,8 +252,8 @@ module VdNode = struct
         | Some next -> loop (func next) lab occur
         | None ->
             let loc =
-              loc.Location.loc_start.pos_fname ^ ":"
-              ^ (string_of_int loc.Location.loc_start.pos_lnum)
+              loc.Location.loc_start.Lexing.pos_fname ^ ":"
+              ^ (string_of_int loc.Location.loc_start.Lexing.pos_lnum)
             in
               failwith (loc ^ ": optional argument `" ^ lab ^ "' unlinked")
       end
@@ -304,7 +310,9 @@ module VdNode = struct
         match worklist with
          | [] -> ()
          | loc :: wl ->
-           if unit loc.Location.loc_start.pos_fname <> unit !current_src then
+           if unit loc.Location.loc_start.Lexing.pos_fname <>
+              unit !current_src
+           then
            begin
             List.iter (hashtbl_remove_list parents) loc_list;
            end else begin
@@ -342,9 +350,9 @@ let export ?(sep = ".") path u stock id loc =
                 (**** REPORTING ****)
 
 (* Absolute path *)
-let abs loc = match find_abspath loc.Location.loc_start.pos_fname with
+let abs loc = match find_abspath loc.Location.loc_start.Lexing.pos_fname with
   | s -> s
-  | exception Not_found -> loc.Location.loc_start.pos_fname
+  | exception Not_found -> loc.Location.loc_start.Lexing.pos_fname
 
 
 (* Check directory change *)
@@ -372,6 +380,7 @@ let pretty_print_call () = let ghost = ref false in function
 
 
 let percent (opt : DeadFlag.opt) base =
+  let open DeadFlag in
   1. -. (float_of_int base) *. (1. -. opt.threshold.percentage) /. 10.
 
 
@@ -380,7 +389,8 @@ let report s ~(opt: DeadFlag.opt) ?(extra = "Called") l continue nb_call pretty_
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if opt.threshold.optional = `Both || extra = "Called" then
+        else if DeadFlag.(opt.threshold.optional) = `Both || extra = "Called"
+        then
           Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else Printf.sprintf "%s: at least %3.2f%% of the time" s (100. *. percent opt nb_call));
     List.iter pretty_print l;
@@ -425,16 +435,17 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
       if change fn then print_newline ();
       prloc ~fn loc;
       print_string path;
-      if call_sites <> [] && flag.call_sites then print_string "    Call sites:";
+      if call_sites <> [] && flag.DeadFlag.call_sites then
+        print_string "    Call sites:";
       print_newline ();
-      if flag.call_sites then begin
+      if flag.DeadFlag.call_sites then begin
         List.fast_sort compare call_sites
         |> List.iter (pretty_print_call ());
         if nb_call <> 0 then print_newline ()
       end
     in
 
-    let continue nb_call = nb_call < flag.threshold in
+    let continue nb_call = nb_call < flag.DeadFlag.threshold in
     let s =
       if nb_call = 0 then title
       else "ALMOST " ^ title
@@ -442,8 +453,6 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
     report s ~opt:(!DeadFlag.opta) l continue nb_call pretty_print reportn
 
   in reportn 0
-
-
 
                 (********   LEXIFI SPECIALS ********)
 
