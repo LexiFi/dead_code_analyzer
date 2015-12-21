@@ -129,10 +129,7 @@ let node_build loc expr =
       when !DeadFlag.optn.print || !DeadFlag.opta.print && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
         VdNode.merge_locs loc loc2
     | _ -> ()
-  in loop loc expr;
-  let opts, next = VdNode.get loc in
-  if opts = [] && next = None then
-    VdNode.remove loc
+  in loop loc expr
 
 
 

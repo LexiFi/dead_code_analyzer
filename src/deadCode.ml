@@ -148,15 +148,14 @@ let pat super self p =
     style := err :: !style
   in
   let open Asttypes in
-  begin
-    if DeadType.is_unit p.pat_type && !DeadFlag.style.DeadFlag.unit_pat then
-      match p.pat_desc with
-        | Tpat_construct _ -> ()
-        | Tpat_var (_, {txt = "eta"; loc = _})
-            when p.pat_loc = Location.none -> ()
-        | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
-  | Tpat_any -> if not !DeadFlag.underscore then u "_"
-  | _ -> u ""
+  if DeadType.is_unit p.pat_type && !DeadFlag.style.DeadFlag.unit_pat then begin
+    match p.pat_desc with
+      | Tpat_construct _ -> ()
+      | Tpat_var (_, {txt = "eta"; loc = _})
+        when p.pat_loc = Location.none -> ()
+      | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
+      | Tpat_any -> if not !DeadFlag.underscore then u "_"
+      | _ -> u ""
   end;
   begin match p.pat_desc with
   | Tpat_record (l, _) ->
@@ -280,49 +279,37 @@ let collect_references =                          (* Tast_mapper *)
 
 (* Checks the nature of the file *)
 let kind fn =
-  if Filename.check_suffix fn ".cmi" then
-    let base = Filename.chop_suffix fn ".cmi" in
-    if      Sys.file_exists (base ^ ".mli")         then  `Iface (base ^ ".mli")
-    else if Sys.file_exists (base ^ ".mfi")         then  `Iface (base ^ ".mfi")
-    else if Sys.file_exists (base ^ ".ml")          then  `Iface (base ^ ".ml")
-    else if Sys.file_exists (base ^ ".mf")          then  `Iface (base ^ ".mf")
-    else                  (* default *)                   `Ignore
-  else if Filename.check_suffix fn ".cmt" then
-    let base = Filename.chop_suffix fn ".cmt" in
-    if      Sys.file_exists (base ^ ".ml")          then  `Implem (base ^ ".ml")
-    else if Sys.file_exists (base ^ ".mf")          then  `Implem (base ^ ".mf")
-    else                  (* default *)                   `Ignore
-  else if (try Sys.is_directory fn with _ -> false) then  `Dir
-  else                    (* default *)                   `Ignore
+  if not (DeadFlag.is_excluded fn) then begin
+    let good_ext base ext =
+      let fn = base ^ ext in
+      Sys.file_exists fn && not (DeadFlag.is_excluded fn)
+    in
+    if Filename.check_suffix fn ".cmi" then
+      let base = Filename.chop_suffix fn ".cmi" in
+      let good_ext = good_ext base in
+      if      good_ext ".mli"         then  `Iface (base ^ ".mli")
+      else if good_ext ".mfi"         then  `Iface (base ^ ".mfi")
+      else if good_ext ".ml"          then  `Iface (base ^ ".ml")
+      else if good_ext ".mf"          then  `Iface (base ^ ".mf")
+      else if good_ext ".mll"         then  `Iface (base ^ ".mll")
+      else if good_ext ".mfl"         then  `Iface (base ^ ".mfl")
+      else                  (* default *)                   `Ignore
+    else if Filename.check_suffix fn ".cmt" then
+      let base = Filename.chop_suffix fn ".cmt" in
+      let good_ext = good_ext base in
+      if      good_ext ".ml"          then  `Implem (base ^ ".ml")
+      else if good_ext ".mf"          then  `Implem (base ^ ".mf")
+      else if good_ext ".mll"         then  `Implem (base ^ ".mll")
+      else if good_ext ".mfl"         then  `Implem (base ^ ".mfl")
+      else                  (* default *)                   `Ignore
+    else if (try Sys.is_directory fn with _ -> false) then  `Dir
+    else                    (* default *)                   `Ignore
+  end else                  (* default *)                   `Ignore
 
 
 let regabs fn =
   current_src := fn;
   hashtbl_add_unique_to_list abspath (unit fn) fn
-
-
-let exclude_dir, is_excluded_dir =
-  let tbl = Hashtbl.create 10 in
-  let rec split_path s =
-    let open Filename in
-    if s = current_dir_name then [s]
-    else (basename s) :: (split_path (dirname s))
-  in
-  let rec norm_path = function
-    | [] -> []
-    | x :: ((y :: _) as yss) when x = y && x = Filename.current_dir_name -> norm_path yss
-    | x :: xss ->
-        let yss = List.filter (fun x -> x <> Filename.current_dir_name) xss in
-        x :: yss
-  in
-  let rec concat_path = function
-    | [] -> ""
-    | x :: xs -> Filename.concat x (concat_path xs)
-  in
-  let normalize_path s = concat_path (norm_path (List.rev (split_path s))) in
-  let exclude_dir s = Hashtbl.replace tbl (normalize_path s) () in
-  let is_excluded_dir s = Hashtbl.mem tbl (normalize_path s) in
-  exclude_dir, is_excluded_dir
 
 
 let read_interface fn src = let open Cmi_format in
@@ -383,7 +370,8 @@ let eom loc_dep =
 
 
 (* Starting point *)
-let rec load_file fn = match kind fn with
+let rec load_file fn =
+  match kind fn with
   | `Iface src ->
       last_loc := Location.none;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
@@ -420,7 +408,7 @@ let rec load_file fn = match kind fn with
       | _ -> ()  (* todo: support partial_implementation? *)
       end
 
-  | `Dir when not (is_excluded_dir fn) ->
+  | `Dir ->
       let next = Sys.readdir fn in
       Array.sort compare next;
       Array.iter
@@ -554,7 +542,7 @@ let parse () =
   (* any extra argument can be accepted by any option using some
    * although it doesn't necessary affects the results (e.g. -O 3+4) *)
   Arg.(parse
-    [ "--exclude-directory", String exclude_dir, "<directory>  Exclude given directory from research.";
+    [ "--exclude", String DeadFlag.exclude, "<directory>  Exclude given directory from research.";
 
       "--underscore", Unit DeadFlag.set_underscore, " Show names starting with an underscore";
 

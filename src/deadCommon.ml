@@ -87,9 +87,6 @@ let hashtbl_replace_list hashtbl key l =
   hashtbl_remove_list hashtbl key;
   List.iter (fun elt -> hashtbl_add_to_list hashtbl key elt) l
 
-let hashtbl_merge_list tbl1 key1 tbl2 key2 =
-  List.iter (fun elt -> hashtbl_add_to_list tbl1 key1 elt) (hashtbl_find_list tbl2 key2)
-
 let hashtbl_merge_unique_list tbl1 key1 tbl2 key2 =
   List.iter (fun elt -> hashtbl_add_unique_to_list tbl1 key1 elt) (hashtbl_find_list tbl2 key2)
 
@@ -185,8 +182,6 @@ module VdNode = struct
 
   let parents = LocHash.create 256
 
-  let removed = ref []
-
 
   (* Get or create a vd_node corresponding to the location *)
   let get loc =
@@ -196,11 +191,6 @@ module VdNode = struct
       let r = ([], None) in
       LocHash.add vd_nodes loc r;
       r
-
-  let remove loc =
-    if LocHash.mem vd_nodes loc then
-      LocHash.remove vd_nodes loc;
-    removed := loc :: !removed
 
   let get_opts loc =
     fst (get loc)
@@ -288,24 +278,6 @@ module VdNode = struct
 
   let eom () =
 
-    let delete loc =
-      let met = LocHash.create 8 in
-      let rec loop loc =
-        if not (LocHash.mem met loc) then begin
-          LocHash.replace met loc ();
-          let update loc =
-            let opts, _ = get loc in
-            if opts = [] then
-              loop loc
-            else
-              update loc (opts, None)
-          in
-          LocHash.find_set parents loc |> LocSet.iter update
-        end
-      in loop loc
-    in
-    List.iter delete !removed;
-    removed := [];
     let sons =
       LocHash.fold (fun loc _ acc -> loc :: acc) parents []
       |> List.sort_uniq compare
@@ -338,12 +310,9 @@ module VdNode = struct
         if not (LocSet.is_empty worklist) then
           let loc = LocSet.choose worklist in
           let wl = LocSet.remove loc worklist in
-           if unit loc.Location.loc_start.Lexing.pos_fname <>
-                unit !current_src
-           then
-           begin
-            List.iter (LocHash.remove parents) loc_list;
-           end else begin
+           if unit loc.Location.loc_start.Lexing.pos_fname <> unit !current_src then
+            List.iter (LocHash.remove parents) loc_list
+           else begin
             LocHash.replace met loc ();
             let my_parents = LocHash.find_set parents loc in
             let my_parents =
