@@ -7,7 +7,7 @@
 (*                                                                         *)
 (***************************************************************************)
 
-
+open Ident
 open Types
 open Typedtree
 
@@ -58,10 +58,10 @@ let expr m = match m.mod_desc with
           let is_obj = String.contains x '#' in
           let is_type = not is_obj && DeadType.is_type x in
           if (List.mem x l1 || l1 = [])
-          && (is_obj && !DeadFlag.obj.print
+          && (is_obj && !DeadFlag.obj.DeadFlag.print
               || not is_obj && is_type && exported DeadFlag.typ loc
               || not is_obj && not is_type && exported DeadFlag.exported loc) then
-            hashtbl_add_to_list references loc m.mod_loc)
+            LocHash.add_set references loc m.mod_loc)
         l2
   | _ -> ()
 

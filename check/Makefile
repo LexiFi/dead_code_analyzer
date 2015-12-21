@@ -39,7 +39,7 @@ prepare:
 	make -C ../examples build > /dev/null 2>&1
 
 check.byt$(EXE): $(SRC)
-	$(OCAMLC) -o $@ $(LIBS) $(SRC) $^
+	$(OCAMLC) -o $@ $(LIBS) $^
 
 check.opt$(EXE): $(SRC)
 	$(OCAMLOPT) -o $@ $(LIBS:.cma=.cmxa) $^

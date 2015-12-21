@@ -1,13 +1,13 @@
 (***************************************************************************)
 (*                                                                         *)
-(**  Copyright (c) 2014-2015 LexiFi SAS. All rights reserved.              *)
+(*   Copyright (c) 2014-2015 LexiFi SAS. All rights reserved.              *)
 (*                                                                         *)
 (*   This source code is licensed under the ISC License                    *)
 (*   found in the LICENSE file at the root of this source tree             *)
 (*                                                                         *)
 (***************************************************************************)
 
-(** Dead code anlyzing tool. It only reports unused exported values, constructors/record fields
+(** Dead code analyzing tool. It only reports unused exported values, constructors/record fields
   and methods by default.
   Options can enable reporting of optional arguments always/never used as bad style of code.
   In addition to selecting which reports are to be displayed, the limit of authorized

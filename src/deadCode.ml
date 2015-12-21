@@ -35,8 +35,8 @@ let rec collect_export ?(mod_type = false) path u stock = function
 
   | Sig_value (id, ({Types.val_loc; val_type; _} as value))
     when not val_loc.Location.loc_ghost && stock == decs ->
-      if !DeadFlag.exported.print then export path u stock id val_loc;
-      let path = {id with name = id.name ^ "*"} :: path in
+      if !DeadFlag.exported.DeadFlag.print then export path u stock id val_loc;
+      let path = Ident.{id with name = id.name ^ "*"} :: path in
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
 
@@ -82,7 +82,7 @@ let value_binding super self x =
   let old_later = !DeadArg.later in
   DeadArg.later := [];
   incr depth;
-
+  let open Asttypes in
   begin match x with
   | { vb_pat = {pat_desc = Tpat_var (_, {loc = loc1; _}); _};
       vb_expr = {exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _};
@@ -92,7 +92,7 @@ let value_binding super self x =
   | { vb_pat = {pat_desc = Tpat_var (_, {loc; _}); _};
       vb_expr = exp;
       _
-    } when not loc.loc_ghost ->
+    } when not loc.Location.loc_ghost ->
       DeadArg.node_build loc exp;
       DeadObj.add_var loc exp
   | _ -> ()
@@ -106,12 +106,14 @@ let value_binding super self x =
 
 
 let structure_item super self i =
+  let open Asttypes in
   begin match i.str_desc with
-  | Tstr_type  (_, l) when !DeadFlag.typ.print -> List.iter DeadType.tstr l
+  | Tstr_type  (_, l) when !DeadFlag.typ.DeadFlag.print ->
+      List.iter DeadType.tstr l
   | Tstr_module  {mb_name = {txt; _}; _} ->
       mods := txt :: !mods;
       DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
-  | Tstr_class l when !DeadFlag.obj.print -> List.iter DeadObj.tstr l
+  | Tstr_class l when !DeadFlag.obj.DeadFlag.print -> List.iter DeadObj.tstr l
   | Tstr_include i ->
       let collect_include signature =
         let prev_last_loc = !last_loc in
@@ -145,10 +147,14 @@ let pat super self p =
     let err = (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) in
     style := err :: !style
   in
-  begin if DeadType.is_unit p.pat_type && !DeadFlag.style.unit_pat then match p.pat_desc with
-  | Tpat_construct _ -> ()
-  | Tpat_var (_, {txt = "eta"; loc = _}) when p.pat_loc = Location.none -> ()
-  | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
+  let open Asttypes in
+  begin
+    if DeadType.is_unit p.pat_type && !DeadFlag.style.DeadFlag.unit_pat then
+      match p.pat_desc with
+        | Tpat_construct _ -> ()
+        | Tpat_var (_, {txt = "eta"; loc = _})
+            when p.pat_loc = Location.none -> ()
+        | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
   | Tpat_any -> if not !DeadFlag.underscore then u "_"
   | _ -> u ""
   end;
@@ -173,6 +179,7 @@ let expr super self e =
     | _::l -> extra l
   in
   extra e.exp_extra;
+  let open Ident in
   begin match e.exp_desc with
 
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
@@ -180,7 +187,7 @@ let expr super self e =
 
   | Texp_ident (_, _, {Types.val_loc = loc; _})
     when not loc.Location.loc_ghost && exported DeadFlag.exported loc ->
-      hashtbl_add_unique_to_list references loc e.exp_loc
+      LocHash.add_set references loc e.exp_loc
 
   | Texp_field (_, _, {lbl_loc = loc; _})
   | Texp_construct (_, {cstr_loc = loc; _}, _)
@@ -207,7 +214,7 @@ let expr super self e =
       end
 
   | Texp_let (_, [{vb_pat; _}], _)
-    when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.seq ->
+    when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.DeadFlag.seq ->
       begin match vb_pat.pat_desc with
       | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
       | _ ->
@@ -216,10 +223,12 @@ let expr super self e =
       end
 
   | Texp_let (
-        Nonrecursive,
+        Asttypes.Nonrecursive,
         [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
-        {exp_desc = Texp_ident (Pident id2, _, _); exp_extra = []; _})
-    when id1 = id2 && !DeadFlag.style.binding && check_underscore (Ident.name id1) ->
+        {exp_desc = Texp_ident (Path.Pident id2, _, _); exp_extra = []; _})
+    when id1 = id2
+         && !DeadFlag.style.DeadFlag.binding
+         && check_underscore (Ident.name id1) ->
       style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
 
   | _ -> ()
@@ -247,17 +256,26 @@ let collect_references =                          (* Tast_mapper *)
   let value_binding = wrap (value_binding super) (fun x -> x.vb_expr.exp_loc) in
   let module_expr =
     wrap
-      (fun self x -> DeadMod.expr x; super.module_expr self x)
+      (fun self x -> DeadMod.expr x; super.Tast_mapper.module_expr self x)
       (fun x -> x.mod_loc)
   in
-  let class_field = (fun self x -> DeadObj.class_field x; super.class_field self x) in
-  let class_field = wrap class_field (fun x -> x.cf_loc) in
   let class_structure =
-    (fun self x -> DeadObj.class_structure x; super.class_structure self x)
+    (fun self x ->
+     DeadObj.class_structure x; super.Tast_mapper.class_structure self x)
   in
-  let typ = (fun self x -> !DeadLexiFi.type_ext x; super.typ self x) in
-  {super with
-    structure_item; expr; pat; value_binding; module_expr; class_structure; class_field; typ}
+  let class_field =
+    (fun self x ->
+     DeadObj.class_field x;
+     super.Tast_mapper.class_field self x)
+  in
+  let class_field = wrap class_field (fun x -> x.cf_loc) in
+  let typ =
+    (fun self x ->
+     !DeadLexiFi.type_ext x; super.Tast_mapper.typ self x)
+  in
+  Tast_mapper.{ super with
+                structure_item; expr; pat; value_binding;
+                module_expr; class_structure; class_field; typ }
 
 
 (* Checks the nature of the file *)
@@ -311,8 +329,13 @@ let read_interface fn src = let open Cmi_format in
   try
     regabs src;
     let u = unit fn in
-    if !DeadFlag.exported.print || !DeadFlag.obj.print || !DeadFlag.typ.print then
-      let f = collect_export [Ident.create (String.capitalize_ascii u)] u decs in
+    if !DeadFlag.exported.DeadFlag.print
+       || !DeadFlag.obj.DeadFlag.print
+       || !DeadFlag.typ.DeadFlag.print
+    then
+      let f =
+        collect_export [Ident.create (String.capitalize_ascii u)] u decs
+      in
       List.iter f (read_cmi fn).cmi_sign;
       last_loc := Location.none
   with Cmi_format.Error (Wrong_version_interface _) ->
@@ -322,8 +345,8 @@ let read_interface fn src = let open Cmi_format in
 
 (* Merge a location's references to another one's *)
 let assoc references (loc1, loc2) =
-  let fn1 = loc1.Location.loc_start.pos_fname in
-  let fn2 = loc2.Location.loc_start.pos_fname in
+  let fn1 = loc1.Location.loc_start.Lexing.pos_fname in
+  let fn2 = loc2.Location.loc_start.Lexing.pos_fname in
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
@@ -332,17 +355,17 @@ let assoc references (loc1, loc2) =
   in
   if fn1 <> _none && fn2 <> _none then
     if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      hashtbl_merge_list references loc2 references loc1
+      DeadCommon.LocHash.merge_set references loc2 references loc1
     else if not (is_implem fn1 && has_iface fn1) then
-      hashtbl_merge_list references loc1 references loc2
+      DeadCommon.LocHash.merge_set references loc1 references loc2
     else
-      hashtbl_merge_list references loc2 references loc1
+      DeadCommon.LocHash.merge_set references loc2 references loc1
 
 
 let clean references loc =
-  let fn = loc.Location.loc_start.pos_fname in
+  let fn = loc.Location.loc_start.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && unit fn = unit !current_src) then
-    hashtbl_remove_list references loc
+    LocHash.remove references loc
 
 let eom loc_dep =
   DeadArg.eom();
@@ -383,10 +406,10 @@ let rec load_file fn = match kind fn with
           in
           List.iter (fun (vd1, vd2) -> prepare vd1 vd2) cmt_value_dependencies;
 
-          ignore (collect_references.structure collect_references x);
+          ignore(collect_references.Tast_mapper.structure collect_references x);
 
           let loc_dep =
-            if !DeadFlag.exported.print then
+            if !DeadFlag.exported.DeadFlag.print then
               List.rev_map
                 (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc))
                 cmt_value_dependencies
@@ -445,6 +468,7 @@ let report_opt_args s l =
   in
   let percent = percent opt in
   let rec report_opt_args nb_call =
+    let open DeadFlag in
     let l = List.filter
         (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
           if opt.threshold.optional = `Both then
@@ -596,17 +620,19 @@ let parse () =
 
 
 let () =
-  try
+try
     parse ();
     Printf.eprintf " [DONE]\n\n%!";
-
+    let open DeadFlag in
     !DeadLexiFi.prepare_report DeadType.decs;
     if !DeadFlag.exported.print                 then  report_unused_exported ();
     DeadObj.report();
     DeadType.report();
-    if DeadFlag.(!opta.print || !optn.print)     then  begin let tmp = analyze_opt_args () in
-                if !DeadFlag.opta.print         then  report_opt_args "ALWAYS" tmp;
-                if !DeadFlag.optn.print          then  report_opt_args "NEVER" tmp end;
+    if !DeadFlag.opta.DeadFlag.print || !DeadFlag.optn.DeadFlag.print
+    then  begin
+        let tmp = analyze_opt_args () in
+        if !DeadFlag.opta.print then  report_opt_args "ALWAYS" tmp;
+        if !DeadFlag.optn.print then  report_opt_args "NEVER" tmp end;
     if [@warning "-44"] DeadFlag.(!style.opt_arg || !style.unit_pat
     || !style.seq || !style.binding)            then  report_style ();
 
@@ -622,3 +648,4 @@ let () =
   with exn ->
     Location.report_exception Format.err_formatter exn;
     exit 2
+
