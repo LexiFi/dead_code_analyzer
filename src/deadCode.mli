@@ -31,15 +31,12 @@
   This will lead the analyzer to focus on values that are uselessly exported.
   To keep track of all uses, call the {e internal} option.
 
-  The {e thresholdE} option can be used to report values the rule respecting above most of the time.
-  e.g. calling the dead code analyzer with {e --thresholdE 1} on
+  Calling the dead code analyzer with {e -E threshold:1} on
      {[
         let x = 0
         let () = ignore x
       ]}
   will lead to reporting [x] in the almost unused subsection because its number of use <= 1.
-
-  The {e call-sites} option can be used to print the call sites of values reported as almost unused.
 
 
   {2 Unused Constructors/Record Fields}
@@ -66,9 +63,6 @@
   Types are studied as a whole and iff they are explicitly declared as their own types.
   Consequently, signatures as [val f: [`A | `B] -> unit] cannot lead to reporting [`A] or [`B].
 
-  The {e thresholdT} option work similarily to the {e thresholdE}
-  and the {e call-sites} option can also be used
-
 
   {2 Unused Methods}
 
@@ -88,9 +82,6 @@
   It has to be noted that calling [c#f] is in fact the same as calling [p#f].
   The owner is considered to be the one who defines the function.
 
-  The {e thresholdC} option work similarily to the {e thresholdE}
-  and the {e call-sites} option can also be used
-
 
   {2 Optional Arguments}
 
@@ -106,8 +97,7 @@
       ]}
   Here [?a] is reported as always used and [?b] never.
 
-  The {e threshold} option can be used to report optional arguments that are use/unused
-  most of the time. e.g. calling the dead code analyzer with {e --threshold +0.6} on
+  Calling the dead code analyzer with {e -Oa percent:0.6} on
       {[
         let f ?a ?b () = ()
         let () =
@@ -118,9 +108,8 @@
   will lead to reporting both [?a] in the always used section
 and [?b] in the almost always used subsection.
 
-  Another usage of the option can in addition to the percentage of use verify the number
-  of occurences as for the exported values. e.g. calling the dead code analyzer with
-  {e --threshold +1+0.6+both} on
+  Calling the dead code analyzer with
+  {e -Oa both:1,0.6} on
       {[
         let f ?a ?b () = ()
         let () =
@@ -130,9 +119,6 @@ and [?b] in the almost always used subsection.
       ]}
   will lead to reporting [?a] but not [?b] because number of time it is used is > 1
   and the percentage of time it is unused is < 60%.
-
-  The {e call-sites} option can be used to print the call sites of values reported as
-  almost always/never used.
 
 
   {2 Coding Style}
@@ -154,5 +140,66 @@ and [?b] in the almost always used subsection.
   {e ./deadCode.<ext> <options> <directory|file>}
 
   For more informations use the {e --help} option
+
+
+  {2 Options}
+
+{b --exclude} <path>  Exclude given path from research.
+
+{b --underscore}  Show names starting with an underscore
+
+{b --verbose}  Verbose mode (ie., show scanned files)
+
+{b -v}  See {b --verbose}
+
+{b --internal}  Keep internal uses as exported values uses when the interface is given. This is the default behaviour when only the implementation is found
+
+{b --nothing}  Disable all warnings
+
+{b -a}  See {b --nothing}
+
+{b --all}  Enable all warnings
+
+{b -A}  See {b --all}
+
+{b -M} <display>  Enable/Disable unused methods warnings.
+<display> can be:
+- all
+- nothing
+- "threshold:<integer>": report elements used up to the given integer
+- "calls:<integer>": like threshold + show call sites
+
+{b -E} <display>  Enable/Disable unused exported values warnings.
+See option {b -C} for the syntax of <display>
+
+{b -Oa} <display>  Enable/Disable optional arguments always used warnings.
+<display> can be:
+- all
+- nothing
+- <threshold>
+- "calls:<threshold>" like <threshold> + show call sites
+
+<threshold> can be:
+- "both:<integer>,<float>": both the number max of exceptions (given through the integer) and the percent of valid cases (given as a float) must be respected for the element to be reported
+- "percent:<float>": percent of valid cases to be reported
+
+{b -On} <display>  Enable/Disable optional arguments never used warnings.
+See option {b -Oa} for the syntax of <display>
+
+{b -S}  Enable/Disable coding style warnings.
+- Delimiters '+' and '-' determine if the following option is to enable or disable.
+- Options (can be used together):
+- bind: useless binding
+- opt: optional arg in arg
+- seq: use sequence
+- unit: unit pattern
+- all: bind & opt & seq & unit
+
+{b -T} <display>  Enable/Disable unused constructors/records fields warnings.
+See option {b -C} for the syntax of <display>
+
+{b -help}  Display this list of options
+
+{b --help}  Display this list of options
 
   *)

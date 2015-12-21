@@ -4,6 +4,12 @@ Dead-code analyzer for OCaml
 
 ## Overview
 
+The tool assumes that .mli files are compiled with -keep-locs and .ml
+files with -bin-annot.  Exported values are collected by reading .cmi or .cmt
+files (depending on the existence of an explicit .mli interface).
+References to such values are collected by reading typed trees from .cmt files
+
+
 This tool scans a compiled OCaml project and reports various warnings
 about suspicious code:
 
@@ -24,12 +30,6 @@ about suspicious code:
    `let () = ... in ...` (it's usually better to use sequencing);
    let-binding of the form `let x = ... in x` (the binding is useless);
    optional argument in argument's type: `val f: ... -> (... -> ?_:_ -> ...) -> ...`
-
-
-The tool assumes that .mli files are compiled with -keep-locs and .ml
-files with -bin-annot.  Exported values are collected by reading .cmi or .cmt
-files (depending on the existence of an explicit .mli interface).
-References to such values are collected by reading typed trees from .cmt files
 
 
 ## Requirements
@@ -95,4 +95,3 @@ This project was initiated by LexiFi (http://www.lexifi.com) and is part
 of the SecurOCaml project.
 
 Contact: alain.frisch@lexifi.com
-

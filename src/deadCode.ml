@@ -542,7 +542,7 @@ let parse () =
   (* any extra argument can be accepted by any option using some
    * although it doesn't necessary affects the results (e.g. -O 3+4) *)
   Arg.(parse
-    [ "--exclude", String DeadFlag.exclude, "<directory>  Exclude given directory from research.";
+    [ "--exclude", String DeadFlag.exclude, "<path>  Exclude given path from research.";
 
       "--underscore", Unit DeadFlag.set_underscore, " Show names starting with an underscore";
 
