@@ -103,7 +103,7 @@ let () =
       List.iter
         (fun (strin, pos) ->
           hashtbl_find_list str strin
-          |> List.iter (fun loc -> if exported DeadFlag.typ loc then hashtbl_add_to_list references loc pos)
+          |> List.iter (fun loc -> if exported DeadFlag.typ loc then LocHash.add_set references loc pos)
         )
         !used;
       let rec process (p, typ, call_site) =
@@ -139,7 +139,7 @@ let () =
             else get_type s (pos - 1)
           in
           List.iter
-            (if exported DeadFlag.typ loc then hashtbl_add_to_list references loc else ignore)
+            (if exported DeadFlag.typ loc then LocHash.add_set references loc else ignore)
             (hashtbl_find_list dyn_used (get_type path (String.length path - 1)))
         )
         decs
