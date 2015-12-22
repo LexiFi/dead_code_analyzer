@@ -257,6 +257,7 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
 let add_var loc expr =
   let rec kind expr = match expr.exp_desc with
     | Texp_sequence (_, expr)
+    | Texp_apply (expr, _)
     | Texp_function (_, {c_rhs=expr; _}::_, _) -> kind expr
     | Texp_object _ -> `Obj
     | Texp_new (_, _, {cty_loc; _}) -> `New cty_loc
