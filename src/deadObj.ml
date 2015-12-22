@@ -138,27 +138,12 @@ let rec treat_fields action typ = match typ.desc with
 
 
 let rec locate expr =
-  let rec extra = function
-    | (Texp_coerce (_, typ), _, _)::_ ->
-        let rec path typ =
-          match typ.ctyp_desc with
-          | Ttyp_var path -> path
-          | Ttyp_constr (path, _, _)
-          | Ttyp_class (path, _, _) -> Path.name path
-          | Ttyp_alias (typ, _)
-          | Ttyp_arrow (_, _, typ) -> path typ
-          | _ -> _none
-        in
-        get_loc (path typ)
-    | _::l -> extra l
-    | [] ->
-        match expr.exp_desc with
-        | Texp_instvar (_, _, {Asttypes.loc; _})
-        | Texp_new (_, _, {Types.cty_loc=loc; _})
-        | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
-        | Texp_apply (expr, _) -> locate expr
-        | _ -> Location.none
-  in extra expr.exp_extra
+  match expr.exp_desc with
+  | Texp_instvar (_, _, {Asttypes.loc; _})
+  | Texp_new (_, _, {Types.cty_loc=loc; _})
+  | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
+  | Texp_apply (expr, _) -> locate expr
+  | _ -> Location.none
 
 
 let eom () =
