@@ -10,31 +10,29 @@
                 (********   ATTRIBUTES   ********)
 module LocSet = Set.Make(struct type t = Location.t let compare = compare end)
 
-module LocHash =
-    struct
-      include
-        Hashtbl.Make(
-            struct
-              type t = Location.t
+module LocHash = struct
+  include
+    Hashtbl.Make(struct
+      type t = Location.t
 
-              let hash x =
-	        let start = x.Location.loc_start in
-	        let s = Filename.basename start.Lexing.pos_fname in
-	        Hashtbl.hash (start.Lexing.pos_cnum, s)
+      let hash x =
+        let start = x.Location.loc_start in
+        let s = Filename.basename start.Lexing.pos_fname in
+        Hashtbl.hash (start.Lexing.pos_cnum, s)
 
-              let equal x y = x = y
-            end)
+      let equal x y = x = y
+    end)
 
-      let find_set h k = try find h k with Not_found -> LocSet.empty
+  let find_set h k = try find h k with Not_found -> LocSet.empty
 
-      let add_set h k v =
-        let l = find_set h k in replace h k (LocSet.add v l)
+  let add_set h k v =
+    let l = find_set h k in replace h k (LocSet.add v l)
 
-      let merge_set h1 k1 h2 k2 =
-        let l1 = find_set h1 k1 in
-        let l2 = find_set h2 k2 in
-        replace h1 k1 (LocSet.union l1 l2)
-    end
+  let merge_set h1 k1 h2 k2 =
+    let l1 = find_set h1 k1 in
+    let l2 = find_set h2 k2 in
+    replace h1 k1 (LocSet.union l1 l2)
+end
 
 let abspath : (string, string) Hashtbl.t = Hashtbl.create 256                  (* longest paths known *)
 

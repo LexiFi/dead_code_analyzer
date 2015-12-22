@@ -4,8 +4,8 @@ Dead-code analyzer for OCaml
 
 ## Overview
 
-The tool assumes that .mli files are compiled with -keep-locs and .ml
-files with -bin-annot.  Exported values are collected by reading .cmi or .cmt
+The tool assumes that **.mli** files are compiled with **-keep-locs** and **.ml**
+files with **-bin-annot**.  Exported values are collected by reading .cmi or .cmt
 files (depending on the existence of an explicit .mli interface).
 References to such values are collected by reading typed trees from .cmt files
 
@@ -34,7 +34,7 @@ about suspicious code:
 
 ## Requirements
 
-- Currently tested and working on OCaml 4.03.0+trunk
+- Currently tested and working on **OCaml 4.03.0+trunk**
 
 
 ## Install and Use
@@ -68,13 +68,7 @@ Running `make man` will produce documentation as man pages in the `man/man3` dir
 
 You are welcome to clone this repository and send us back pull requests.
 
-Please verify that your modifications are valid:
-- Add tests for your work in the `examples` directory.
-- Update the expected results found in the `check` directory according to your changes
-and common sense (i.e. do not expect a result that is obviously wrong)
-- Run `make check` and verify nothing is broken
-- Compare your results to the one reported in the `results` directory
-for better verification (some cases may not have their corresponding simplified test written yet)
+Read `Contributing.mdr` at the root of this directory for more informations on how to contribute.
 
 
 ## Status
@@ -87,6 +81,12 @@ There has been no official release yet.
 ## Limitations
 
 Tracking the optional arguments uses may consume a lot of memory.
+Tracking the methods uses may consume a lot of memory.
+
+
+## Copyright
+
+Source code is distributed under the conditions stated in file `License`
 
 
 ## Contact
