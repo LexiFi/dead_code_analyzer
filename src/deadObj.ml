@@ -137,13 +137,21 @@ let rec treat_fields action typ = match typ.desc with
   | _ -> ()
 
 
-let rec locate expr =
+let rec repr_exp expr f =
   match expr.exp_desc with
-  | Texp_instvar (_, _, {Asttypes.loc; _})
-  | Texp_new (_, _, {Types.cty_loc=loc; _})
-  | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
-  | Texp_apply (expr, _) -> locate expr
-  | _ -> Location.none
+    | Texp_sequence (_, expr)
+    | Texp_function (_, {c_rhs=expr; _}::_, _)
+    | Texp_apply (expr, _) -> repr_exp expr f
+    | _ -> f expr
+
+let locate expr =
+  let locate expr =
+    match expr.exp_desc with
+    | Texp_instvar (_, _, {Asttypes.loc; _})
+    | Texp_new (_, _, {Types.cty_loc=loc; _})
+    | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
+    | _ -> Location.none
+  in repr_exp expr locate
 
 
 let eom () =
@@ -240,15 +248,13 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
 
 
 let add_var loc expr =
-  let rec kind expr = match expr.exp_desc with
-    | Texp_sequence (_, expr)
-    | Texp_apply (expr, _)
-    | Texp_function (_, {c_rhs=expr; _}::_, _) -> kind expr
+  let kind expr =
+    match expr.exp_desc with
     | Texp_object _ -> `Obj
     | Texp_new (_, _, {cty_loc; _}) -> `New cty_loc
     | _ -> `Ignore
   in
-  match kind expr with
+  match repr_exp expr kind with
   | `Obj ->
     last_class := loc;
   | `New cty_loc -> add_equal loc cty_loc
@@ -328,8 +334,7 @@ let arg typ args =
       | Tlink t -> arg self t args
       | Tarrow (_, t, typ, _) when not self ->
           arg self t [(List.hd args)];
-          if not self then
-            arg self typ (List.tl args)
+          arg self typ (List.tl args)
       | Tarrow (_, _, typ, _) ->
           arg self typ args
       | Tobject _ ->

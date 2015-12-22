@@ -1,7 +1,11 @@
 let f x = object
   method x = x
+  method m = ()
+  method n = ()
 end
 
-let o f = f 12
+let app_m f = (f ()) # m
 
-let () = ignore ((o f) # x)
+let () =
+  ignore (((fun () -> f 0) ()) # x);
+  app_m (fun () -> f 0)
