@@ -30,7 +30,7 @@ let equals = Hashtbl.create 64
 
 let later = ref []
 
-let last_class = ref Location.none.Location.loc_start            (* last class met *)
+let last_class = ref Lexing.dummy_pos            (* last class met *)
 
 let path2loc = Hashtbl.create 256
 
@@ -78,7 +78,7 @@ let get_loc path =
       |> find_path path ~sep:'.'
     with Not_found -> try Hashtbl.find defined path with Not_found -> path
   in
-  try repr_loc (Hashtbl.find path2loc path) with Not_found -> Location.none.Location.loc_start
+  try repr_loc (Hashtbl.find path2loc path) with Not_found -> Lexing.dummy_pos
 
 
 let know_path path =
@@ -150,13 +150,13 @@ let locate expr =
     | Texp_instvar (_, _, {Asttypes.loc; _})
     | Texp_new (_, _, {Types.cty_loc=loc; _})
     | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc.Location.loc_start
-    | _ -> Location.none.Location.loc_start
+    | _ -> Lexing.dummy_pos
   in repr_exp expr locate
 
 
 let eom () =
   Hashtbl.reset defined;
-  last_class := Location.none.Location.loc_start
+  last_class := Lexing.dummy_pos
 
 
 
@@ -167,7 +167,7 @@ let collect_export path u stock ~obj ~cltyp loc =
 
   begin match List.rev_map (fun id -> id.Ident.name) path with
   | h :: t
-    when !last_class == Location.none.Location.loc_start || !last_class <= loc.Location.loc_start || decs != incl ->
+    when !last_class == Lexing.dummy_pos || !last_class <= loc.Location.loc_start || decs != incl ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
       Hashtbl.add defined short path;
@@ -229,9 +229,9 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
     let loc =
       if know_path short then get_loc short
       else if know_path path then get_loc path
-      else Location.none.Location.loc_start
+      else Lexing.dummy_pos
     in
-    if loc != Location.none.Location.loc_start && loc <> !last_class then
+    if loc != Lexing.dummy_pos && loc <> !last_class then
       add_equal !last_class loc
     else
       add_path path !last_class;
@@ -240,7 +240,7 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
     match ci_expr.cl_desc with
     | Tcl_ident (path, _, _) ->
         let loc = get_loc (Path.name path) in
-        if loc != Location.none.Location.loc_start then
+        if loc != Lexing.dummy_pos then
           add_equal !last_class loc
     | Tcl_fun (_, _, _, ci_expr, _)
     | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr
@@ -304,7 +304,7 @@ let class_field f =
         hashtbl_add_unique_to_list inheritances !last_class path;
         let loc = get_loc path in
         let equal () = add_equal cl_exp.cl_loc.Location.loc_start (get_loc path) in  (* for uses inside class def *)
-        if loc == Location.none.Location.loc_start then later := equal :: !later
+        if loc == Lexing.dummy_pos then later := equal :: !later
         else equal ()
       end;
       List.iter (fun (s, _) -> update_overr false s) l

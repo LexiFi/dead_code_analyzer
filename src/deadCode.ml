@@ -241,7 +241,7 @@ let collect_references =                          (* Tast_mapper *)
   let wrap f loc self x =
     let l = !last_loc in
     let ll = (loc x).Location.loc_start in
-    if ll <> Location.none.Location.loc_start then last_loc := ll;
+    if ll <> Lexing.dummy_pos then last_loc := ll;
     let prev_last_class = !DeadObj.last_class in
     let r = f self x in
     DeadObj.last_class := prev_last_class;
@@ -324,7 +324,7 @@ let read_interface fn src = let open Cmi_format in
         collect_export [Ident.create (String.capitalize_ascii u)] u decs
       in
       List.iter f (read_cmi fn).cmi_sign;
-      last_loc := Location.none.Location.loc_start
+      last_loc := Lexing.dummy_pos
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
     bad_files := fn :: !bad_files
@@ -373,13 +373,13 @@ let eom loc_dep =
 let rec load_file fn =
   match kind fn with
   | `Iface src ->
-      last_loc := Location.none.Location.loc_start;
+      last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       read_interface fn src
 
   | `Implem src ->
       let open Cmt_format in
-      last_loc := Location.none.Location.loc_start;
+      last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       regabs src;
       let cmt =
