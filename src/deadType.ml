@@ -110,7 +110,7 @@ let collect_export path u stock t =
     if t.type_manifest = None then
       export path u stock id loc;
     let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (id::path) in
-    Hashtbl.replace fields path loc
+    Hashtbl.replace fields path loc.Location.loc_start
   in
 
   match t.type_kind with
@@ -118,7 +118,7 @@ let collect_export path u stock t =
         List.iter
           (fun {Types.ld_id; ld_loc; ld_type; _} ->
             save ld_id ld_loc;
-            !DeadLexiFi.export_type ld_loc (_TO_STRING_ ld_type)
+            !DeadLexiFi.export_type ld_loc.Location.loc_start (_TO_STRING_ ld_type)
           )
           l
     | Type_variant l ->
@@ -181,11 +181,13 @@ let tstr typ =
   match typ.typ_kind with
     | Ttype_record l ->
         List.iter
-          (fun {Typedtree.ld_name; ld_loc; ld_type; _} -> assoc ld_name ld_loc (_TO_STRING_ ld_type.ctyp_type))
+          (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
+            assoc ld_name ld_loc.Location.loc_start (_TO_STRING_ ld_type.ctyp_type)
+          )
           l
     | Ttype_variant l ->
         List.iter
-          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc _variant)
+          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc.Location.loc_start _variant)
           l
     | _ -> ()
 

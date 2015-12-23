@@ -30,7 +30,7 @@ let equals = Hashtbl.create 64
 
 let later = ref []
 
-let last_class = ref Location.none                      (* last class met *)
+let last_class = ref Location.none.Location.loc_start            (* last class met *)
 
 let path2loc = Hashtbl.create 256
 
@@ -78,7 +78,7 @@ let get_loc path =
       |> find_path path ~sep:'.'
     with Not_found -> try Hashtbl.find defined path with Not_found -> path
   in
-  try repr_loc (Hashtbl.find path2loc path) with Not_found -> Location.none
+  try repr_loc (Hashtbl.find path2loc path) with Not_found -> Location.none.Location.loc_start
 
 
 let know_path path =
@@ -97,7 +97,7 @@ let get_method s =
 let add_equal loc1 loc2 =
   let loc1 = repr_loc loc1
   and loc2 = repr_loc loc2 in
-  if loc1 <> loc2 && not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then begin
+  if loc1 <> loc2 && not (is_ghost loc1 || is_ghost loc2) then begin
     Hashtbl.replace equals loc1 loc2;
     if loc1 = !last_class then
       last_class := loc2;
@@ -149,14 +149,14 @@ let locate expr =
     match expr.exp_desc with
     | Texp_instvar (_, _, {Asttypes.loc; _})
     | Texp_new (_, _, {Types.cty_loc=loc; _})
-    | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc
-    | _ -> Location.none
+    | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc.Location.loc_start
+    | _ -> Location.none.Location.loc_start
   in repr_exp expr locate
 
 
 let eom () =
   Hashtbl.reset defined;
-  last_class := Location.none
+  last_class := Location.none.Location.loc_start
 
 
 
@@ -166,11 +166,12 @@ let eom () =
 let collect_export path u stock ~obj ~cltyp loc =
 
   begin match List.rev_map (fun id -> id.Ident.name) path with
-  | h :: t when !last_class == Location.none || !last_class <= loc || decs != incl ->
+  | h :: t
+    when !last_class == Location.none.Location.loc_start || !last_class <= loc.Location.loc_start || decs != incl ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
       Hashtbl.add defined short path;
-      add_path path loc
+      add_path path loc.Location.loc_start
   | _ -> ()
   end;
 
@@ -184,7 +185,7 @@ let collect_export path u stock ~obj ~cltyp loc =
     end
   in
 
-  last_class := loc;
+  last_class := loc.Location.loc_start;
 
 
   let save id =
@@ -206,15 +207,16 @@ let collect_references ~meth ~call_site expr =
 
   let loc = locate expr in
 
-  if not loc.Location.loc_ghost then begin
-    hashtbl_add_unique_to_list (meth_ref loc) meth call_site;
+  if not (is_ghost loc) then begin
+    hashtbl_add_unique_to_list (meth_ref loc) meth call_site.Location.loc_start;
     if loc = !last_class then
-      hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site
+      hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site.Location.loc_start
   end
 
 
 let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
 
+  let loc = loc.Location.loc_start in
   last_class := loc;
   let short =
     (List.rev !mods |> String.concat ".")
@@ -227,9 +229,9 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
     let loc =
       if know_path short then get_loc short
       else if know_path path then get_loc path
-      else Location.none
+      else Location.none.Location.loc_start
     in
-    if loc != Location.none && loc <> !last_class then
+    if loc != Location.none.Location.loc_start && loc <> !last_class then
       add_equal !last_class loc
     else
       add_path path !last_class;
@@ -238,7 +240,7 @@ let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
     match ci_expr.cl_desc with
     | Tcl_ident (path, _, _) ->
         let loc = get_loc (Path.name path) in
-        if loc != Location.none then
+        if loc != Location.none.Location.loc_start then
           add_equal !last_class loc
     | Tcl_fun (_, _, _, ci_expr, _)
     | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr
@@ -257,7 +259,7 @@ let add_var loc expr =
   match repr_exp expr kind with
   | `Obj ->
     last_class := loc;
-  | `New cty_loc -> add_equal loc cty_loc
+  | `New cty_loc -> add_equal loc cty_loc.Location.loc_start
   | `Ignore -> ()
 
 
@@ -266,7 +268,7 @@ let class_structure cl_struct =
     begin match pat.pat_desc with
     | Tpat_alias (_, _, _)
     | Tpat_var (_, _) when not pat.pat_loc.Location.loc_ghost ->
-        add_equal pat.pat_loc !last_class
+        add_equal pat.pat_loc.Location.loc_start !last_class
     | _ -> () end;
     match pat.pat_desc with
     | Tpat_alias (pat, _, _) -> add_aliases pat
@@ -301,8 +303,8 @@ let class_field f =
       if path != _none then begin
         hashtbl_add_unique_to_list inheritances !last_class path;
         let loc = get_loc path in
-        let equal () = add_equal cl_exp.cl_loc (get_loc path) in  (* for uses inside class def *)
-        if loc == Location.none then later := equal :: !later
+        let equal () = add_equal cl_exp.cl_loc.Location.loc_start (get_loc path) in  (* for uses inside class def *)
+        if loc == Location.none.Location.loc_start then later := equal :: !later
         else equal ()
       end;
       List.iter (fun (s, _) -> update_overr false s) l
@@ -365,7 +367,7 @@ let arg typ args =
 let coerce expr typ =
   let loc = locate expr in
   let use meth =
-    hashtbl_add_unique_to_list (meth_ref loc) meth expr.exp_loc
+    hashtbl_add_unique_to_list (meth_ref loc) meth expr.exp_loc.Location.loc_start
   in
   treat_fields use typ
 

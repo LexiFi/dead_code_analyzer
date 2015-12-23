@@ -62,7 +62,7 @@ let rec treat_exp exp args =
 
   | Texp_ident (_, _, {Types.val_loc; _})
   | Texp_field (_, _, {lbl_loc = val_loc; _}) ->
-      DeadArg.process val_loc args;
+      DeadArg.process val_loc.Location.loc_start args;
 
   | Texp_match (_, l1, l2, _) ->
       List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l1;
@@ -88,13 +88,13 @@ let value_binding super self x =
       vb_expr = {exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _};
       _
     } ->
-      VdNode.merge_locs loc1 loc2
+      VdNode.merge_locs loc1.Location.loc_start loc2.Location.loc_start
   | { vb_pat = {pat_desc = Tpat_var (_, {loc; _}); _};
       vb_expr = exp;
       _
     } when not loc.Location.loc_ghost ->
-      DeadArg.node_build loc exp;
-      DeadObj.add_var loc exp
+      DeadArg.node_build loc.Location.loc_start exp;
+      DeadObj.add_var loc.Location.loc_start exp
   | _ -> ()
   end;
 
@@ -144,7 +144,7 @@ let structure_item super self i =
 
 let pat super self p =
   let u s =
-    let err = (!current_src, p.pat_loc, Printf.sprintf "unit pattern %s" s) in
+    let err = (!current_src, p.pat_loc.Location.loc_start, Printf.sprintf "unit pattern %s" s) in
     style := err :: !style
   in
   let open Asttypes in
@@ -161,8 +161,8 @@ let pat super self p =
   | Tpat_record (l, _) ->
       List.iter
         (fun (_, lab, _) ->
-          if exported DeadFlag.typ lab.lbl_loc then
-            DeadType.collect_references lab.lbl_loc p.pat_loc
+          if exported DeadFlag.typ lab.lbl_loc.Location.loc_start then
+            DeadType.collect_references lab.lbl_loc.Location.loc_start p.pat_loc.Location.loc_start
         )
         l
   | Tpat_var (id, _) -> var_name := id.Ident.name
@@ -185,13 +185,13 @@ let expr super self e =
       !DeadLexiFi.ttype_of e
 
   | Texp_ident (_, _, {Types.val_loc = loc; _})
-    when not loc.Location.loc_ghost && exported DeadFlag.exported loc ->
-      LocHash.add_set references loc e.exp_loc
+    when not loc.Location.loc_ghost && exported DeadFlag.exported loc.Location.loc_start ->
+      LocHash.add_set references loc.Location.loc_start e.exp_loc.Location.loc_start
 
   | Texp_field (_, _, {lbl_loc = loc; _})
   | Texp_construct (_, {cstr_loc = loc; _}, _)
-    when not loc.Location.loc_ghost && exported DeadFlag.typ loc ->
-      DeadType.collect_references loc e.exp_loc
+    when not loc.Location.loc_ghost && exported DeadFlag.typ loc.Location.loc_start ->
+      DeadType.collect_references loc.Location.loc_start e.exp_loc.Location.loc_start
 
   | Texp_send (e2, Tmeth_name s, _)
   | Texp_send (e2, Tmeth_val {name = s; _}, _) ->
@@ -217,7 +217,7 @@ let expr super self e =
       begin match vb_pat.pat_desc with
       | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
       | _ ->
-          let err = (!current_src, vb_pat.pat_loc, "let () = ... in ... (=> use sequence)") in
+          let err = (!current_src, vb_pat.pat_loc.Location.loc_start, "let () = ... in ... (=> use sequence)") in
           style := err :: !style
       end
 
@@ -228,7 +228,7 @@ let expr super self e =
     when id1 = id2
          && !DeadFlag.style.DeadFlag.binding
          && check_underscore (Ident.name id1) ->
-      style := (!current_src, pat_loc, "let x = ... in x (=> useless binding)") :: !style
+      style := (!current_src, pat_loc.Location.loc_start, "let x = ... in x (=> useless binding)") :: !style
 
   | _ -> ()
   end;
@@ -240,8 +240,8 @@ let collect_references =                          (* Tast_mapper *)
   let super = Tast_mapper.default in
   let wrap f loc self x =
     let l = !last_loc in
-    let ll = loc x in
-    if ll <> Location.none then last_loc := ll;
+    let ll = (loc x).Location.loc_start in
+    if ll <> Location.none.Location.loc_start then last_loc := ll;
     let prev_last_class = !DeadObj.last_class in
     let r = f self x in
     DeadObj.last_class := prev_last_class;
@@ -293,7 +293,7 @@ let kind fn =
       else if good_ext ".mf"          then  `Iface (base ^ ".mf")
       else if good_ext ".mll"         then  `Iface (base ^ ".mll")
       else if good_ext ".mfl"         then  `Iface (base ^ ".mfl")
-      else                  (* default *)                   `Ignore
+      else          (* default *)           `Ignore
     else if Filename.check_suffix fn ".cmt" then
       let base = Filename.chop_suffix fn ".cmt" in
       let good_ext = good_ext base in
@@ -301,10 +301,10 @@ let kind fn =
       else if good_ext ".mf"          then  `Implem (base ^ ".mf")
       else if good_ext ".mll"         then  `Implem (base ^ ".mll")
       else if good_ext ".mfl"         then  `Implem (base ^ ".mfl")
-      else                  (* default *)                   `Ignore
-    else if (try Sys.is_directory fn with _ -> false) then  `Dir
-    else                    (* default *)                   `Ignore
-  end else                  (* default *)                   `Ignore
+      else          (* default *)           `Ignore
+    else if Sys.is_directory fn       then  `Dir
+    else            (* default *)           `Ignore
+  end else          (* default *)           `Ignore
 
 
 let regabs fn =
@@ -324,7 +324,7 @@ let read_interface fn src = let open Cmi_format in
         collect_export [Ident.create (String.capitalize_ascii u)] u decs
       in
       List.iter f (read_cmi fn).cmi_sign;
-      last_loc := Location.none
+      last_loc := Location.none.Location.loc_start
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
     bad_files := fn :: !bad_files
@@ -332,8 +332,8 @@ let read_interface fn src = let open Cmi_format in
 
 (* Merge a location's references to another one's *)
 let assoc references (loc1, loc2) =
-  let fn1 = loc1.Location.loc_start.Lexing.pos_fname in
-  let fn2 = loc2.Location.loc_start.Lexing.pos_fname in
+  let fn1 = loc1.Lexing.pos_fname
+  and fn2 = loc2.Lexing.pos_fname in
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
@@ -350,17 +350,17 @@ let assoc references (loc1, loc2) =
 
 
 let clean references loc =
-  let fn = loc.Location.loc_start.Lexing.pos_fname in
+  let fn = loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && unit fn = unit !current_src) then
     LocHash.remove references loc
 
 let eom loc_dep =
   DeadArg.eom();
-  List.iter (assoc references) loc_dep;
+  List.iter (fun (loc1, loc2) -> assoc references (loc1.Location.loc_start, loc2.Location.loc_start)) loc_dep;
   List.iter (assoc references) !DeadType.dependencies;
   if Sys.file_exists (!current_src ^ "i") then begin
     let clean = List.iter (fun (loc1, loc2) -> clean references loc1; clean references loc2) in
-    clean loc_dep;
+    clean (List.map (fun (loc1, loc2) -> loc1.Location.loc_start, loc2.Location.loc_start) loc_dep);
     clean !DeadType.dependencies;
   end;
   VdNode.eom ();
@@ -373,13 +373,13 @@ let eom loc_dep =
 let rec load_file fn =
   match kind fn with
   | `Iface src ->
-      last_loc := Location.none;
+      last_loc := Location.none.Location.loc_start;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       read_interface fn src
 
   | `Implem src ->
       let open Cmt_format in
-      last_loc := Location.none;
+      last_loc := Location.none.Location.loc_start;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       regabs src;
       let cmt =
@@ -390,7 +390,7 @@ let rec load_file fn =
       begin match cmt with
       | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
           let prepare {Types.val_loc = loc1; _} {Types.val_loc = loc2; _} =
-            VdNode.merge_locs ~force:true loc2 loc1
+            VdNode.merge_locs ~force:true loc2.Location.loc_start loc1.Location.loc_start
           in
           List.iter (fun (vd1, vd2) -> prepare vd1 vd2) cmt_value_dependencies;
 

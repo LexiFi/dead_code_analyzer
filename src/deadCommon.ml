@@ -8,17 +8,16 @@
 (***************************************************************************)
 
                 (********   ATTRIBUTES   ********)
-module LocSet = Set.Make(struct type t = Location.t let compare = compare end)
+module LocSet = Set.Make(struct type t = Lexing.position let compare = compare end)
 
 module LocHash = struct
   include
     Hashtbl.Make(struct
-      type t = Location.t
+      type t = Lexing.position
 
       let hash x =
-        let start = x.Location.loc_start in
-        let s = Filename.basename start.Lexing.pos_fname in
-        Hashtbl.hash (start.Lexing.pos_cnum, s)
+        let s = Filename.basename x.Lexing.pos_fname in
+        Hashtbl.hash (x.Lexing.pos_cnum, s)
 
       let equal x y = x = y
     end)
@@ -37,16 +36,16 @@ end
 let abspath : (string, string) Hashtbl.t = Hashtbl.create 256                  (* longest paths known *)
 
 
-let decs : (Location.t, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
+let decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
 
-let incl : (Location.t, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
+let incl : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
 
 let references : LocSet.t LocHash.t  = LocHash.create 256      (* all value references *)
 
-let fields : (string, Location.t) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
+let fields : (string, Lexing.position) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
 
-let style : (string * Location.t * string) list ref = ref []                        (* patterns of type unit which are not () *)
-let last_loc = ref Location.none                                                    (* helper to diagnose occurrences of Location.none in the typedtree *)
+let style : (string * Lexing.position * string) list ref = ref []                        (* patterns of type unit which are not () *)
+let last_loc = ref Location.none.Location.loc_start                                  (* helper to diagnose occurrences of Location.none in the typedtree *)
 let current_src = ref ""
 let mods : string list ref = ref []                                                 (* module path *)
 
@@ -61,7 +60,12 @@ let _variant = ": variant :"
 
                 (********   HELPERS   ********)
 
-let unit fn = try Filename.chop_extension (Filename.basename fn) with _ -> fn
+let unit fn = try Filename.chop_extension (Filename.basename fn) with Invalid_argument _ -> fn
+
+
+let is_ghost loc =
+  loc.Lexing.pos_lnum <= 0 || loc.Lexing.pos_cnum - loc.Lexing.pos_bol < 0
+  || loc.Lexing.pos_fname = _none || loc.Lexing.pos_fname = ""
 
 
 let check_underscore name = not !DeadFlag.underscore || name.[0] <> '_'
@@ -101,7 +105,7 @@ let find_abspath fn =
 
 
 let exported (flag : DeadFlag.basic ref) loc =
-  let fn = loc.Location.loc_start.Lexing.pos_fname in
+  let fn = loc.Lexing.pos_fname in
   !flag.DeadFlag.print
   && LocHash.find_set references loc
      |> LocSet.cardinal <= !flag.DeadFlag.threshold
@@ -131,12 +135,10 @@ let separator () =
 
 
 (* Location printer: `filename:line: ' *)
-let prloc ?(call_site = false) ?fn (loc : Location.t) =
-  let file = loc.Location.loc_start.Lexing.pos_fname in
-  let line = loc.Location.loc_start.Lexing.pos_lnum in
-  let col =
-    Location.(loc.loc_start.Lexing.pos_cnum - loc.loc_start.Lexing.pos_bol)
-  in
+let prloc ?(call_site = false) ?fn (loc : Lexing.position) =
+  let file = loc.Lexing.pos_fname in
+  let line = loc.Lexing.pos_lnum in
+  let col = loc.Lexing.pos_cnum - loc.Lexing.pos_bol in
   begin match fn with
   | Some s ->
       print_string (Filename.dirname s ^ "/" ^ file)
@@ -161,12 +163,12 @@ let prloc ?(call_site = false) ?fn (loc : Location.t) =
 
 type opt_arg =
   {
-    mutable with_val: Location.t list;
-    mutable without_val: Location.t list;
+    mutable with_val: Lexing.position list;
+    mutable without_val: Lexing.position list;
   }
 
 
-let opt_args : (Location.t * string * bool * Location.t) list ref = ref []
+let opt_args : (Lexing.position * string * bool * Lexing.position) list ref = ref []
 
 
 
@@ -174,7 +176,7 @@ let opt_args : (Location.t * string * bool * Location.t) list ref = ref []
 
 module VdNode = struct
 
-  type t = (string list * Location.t option)
+  type t = (string list * Lexing.position option)
  
   let vd_nodes = LocHash.create 256
 
@@ -183,7 +185,7 @@ module VdNode = struct
 
   (* Get or create a vd_node corresponding to the location *)
   let get loc =
-    assert (not loc.Location.loc_ghost);
+    assert (not (is_ghost loc));
     try (LocHash.find vd_nodes loc)
     with Not_found ->
       let r = ([], None) in
@@ -215,7 +217,7 @@ module VdNode = struct
     get_next loc = None
 
   let seen loc =
-    try ignore (find_abspath loc.Location.loc_start.Lexing.pos_fname); true
+    try ignore (find_abspath loc.Lexing.pos_fname); true
     with Not_found -> false
 
 
@@ -233,7 +235,7 @@ module VdNode = struct
 
   (* Locations l1 and l2 are part of a binding from one to another *)
   let merge_locs ?(force = false) loc1 loc2 =
-    if not loc1.Location.loc_ghost && not loc2.Location.loc_ghost then
+    if not (is_ghost loc1 || is_ghost loc2) then
       let loc2 = func loc2 in
       if force || not (is_end loc2) || get_opts loc2 <> [] || not (seen loc2) then
         let repr loc =
@@ -267,8 +269,8 @@ module VdNode = struct
         | Some next -> loop (func next) lab occur
         | None ->
             let loc =
-              loc.Location.loc_start.Lexing.pos_fname ^ ":"
-              ^ (string_of_int loc.Location.loc_start.Lexing.pos_lnum)
+              loc.Lexing.pos_fname ^ ":"
+              ^ (string_of_int loc.Lexing.pos_lnum)
             in
               failwith (loc ^ ": optional argument `" ^ lab ^ "' unlinked")
       end
@@ -308,7 +310,7 @@ module VdNode = struct
         if not (LocSet.is_empty worklist) then
           let loc = LocSet.choose worklist in
           let wl = LocSet.remove loc worklist in
-           if unit loc.Location.loc_start.Lexing.pos_fname <> unit !current_src then
+           if unit loc.Lexing.pos_fname <> unit !current_src then
             List.iter (LocHash.remove parents) loc_list
            else begin
             LocHash.replace met loc ();
@@ -342,16 +344,16 @@ let export ?(sep = ".") path u stock id loc =
   if not loc.Location.loc_ghost
   && (u = unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore id.Ident.name then
-    hashtbl_add_to_list stock loc (!current_src, value)
+    hashtbl_add_to_list stock loc.Location.loc_start (!current_src, value)
 
 
 
                 (**** REPORTING ****)
 
 (* Absolute path *)
-let abs loc = match find_abspath loc.Location.loc_start.Lexing.pos_fname with
+let abs loc = match find_abspath loc.Lexing.pos_fname with
   | s -> s
-  | exception Not_found -> loc.Location.loc_start.Lexing.pos_fname
+  | exception Not_found -> loc.Lexing.pos_fname
 
 
 (* Check directory change *)
@@ -370,9 +372,9 @@ let rec check_length len = function
 
 (* Print call site *)
 let pretty_print_call () = let ghost = ref false in function
-  | {Location.loc_ghost=true; _} when !ghost -> ()
-  | loc when not loc.Location.loc_ghost ->
+  | loc when not (is_ghost loc) ->
       prloc ~call_site:true loc |> print_newline
+  | _ when !ghost -> ()
   | _ ->          (* first ghost met *)
       print_endline "~ ghost ~";
       ghost := true
@@ -470,7 +472,7 @@ module DeadLexiFi = struct
   let sig_value : (Types.value_description -> unit) ref =
     ref (fun _ -> ())
 
-  let export_type : (Location.t -> string -> unit) ref =
+  let export_type : (Lexing.position -> string -> unit) ref =
     ref (fun _ _ -> ())
 
   let type_ext : (Typedtree.core_type -> unit) ref =
@@ -482,6 +484,6 @@ module DeadLexiFi = struct
   let ttype_of : (Typedtree.expression -> unit) ref =
     ref (fun _ -> ())
 
-  let prepare_report : ((Location.t, string * string) Hashtbl.t -> unit) ref =
+  let prepare_report : ((Lexing.position, string * string) Hashtbl.t -> unit) ref =
     ref (fun _ -> ())
 end

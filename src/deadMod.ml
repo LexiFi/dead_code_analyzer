@@ -28,15 +28,19 @@ let rec sign ?(isfunc = false) = function
 
 
 let item maker = function
-  | Sig_value ({name; _}, {val_loc = loc; _}) -> (name, loc)::[]
+  | Sig_value ({name; _}, {val_loc = loc; _}) ->
+      (name, loc.Location.loc_start)::[]
   | Sig_type ({name=t; _}, {type_kind; _}, _) -> begin match type_kind with
-    | Type_record (l, _) -> List.map (fun {Types.ld_id={name; _}; ld_loc; _} -> (t ^ "." ^ name, ld_loc)) l
-    | Type_variant l -> List.map (fun {Types.cd_id={name; _}; cd_loc; _} -> (t ^ "." ^ name, cd_loc)) l
+    | Type_record (l, _) -> List.map (fun {Types.ld_id={name; _}; ld_loc; _} ->
+        (t ^ "." ^ name, ld_loc.Location.loc_start)) l
+    | Type_variant l -> List.map (fun {Types.cd_id={name; _}; cd_loc; _} ->
+        (t ^ "." ^ name, cd_loc.Location.loc_start)) l
     | _ -> [] end
   | Sig_module ({name; _}, {md_type; _}, _)
   | Sig_modtype ({name; _}, {mtd_type = Some md_type; _}) ->
-    List.map (fun (n, l) -> (name ^ "." ^ n, l)) (maker md_type)
-  | Sig_class ({name; _}, {cty_loc = loc; _}, _) -> (name ^ "#", loc) :: []
+      List.map (fun (n, l) -> (name ^ "." ^ n, l)) (maker md_type)
+  | Sig_class ({name; _}, {cty_loc = loc; _}, _) ->
+      (name ^ "#", loc.Location.loc_start) :: []
   | _ -> []
 
 let rec make_content typ =
@@ -61,7 +65,7 @@ let expr m = match m.mod_desc with
           && (is_obj && !DeadFlag.obj.DeadFlag.print
               || not is_obj && is_type && exported DeadFlag.typ loc
               || not is_obj && not is_type && exported DeadFlag.exported loc) then
-            LocHash.add_set references loc m.mod_loc)
+            LocHash.add_set references loc m.mod_loc.Location.loc_start)
         l2
   | _ -> ()
 

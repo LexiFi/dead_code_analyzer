@@ -37,7 +37,10 @@ let add lab expr loc last_loc nb_occur =
       Hashtbl.find nb_occur lab
     in ref occur
   in
-  let call_site = if expr.exp_loc.Location.loc_ghost then last_loc else expr.exp_loc in
+  let call_site =
+    if expr.exp_loc.Location.loc_ghost then last_loc
+    else expr.exp_loc.Location.loc_start
+  in
   if check_underscore lab then
     let loc = VdNode.find loc lab occur in
     if not (Hashtbl.mem met (last_loc, loc, lab)) then begin
@@ -54,7 +57,7 @@ let rec process loc args =
       | _ -> ())
     args;
 
-  if loc.Location.loc_ghost then ()   (* Ghostbuster *)
+  if is_ghost loc then ()   (* Ghostbuster *)
   else begin                              (* else: `begin ... end' for aesthetics *)
     let nb_occur = Hashtbl.create 256 in
     let last_loc = !last_loc in
@@ -63,7 +66,7 @@ let rec process loc args =
     let add = function
       | (Asttypes.Optional lab, Some expr) ->
           if VdNode.is_end loc
-          && (let fn = loc.Location.loc_start.pos_fname in fn.[String.length fn - 1] = 'i') then
+          && (let fn = loc.Lexing.pos_fname in fn.[String.length fn - 1] = 'i') then
             last := (fun () -> add lab expr) :: !last
           else if VdNode.is_end loc && !depth > 0 then
             later := (fun () -> add lab expr) :: !later
@@ -91,12 +94,12 @@ and check e =
 
   match e.exp_desc with
   | Texp_ident (_, _, {val_loc; _}) ->
-      process val_loc (get_sig_args e.exp_type)
+      process val_loc.Location.loc_start (get_sig_args e.exp_type)
   | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc; _}); _}, _)
   | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = val_loc; _}); _}, _) ->
-      process val_loc (get_sig_args e.exp_type);
+      process val_loc.Location.loc_start (get_sig_args e.exp_type);
       if not val_loc.Location.loc_ghost then
-        last_loc := val_loc
+        last_loc := val_loc.Location.loc_start
   | Texp_let (* Partial application as argument may cut in two parts:
               * let _ = partial in implicit opt_args elimination *)
       ( _,
@@ -105,7 +108,7 @@ and check e =
             [{c_lhs = {pat_desc = Tpat_var (_, _); pat_loc = {loc_ghost = true; _}; _};
               c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}],_);
           exp_loc = {loc_ghost = true; _};_}) ->
-      process val_loc args
+      process val_loc.Location.loc_start args
   | _ -> ()
 
 
@@ -113,7 +116,7 @@ let node_build loc expr =
   let rec loop loc expr =
     match expr.exp_desc with
     | Texp_function (lab, [{c_lhs = {pat_type; _}; c_rhs = exp; _}], _) ->
-        DeadType.check_style pat_type expr.exp_loc;
+        DeadType.check_style pat_type expr.exp_loc.Location.loc_start;
         begin match lab with
         | Asttypes.Optional s ->
             if !DeadFlag.optn.print || !DeadFlag.opta.print then
@@ -124,10 +127,10 @@ let node_build loc expr =
     | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, _)
     | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, _)
       when (!DeadFlag.optn.print || !DeadFlag.opta.print) && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
-        VdNode.merge_locs loc loc2
+        VdNode.merge_locs loc loc2.Location.loc_start
     | Texp_ident (_, _, {val_loc = loc2; _})
       when !DeadFlag.optn.print || !DeadFlag.opta.print && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
-        VdNode.merge_locs loc loc2
+        VdNode.merge_locs loc loc2.Location.loc_start
     | _ -> ()
   in loop loc expr
 

@@ -33,11 +33,11 @@ val eom :
 (* Add all optional arguments met if they are used to match a signature or the location
  * is not a ghost and they are part of the application (w/ or w/o value) *)
 val process :
-  Location.t
+  Lexing.position
   -> (Asttypes.arg_label * expression option) list
   -> unit
 
 
 (* Constructs the opt_args field of the given node *)
 val node_build :
-  Location.t -> Typedtree.expression -> unit
+  Lexing.position -> Typedtree.expression -> unit

@@ -12,13 +12,13 @@ open Typedtree
 
 
 
-val last_class : Location.t ref
+val last_class : Lexing.position ref
 
 
 val collect_export :
   Ident.t list
   -> string
-  -> (Location.t, string * string) Hashtbl.t
+  -> (Lexing.position, string * string) Hashtbl.t
   -> ?obj: Types.type_expr
   -> ?cltyp: Types.class_type
   -> Location.t
@@ -37,7 +37,7 @@ val tstr :
 
 
 val add_var :
-  Location.t -> expression -> unit
+  Lexing.position -> expression -> unit
 
 
 val class_structure:

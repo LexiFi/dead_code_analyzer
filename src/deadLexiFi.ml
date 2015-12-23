@@ -39,7 +39,7 @@ let () =
     (fun value ->
       let add strct = match strct.pstr_desc with
         | Pstr_eval ({pexp_desc=Pexp_constant (Const_string (s, _)); _}, _) ->
-        hashtbl_add_unique_to_list str s value.val_loc
+        hashtbl_add_unique_to_list str s value.val_loc.Location.loc_start
         | _ -> ()
       in
       let add = function
@@ -57,7 +57,7 @@ let () =
       | Ttyp_props (props, _) ->
           List.iter
             (fun (_, strin) ->
-              used := (strin, ct.ctyp_loc) :: !used;
+              used := (strin, ct.ctyp_loc.Location.loc_start) :: !used;
             )
             props
       | _ -> ()
@@ -94,7 +94,11 @@ let () =
       let name = String.concat "." @@ List.rev @@
         !mods @ (String.capitalize_ascii (unit !current_src):: [])
       in
-      dyn_rec := (name, e.exp_type, (if e.exp_loc.Location.loc_ghost then !last_loc else e.exp_loc)) :: !dyn_rec
+      let call_site =
+        if e.exp_loc.Location.loc_ghost then !last_loc
+        else e.exp_loc.Location.loc_start
+      in
+      dyn_rec := (name, e.exp_type, call_site) :: !dyn_rec
     );
 
 
@@ -103,7 +107,11 @@ let () =
       List.iter
         (fun (strin, pos) ->
           hashtbl_find_list str strin
-          |> List.iter (fun loc -> if exported DeadFlag.typ loc then LocHash.add_set references loc pos)
+          |> List.iter
+            (fun loc ->
+              if exported DeadFlag.typ loc then
+                LocHash.add_set references loc pos
+            )
         )
         !used;
       let rec process (p, typ, call_site) =
@@ -141,7 +149,9 @@ let () =
             else get_type s (pos - 1)
           in
           List.iter
-            (if exported DeadFlag.typ loc then LocHash.add_set references loc else ignore)
+            ( if exported DeadFlag.typ loc then LocHash.add_set references loc
+              else ignore
+            )
             (hashtbl_find_list dyn_used (get_type path (String.length path - 1)))
         )
         decs
