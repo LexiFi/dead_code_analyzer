@@ -109,7 +109,8 @@ let () =
       let rec process (p, typ, call_site) =
         match typ.desc with
         | Tarrow (_, t, _, _) | Tlink t -> process (p, t, call_site)
-        | Tconstr (path, _, _) ->
+        | Ttuple ts -> List.iter (fun t -> process (p, t, call_site)) ts
+        | Tconstr (path, ts, _) ->
             let name = Path.name path in
             let name =
               if String.contains name '.' then name
@@ -128,6 +129,7 @@ let () =
                 hashtbl_add_to_list dyn_used typ call_site
               )
               (proc name);
+            List.iter (fun t -> process (p, t, call_site)) ts
         | _ -> ()
       in
       List.iter process !dyn_rec;
