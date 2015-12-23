@@ -93,22 +93,33 @@ and check e =
   in
 
   match e.exp_desc with
-  | Texp_ident (_, _, {val_loc; _}) ->
-      process val_loc.Location.loc_start (get_sig_args e.exp_type)
-  | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc; _}); _}, _)
-  | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = val_loc; _}); _}, _) ->
-      process val_loc.Location.loc_start (get_sig_args e.exp_type);
-      if not val_loc.Location.loc_ghost then
-        last_loc := val_loc.Location.loc_start
+  | Texp_ident (_, _, {val_loc = {Location.loc_start=loc; _}; _}) ->
+      process loc (get_sig_args e.exp_type)
+  | Texp_apply (exp, _) ->
+      begin match exp.exp_desc with
+      | Texp_ident (_, _, {val_loc = {Location.loc_start = loc; loc_ghost}; _})
+      | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost}; _}) ->
+        process loc (get_sig_args e.exp_type);
+        if not loc_ghost then
+          last_loc := loc
+      | _ -> ()
+      end
   | Texp_let (* Partial application as argument may cut in two parts:
               * let _ = partial in implicit opt_args elimination *)
       ( _,
-        [{vb_expr = {exp_desc = Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc; _}); _}, _); _}; _}],
-        { exp_desc = Texp_function (_,
+        [{vb_expr =
+            { exp_desc = Texp_apply (
+                {exp_desc = Texp_ident (_, _, {val_loc = {Location.loc_start = loc; _}; _}); _},
+                _);
+              _};
+          _}],
+        { exp_desc = Texp_function (
+            _,
             [{c_lhs = {pat_desc = Tpat_var (_, _); pat_loc = {loc_ghost = true; _}; _};
-              c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}],_);
+              c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}],
+            _);
           exp_loc = {loc_ghost = true; _};_}) ->
-      process val_loc.Location.loc_start args
+      process loc args
   | _ -> ()
 
 
@@ -124,13 +135,19 @@ let node_build loc expr =
               VdNode.update loc (s :: opts, next);
             loop loc exp
         | _ -> () end
-    | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _}, _)
-    | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc2; _}); _}, _)
-      when (!DeadFlag.optn.print || !DeadFlag.opta.print) && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
-        VdNode.merge_locs loc loc2.Location.loc_start
-    | Texp_ident (_, _, {val_loc = loc2; _})
-      when !DeadFlag.optn.print || !DeadFlag.opta.print && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
-        VdNode.merge_locs loc loc2.Location.loc_start
+    | Texp_apply (exp, _) ->
+        begin match exp.exp_desc with
+        | Texp_ident (_, _, {val_loc = {Location.loc_start = loc2; _}; _})
+        | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc2; _}; _})
+          when (!DeadFlag.optn.print || !DeadFlag.opta.print)
+          && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
+            VdNode.merge_locs loc loc2
+        | _ -> ()
+        end
+    | Texp_ident (_, _, {val_loc = {Location.loc_start = loc2; _}; _})
+      when !DeadFlag.optn.print || !DeadFlag.opta.print
+      && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
+        VdNode.merge_locs loc loc2
     | _ -> ()
   in loop loc expr
 

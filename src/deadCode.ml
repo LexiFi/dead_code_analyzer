@@ -60,9 +60,9 @@ let rec treat_exp exp args =
   match exp.exp_desc with
   | Texp_apply (exp, in_args) -> treat_exp exp (in_args @ args)
 
-  | Texp_ident (_, _, {Types.val_loc; _})
-  | Texp_field (_, _, {lbl_loc = val_loc; _}) ->
-      DeadArg.process val_loc.Location.loc_start args;
+  | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; _}; _})
+  | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; _}; _}) ->
+      DeadArg.process loc args;
 
   | Texp_match (_, l1, l2, _) ->
       List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l1;
@@ -84,17 +84,30 @@ let value_binding super self x =
   incr depth;
   let open Asttypes in
   begin match x with
-  | { vb_pat = {pat_desc = Tpat_var (_, {loc = loc1; _}); _};
-      vb_expr = {exp_desc = Texp_ident (_, _, {val_loc = loc2; _}); _};
+  | { vb_pat =
+        { pat_desc = Tpat_var (
+            _,
+            {loc = {Location.loc_start = loc1; loc_ghost = false; _}; _});
+          _};
+      vb_expr =
+        { exp_desc = Texp_ident (
+            _,
+            _,
+            {val_loc = {Location.loc_start = loc2; loc_ghost = false; _}; _});
+          _};
       _
     } ->
-      VdNode.merge_locs loc1.Location.loc_start loc2.Location.loc_start
-  | { vb_pat = {pat_desc = Tpat_var (_, {loc; _}); _};
+      VdNode.merge_locs loc1 loc2
+  | { vb_pat =
+        { pat_desc = Tpat_var (
+            _,
+            {loc = {Location.loc_start = loc; loc_ghost = false; _}; _});
+          _};
       vb_expr = exp;
       _
-    } when not loc.Location.loc_ghost ->
-      DeadArg.node_build loc.Location.loc_start exp;
-      DeadObj.add_var loc.Location.loc_start exp
+    } ->
+      DeadArg.node_build loc exp;
+      DeadObj.add_var loc exp
   | _ -> ()
   end;
 
@@ -143,8 +156,9 @@ let structure_item super self i =
 
 
 let pat super self p =
+  let pat_loc = p.pat_loc.Location.loc_start in
   let u s =
-    let err = (!current_src, p.pat_loc.Location.loc_start, Printf.sprintf "unit pattern %s" s) in
+    let err = (!current_src, pat_loc, Printf.sprintf "unit pattern %s" s) in
     style := err :: !style
   in
   let open Asttypes in
@@ -160,9 +174,9 @@ let pat super self p =
   begin match p.pat_desc with
   | Tpat_record (l, _) ->
       List.iter
-        (fun (_, lab, _) ->
-          if exported DeadFlag.typ lab.lbl_loc.Location.loc_start then
-            DeadType.collect_references lab.lbl_loc.Location.loc_start p.pat_loc.Location.loc_start
+        (fun (_, {Types.lbl_loc = {Location.loc_start = lab_loc; _}; _}, _) ->
+          if exported DeadFlag.typ lab_loc then
+            DeadType.collect_references lab_loc pat_loc
         )
         l
   | Tpat_var (id, _) -> var_name := id.Ident.name
@@ -178,20 +192,21 @@ let expr super self e =
     | _::l -> extra l
   in
   extra e.exp_extra;
+  let exp_loc = e.exp_loc.Location.loc_start in
   let open Ident in
   begin match e.exp_desc with
 
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
       !DeadLexiFi.ttype_of e
 
-  | Texp_ident (_, _, {Types.val_loc = loc; _})
-    when not loc.Location.loc_ghost && exported DeadFlag.exported loc.Location.loc_start ->
-      LocHash.add_set references loc.Location.loc_start e.exp_loc.Location.loc_start
+  | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
+    when exported DeadFlag.exported loc ->
+      LocHash.add_set references loc exp_loc
 
-  | Texp_field (_, _, {lbl_loc = loc; _})
-  | Texp_construct (_, {cstr_loc = loc; _}, _)
-    when not loc.Location.loc_ghost && exported DeadFlag.typ loc.Location.loc_start ->
-      DeadType.collect_references loc.Location.loc_start e.exp_loc.Location.loc_start
+  | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
+  | Texp_construct (_, {cstr_loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _)
+    when exported DeadFlag.typ loc ->
+      DeadType.collect_references loc exp_loc
 
   | Texp_send (e2, Tmeth_name s, _)
   | Texp_send (e2, Tmeth_val {name = s; _}, _) ->
@@ -223,12 +238,12 @@ let expr super self e =
 
   | Texp_let (
         Asttypes.Nonrecursive,
-        [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc; _}; _}],
+        [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc = {loc_start = loc; _}; _}; _}],
         {exp_desc = Texp_ident (Path.Pident id2, _, _); exp_extra = []; _})
     when id1 = id2
          && !DeadFlag.style.DeadFlag.binding
          && check_underscore (Ident.name id1) ->
-      style := (!current_src, pat_loc.Location.loc_start, "let x = ... in x (=> useless binding)") :: !style
+      style := (!current_src, loc, "let x = ... in x (=> useless binding)") :: !style
 
   | _ -> ()
   end;
@@ -356,11 +371,23 @@ let clean references loc =
 
 let eom loc_dep =
   DeadArg.eom();
-  List.iter (fun (loc1, loc2) -> assoc references (loc1.Location.loc_start, loc2.Location.loc_start)) loc_dep;
+  List.iter
+    (fun (loc1, loc2) ->
+      assoc references (loc1.Location.loc_start, loc2.Location.loc_start)
+    )
+    loc_dep;
   List.iter (assoc references) !DeadType.dependencies;
   if Sys.file_exists (!current_src ^ "i") then begin
-    let clean = List.iter (fun (loc1, loc2) -> clean references loc1; clean references loc2) in
-    clean (List.map (fun (loc1, loc2) -> loc1.Location.loc_start, loc2.Location.loc_start) loc_dep);
+    let clean =
+      List.iter
+        (fun (loc1, loc2) ->
+          clean references loc1; clean references loc2
+        )
+    in
+    clean
+      (List.map
+        (fun (loc1, loc2) -> loc1.Location.loc_start, loc2.Location.loc_start)
+        loc_dep);
     clean !DeadType.dependencies;
   end;
   VdNode.eom ();
@@ -389,12 +416,15 @@ let rec load_file fn =
 
       begin match cmt with
       | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
-          let prepare {Types.val_loc = loc1; _} {Types.val_loc = loc2; _} =
-            VdNode.merge_locs ~force:true loc2.Location.loc_start loc1.Location.loc_start
+          let prepare = function
+            | {Types.val_loc = {Location.loc_start = loc1; loc_ghost = false; _}; _},
+              {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false}; _} ->
+                VdNode.merge_locs ~force:true loc2 loc1
+            | _ -> ()
           in
-          List.iter (fun (vd1, vd2) -> prepare vd1 vd2) cmt_value_dependencies;
+          List.iter prepare cmt_value_dependencies;
 
-          ignore(collect_references.Tast_mapper.structure collect_references x);
+          ignore (collect_references.Tast_mapper.structure collect_references x);
 
           let loc_dep =
             if !DeadFlag.exported.DeadFlag.print then
