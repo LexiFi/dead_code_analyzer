@@ -363,8 +363,11 @@ let assoc references (loc1, loc2) =
   if fn1 <> _none && fn2 <> _none then
     if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
       DeadCommon.LocHash.merge_set references loc2 references loc1
-    else if not (is_implem fn1 && has_iface fn1) then
-      DeadCommon.LocHash.merge_set references loc1 references loc2
+    else if not (is_implem fn1 && has_iface fn1) then begin
+      DeadCommon.LocHash.merge_set references loc1 references loc2;
+      if not (is_implem fn2 && has_iface fn2) then
+        DeadCommon.LocHash.add_set references loc1 loc2
+    end
     else
       DeadCommon.LocHash.merge_set references loc2 references loc1
 

@@ -73,7 +73,8 @@ let expr m = match m.mod_desc with
           && (is_obj && !DeadFlag.obj.DeadFlag.print
               || not is_obj && is_type && exported DeadFlag.typ loc
               || not is_obj && not is_type && exported DeadFlag.exported loc) then
-            LocHash.add_set references loc m.mod_loc.Location.loc_start)
+            LocHash.add_set references loc m.mod_loc.Location.loc_start
+        )
         l2
   | _ -> ()
 

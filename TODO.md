@@ -1,8 +1,5 @@
-# Work in Progress
-- finish methods
-- code cleaning
-
 # Waiting
+- options to account references but not decs in some code (file/directory)
 - better doc
 - handle module types better
 - improve optional arguments memory cost
@@ -10,6 +7,7 @@
 - handle branching (for methods and opt args)
 - make check/\*.ml Str independent
 - improve methods (e.g. examples/obj/fun_obj_param.ml)
+- improve performances
 
 
 # Testing
@@ -28,4 +26,4 @@
   It may consume a lot of memory to compute.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 245 unique expected results)
+ratio: **100%** succesful (over 249 unique expected results)
