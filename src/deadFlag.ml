@@ -198,3 +198,6 @@ let exclude, is_excluded =
   let exclude s = Hashtbl.replace tbl (normalize_path s) () in
   let is_excluded s = Hashtbl.mem tbl (normalize_path s) in
   exclude, is_excluded
+
+
+let directories : string list ref = ref []

@@ -1,5 +1,4 @@
 # Waiting
-- options to account references but not decs in some code (file/directory)
 - better doc
 - handle module types better
 - improve optional arguments memory cost

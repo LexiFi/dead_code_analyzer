@@ -577,6 +577,10 @@ let parse () =
   Arg.(parse
     [ "--exclude", String DeadFlag.exclude, "<path>  Exclude given path from research.";
 
+      "--references",
+        String (fun dir -> DeadFlag.directories := dir :: !DeadFlag.directories),
+        "<directory>  Consider given directory to collect references.";
+
       "--underscore", Unit DeadFlag.set_underscore, " Show names starting with an underscore";
 
       "--verbose", Unit DeadFlag.set_verbose, " Verbose mode (ie., show scanned files)";
@@ -643,6 +647,7 @@ let parse () =
 let () =
 try
     parse ();
+    List.iter load_file !DeadFlag.directories;
     Printf.eprintf " [DONE]\n\n%!";
     let open DeadFlag in
     !DeadLexiFi.prepare_report DeadType.decs;
