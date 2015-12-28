@@ -27,7 +27,7 @@ val collect_export :
 
 val collect_references :
   meth: string
-  -> call_site: Location.t
+  -> call_site: Lexing.position
   -> expression
   -> unit
 

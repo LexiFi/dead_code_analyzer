@@ -210,7 +210,7 @@ let expr super self e =
 
   | Texp_send (e2, Tmeth_name s, _)
   | Texp_send (e2, Tmeth_val {name = s; _}, _) ->
-      DeadObj.collect_references ~meth:s ~call_site:e.exp_loc e2
+      DeadObj.collect_references ~meth:s ~call_site:e.exp_loc.Location.loc_start e2
 
 
   | Texp_apply (exp, args) ->
@@ -232,7 +232,12 @@ let expr super self e =
       begin match vb_pat.pat_desc with
       | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
       | _ ->
-          let err = (!current_src, vb_pat.pat_loc.Location.loc_start, "let () = ... in ... (=> use sequence)") in
+          let err =
+            ( !current_src,
+              vb_pat.pat_loc.Location.loc_start,
+              "let () = ... in ... (=> use sequence)"
+            )
+          in
           style := err :: !style
       end
 
@@ -371,11 +376,7 @@ let clean references loc =
 
 let eom loc_dep =
   DeadArg.eom();
-  List.iter
-    (fun (loc1, loc2) ->
-      assoc references (loc1.Location.loc_start, loc2.Location.loc_start)
-    )
-    loc_dep;
+  List.iter (assoc references) loc_dep;
   List.iter (assoc references) !DeadType.dependencies;
   if Sys.file_exists (!current_src ^ "i") then begin
     let clean =
@@ -384,10 +385,7 @@ let eom loc_dep =
           clean references loc1; clean references loc2
         )
     in
-    clean
-      (List.map
-        (fun (loc1, loc2) -> loc1.Location.loc_start, loc2.Location.loc_start)
-        loc_dep);
+    clean loc_dep;
     clean !DeadType.dependencies;
   end;
   VdNode.eom ();
@@ -429,7 +427,9 @@ let rec load_file fn =
           let loc_dep =
             if !DeadFlag.exported.DeadFlag.print then
               List.rev_map
-                (fun (vd1, vd2) -> (vd1.Types.val_loc, vd2.Types.val_loc))
+                (fun (vd1, vd2) ->
+                  (vd1.Types.val_loc.Location.loc_start, vd2.Types.val_loc.Location.loc_start)
+                )
                 cmt_value_dependencies
             else []
           in

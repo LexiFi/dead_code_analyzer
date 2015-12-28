@@ -165,13 +165,15 @@ let eom () =
 
 let collect_export path u stock ~obj ~cltyp loc =
 
+  let pos = loc.Location.loc_start in
+
   begin match List.rev_map (fun id -> id.Ident.name) path with
   | h :: t
-    when !last_class == Lexing.dummy_pos || !last_class <= loc.Location.loc_start || decs != incl ->
+    when !last_class == Lexing.dummy_pos || !last_class <= pos || decs != incl ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
       Hashtbl.add defined short path;
-      add_path path loc.Location.loc_start
+      add_path path pos
   | _ -> ()
   end;
 
@@ -185,7 +187,7 @@ let collect_export path u stock ~obj ~cltyp loc =
     end
   in
 
-  last_class := loc.Location.loc_start;
+  last_class := pos;
 
 
   let save id =
@@ -208,13 +210,13 @@ let collect_references ~meth ~call_site expr =
   let loc = locate expr in
 
   if not (is_ghost loc) then begin
-    hashtbl_add_unique_to_list (meth_ref loc) meth call_site.Location.loc_start;
+    hashtbl_add_unique_to_list (meth_ref loc) meth call_site;
     if loc = !last_class then
-      hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site.Location.loc_start
+      hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site
   end
 
 
-let tstr ({ci_expr; ci_decl={cty_loc=loc; _}; ci_id_name={txt=name; _}; _}, _) =
+let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; _}, _) =
 
   let loc = loc.Location.loc_start in
   last_class := loc;
@@ -253,13 +255,13 @@ let add_var loc expr =
   let kind expr =
     match expr.exp_desc with
     | Texp_object _ -> `Obj
-    | Texp_new (_, _, {cty_loc; _}) -> `New cty_loc
+    | Texp_new (_, _, {cty_loc = {Location.loc_start = cty_loc; _}; _}) -> `New cty_loc
     | _ -> `Ignore
   in
   match repr_exp expr kind with
   | `Obj ->
-    last_class := loc;
-  | `New cty_loc -> add_equal loc cty_loc.Location.loc_start
+      last_class := loc;
+  | `New cty_loc -> add_equal loc cty_loc
   | `Ignore -> ()
 
 
@@ -341,7 +343,11 @@ let arg typ args =
           arg self typ args
       | Tobject _ ->
           let f exp =
-            treat_fields (fun s -> collect_references ~meth:s ~call_site:exp.exp_loc exp) typ
+            treat_fields
+              (fun s ->
+                collect_references ~meth:s ~call_site:exp.exp_loc.Location.loc_start exp
+              )
+              typ
           in
           apply_to_exp f args
       | Tconstr (_, _, _) ->
@@ -349,7 +355,9 @@ let arg typ args =
             let loc = locate exp in
             let collect () =
               List.iter
-                (fun (_, s) -> collect_references ~meth:s ~call_site:exp.exp_loc exp)
+                (fun (_, s) ->
+                  collect_references ~meth:s ~call_site:exp.exp_loc.Location.loc_start exp
+                )
                 (hashtbl_find_list content loc)
             in
             if hashtbl_find_list content loc = [] then
