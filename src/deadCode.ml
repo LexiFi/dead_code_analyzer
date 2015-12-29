@@ -398,7 +398,7 @@ let eom loc_dep =
 
 
 (* Starting point *)
-let rec load_file ?(cmi = true) fn =
+let rec load_file ~cmi fn =
   match kind fn with
   | `Iface src ->
       last_loc := Lexing.dummy_pos;
@@ -640,7 +640,7 @@ let parse () =
 
     ]
     (Printf.eprintf "Scanning files...\n%!";
-    load_file)
+    load_file ~cmi:true)
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
 
 
