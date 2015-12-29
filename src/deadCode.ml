@@ -398,7 +398,7 @@ let eom loc_dep =
 
 
 (* Starting point *)
-let rec load_file fn =
+let rec load_file ?(cmi = true) fn =
   match kind fn with
   | `Iface src ->
       last_loc := Lexing.dummy_pos;
@@ -445,7 +445,7 @@ let rec load_file fn =
       let next = Sys.readdir fn in
       Array.sort compare next;
       Array.iter
-        (fun s -> load_file (fn ^ "/" ^ s))
+        (fun s -> load_file ~cmi (fn ^ "/" ^ s))
         next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 
@@ -647,7 +647,7 @@ let parse () =
 let () =
 try
     parse ();
-    List.iter load_file !DeadFlag.directories;
+    List.iter (load_file ~cmi:false) !DeadFlag.directories;
     Printf.eprintf " [DONE]\n\n%!";
     let open DeadFlag in
     !DeadLexiFi.prepare_report DeadType.decs;
