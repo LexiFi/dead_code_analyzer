@@ -1,6 +1,3 @@
-# In Progress
-- better uses propagation
-
 # Waiting
 - better doc
 - handle module types better
@@ -28,4 +25,4 @@
   It may consume a lot of memory to compute.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **98.828%** succesful (over 256 unique expected results)
+ratio: **100%** succesful (over 253 unique expected results)

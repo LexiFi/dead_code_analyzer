@@ -351,21 +351,27 @@ let read_interface fn src = let open Cmi_format in
 
 
 (* Merge a location's references to another one's *)
-let assoc references (loc1, loc2) =
+let assoc decs (loc1, loc2) =
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
-    ||  try Sys.file_exists (find_abspath fn ^ "i")
-        with Not_found -> false
+    ||  ( unit fn = unit !current_src
+          &&  try Sys.file_exists (find_abspath fn ^ "i")
+              with Not_found -> false
+        )
+  in
+  let is_iface fn loc =
+    Hashtbl.mem decs loc || unit fn <> unit !current_src
+    || not (is_implem fn && has_iface fn)
   in
   if fn1 <> _none && fn2 <> _none then
     if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      DeadCommon.LocHash.merge_set references loc2 references loc1
-    else if not (is_implem fn1 && has_iface fn1) then begin
+      DeadCommon.LocHash.merge_set references loc2 references loc1;
+    if is_iface fn1 loc1 then begin
       DeadCommon.LocHash.merge_set references loc1 references loc2;
-      if not (is_implem fn2 && has_iface fn2) then
+      if is_iface fn2 loc2 then
         DeadCommon.LocHash.add_set references loc1 loc2
     end
     else
@@ -379,8 +385,8 @@ let clean references loc =
 
 let eom loc_dep =
   DeadArg.eom();
-  List.iter (assoc references) loc_dep;
-  List.iter (assoc references) !DeadType.dependencies;
+  List.iter (assoc decs) loc_dep;
+  List.iter (assoc DeadType.decs) !DeadType.dependencies;
   if Sys.file_exists (!current_src ^ "i") then begin
     let clean =
       List.iter

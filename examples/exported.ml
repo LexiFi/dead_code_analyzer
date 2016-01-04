@@ -4,7 +4,7 @@ end
 
 
 module M1 : T = struct
-  let five = 5
+  let five = 5 (* ignored during analysis because M1 does not give explicit sig *)
 end
 
 
