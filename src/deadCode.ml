@@ -366,7 +366,7 @@ let assoc decs (loc1, loc2) =
     Hashtbl.mem decs loc || unit fn <> unit !current_src
     || not (is_implem fn && has_iface fn)
   in
-  if fn1 <> _none && fn2 <> _none then
+  if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
     if (!DeadFlag.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
       DeadCommon.LocHash.merge_set references loc2 references loc1;
     if is_iface fn1 loc1 then begin
@@ -376,6 +376,7 @@ let assoc decs (loc1, loc2) =
     end
     else
       DeadCommon.LocHash.merge_set references loc2 references loc1
+  end
 
 
 let clean references loc =
