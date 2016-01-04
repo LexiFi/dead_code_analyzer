@@ -68,7 +68,7 @@ Running `make man` will produce documentation as man pages in the `man/man3` dir
 
 You are welcome to clone this repository and send us back pull requests.
 
-Read `Contributing.mdr` at the root of this directory for more informations on how to contribute.
+Read `CONTRIBUTING.md` at the root of this directory for more informations on how to contribute.
 
 
 ## Status

@@ -9,7 +9,7 @@ opt:
 lexifi:
 	make -C src lexifi
 
-lexifii-opt:
+lexifi-opt:
 	make -C src lexifi-opt
 
 doc:
