@@ -25,4 +25,4 @@
   It may consume a lot of memory to compute.
 - The `CODING STYLE` section may have both FN and FP (none known).
 
-ratio: **100%** succesful (over 253 unique expected results)
+ratio: **100%** succesful (over 255 unique expected results)
