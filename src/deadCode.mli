@@ -146,6 +146,8 @@ and [?b] in the almost always used subsection.
 
 {b --exclude} <path>  Exclude given path from research.
 
+{b --references} <directory>  Consider given directory to collect references.
+
 {b --underscore}  Show names starting with an underscore
 
 {b --verbose}  Verbose mode (ie., show scanned files)

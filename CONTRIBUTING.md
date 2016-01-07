@@ -19,8 +19,9 @@ Please verify that your modifications are valid:
 - Update the expected results found in the `check` directory according to your changes
 and common sense (i.e. do not expect a result that is obviously wrong);
 - Run `make check` and verify nothing is broken;
-- Optionally (not regularly updated): compare your results to the one reported in the `results` directory
-for better verification (some cases may not have their corresponding simplified test written yet).
+- Optionally: compare your old and new results on external projects like OPAM or js_of_ocaml
+and check that no errors have been introduced
+(some cases may not have their corresponding simplified test written yet).
 
 
 ## Misc
