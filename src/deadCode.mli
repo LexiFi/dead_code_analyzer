@@ -7,8 +7,8 @@
 (*                                                                         *)
 (***************************************************************************)
 
-(** Dead code analyzing tool. It only reports unused exported values, constructors/record fields
-  and methods by default.
+(** dead_code_analyzer  --  Dead code analyzing tool. It only reports unused exported values,
+  constructors/record fields and methods by default.
   Options can enable reporting of optional arguments always/never used as bad style of code.
   In addition to selecting which reports are to be displayed, the limit of authorized
   occurences needed to be reported can be selected (default is 0).
