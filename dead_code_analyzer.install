@@ -1,0 +1,6 @@
+bin: [
+  "build/dead_code_analyzer.byt"
+  "build/dead_code_analyzer.opt"
+]
+
+man: [ "man/man3/dead_code_analyzer.3o" ]

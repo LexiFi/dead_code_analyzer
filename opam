@@ -1,0 +1,14 @@
+opam-version: "1.2"
+name: "dead_code_analyzer"
+version: "0.9"
+maintainer: "afrisch <alain.frisch@lexifi.com>"
+authors: [
+  "afrisch <alain.frisch@lexifi.com>"
+  "cdesouza <corentin.de.souza@lexifi.com>"
+]
+homepage: "https://github.com/LexiFi/dead_code_analyzer"
+bug-reports: "https://github.com/LexiFi/dead_code_analyzer/issues"
+license: "MIT License"
+dev-repo: "https://github.com/LexiFi/dead_code_analyzer.git"
+build: [make "all" "opt"]
+available: [ocaml-version >= "4.03.0"]
