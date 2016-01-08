@@ -654,8 +654,14 @@ let parse () =
 let () =
 try
     parse ();
+
+    let oldstyle = !DeadFlag.style in
+    DeadFlag.update_style "-all";
     List.iter (load_file ~cmi:false) !DeadFlag.directories;
+    DeadFlag.style := oldstyle;
+
     Printf.eprintf " [DONE]\n\n%!";
+
     let open DeadFlag in
     !DeadLexiFi.prepare_report DeadType.decs;
     if !DeadFlag.exported.print                 then  report_unused_exported ();
