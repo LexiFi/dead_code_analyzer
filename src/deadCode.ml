@@ -407,7 +407,7 @@ let eom loc_dep =
 (* Starting point *)
 let rec load_file ~cmi fn =
   match kind fn with
-  | `Iface src ->
+  | `Iface src when cmi ->
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       read_interface fn src
