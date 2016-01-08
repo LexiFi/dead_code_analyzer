@@ -37,14 +37,26 @@ about suspicious code:
 - Currently tested and working on **OCaml 4.03.0+trunk**
 
 
-## Install and Use
+## Install
+
+### OPAM
+
+`opam install dead_code_analyzer`
+
+### Manual
 
 1. Download the sources.
-2. Run `make` to generate the `deadCode.byt` bytecode executable file;
-Run `make opt` to generate the `deadCode.opt` native-code executable file.
+2. Build by either
+  - running `make` to generate the `deadCode.byt` bytecode executable file;
+  - running `make opt` to generate the `deadCode.opt` native-code executable file.
 Both will be produced in the `build` directory.
-3. Execute the analyzer on the desired sources.
 
+
+## Usage
+
+`dead_code_analyzer.<byt|opt> <options> <paths>`
+
+The given paths can be files and directories.
 For more information about the usage, use the *-help* option.
 
 
