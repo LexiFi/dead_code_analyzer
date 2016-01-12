@@ -47,8 +47,8 @@ about suspicious code:
 
 1. Download the sources.
 2. Build by either
-  - running `make` to generate the `deadCode.byt` bytecode executable file;
-  - running `make opt` to generate the `deadCode.opt` native-code executable file.
+  - running `make` to generate the `dead_code_analyzer.byt` bytecode executable file;
+  - running `make opt` to generate the `dead_code_analyzer.opt` native-code executable file.
 Both will be produced in the `build` directory.
 
 

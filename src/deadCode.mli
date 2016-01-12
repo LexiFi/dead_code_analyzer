@@ -137,7 +137,7 @@ and [?b] in the almost always used subsection.
 
 
   {2 Usage}
-  {e ./deadCode.<ext> <options> <directory|file>}
+  {e ./dead_code_analyzer.<ext> <options> <directory|file>}
 
   For more informations use the {e --help} option
 
