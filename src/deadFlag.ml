@@ -1,6 +1,6 @@
 (***************************************************************************)
 (*                                                                         *)
-(**  Copyright (c) 2014-2015 LexiFi SAS. All rights reserved.              *)
+(**  Copyright (c) 2014-2016 LexiFi SAS. All rights reserved.              *)
 (*                                                                         *)
 (*   This source code is licensed under the ISC License                    *)
 (*   found in the LICENSE file at the root of this source tree             *)
@@ -53,7 +53,7 @@ let update_opt opt s =
       let thr = String.trim thr in
       let pct = String.trim pct in
       try
-        opt := {!opt with threshold={!opt.threshold with exceptions = int_of_string thr}};
+        opt := {!opt with threshold = {!opt.threshold with exceptions = int_of_string thr}};
         opt := {!opt with threshold = {!opt.threshold with percentage = float_of_string pct}}
       with Failure _ -> raise (Arg.Bad ("-Ox: wrong arguments: " ^ limits))
     end
@@ -69,8 +69,10 @@ let update_opt opt s =
   | s ->
       opt := {!opt with print = true};
       let s =
-        if String.length s > 6 && String.sub s 0 6 = "calls:" then
+        if String.length s > 6 && String.sub s 0 6 = "calls:" then begin
+          opt := {!opt with call_sites = true};
           String.sub s 6 (String.length s - 6)
+        end
         else s
       in
       threshold s;
