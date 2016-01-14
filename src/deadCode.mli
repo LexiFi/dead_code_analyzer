@@ -137,7 +137,7 @@ and [?b] in the almost always used subsection.
 
 
   {2 Usage}
-  {e ./dead_code_analyzer.<ext> <options> <directory|file>}
+  {e ./dead_code_analyzer.<ext> <options> <path>}
 
   For more informations use the {e --help} option
 
@@ -146,7 +146,7 @@ and [?b] in the almost always used subsection.
 
 {b --exclude} <path>  Exclude given path from research.
 
-{b --references} <directory>  Consider given directory to collect references.
+{b --references} <path>  Consider given path to collect references.
 
 {b --underscore}  Show names starting with an underscore
 
@@ -164,22 +164,17 @@ and [?b] in the almost always used subsection.
 
 {b -A}  See {b --all}
 
-{b -M} <display>  Enable/Disable unused methods warnings.
-<display> can be:
-- all
-- nothing
-- "threshold:<integer>": report elements used up to the given integer
-- "calls:<integer>": like threshold + show call sites
-
 {b -E} <display>  Enable/Disable unused exported values warnings.
-See option {b -C} for the syntax of <display>
-
-{b -Oa} <display>  Enable/Disable optional arguments always used warnings.
 <display> can be:
 - all
 - nothing
 - <threshold>
 - "calls:<threshold>" like <threshold> + show call sites
+
+{b -M} <display>  Enable/Disable unused methods warnings.
+See option {b -E} for the syntax of <display>
+
+{b -Oa} <display>  Enable/Disable optional arguments always used warnings.
 
 <threshold> can be:
 - "both:<integer>,<float>": both the number max of exceptions (given through the integer) and the percent of valid cases (given as a float) must be respected for the element to be reported
@@ -198,7 +193,7 @@ See option {b -Oa} for the syntax of <display>
 - all: bind & opt & seq & unit
 
 {b -T} <display>  Enable/Disable unused constructors/records fields warnings.
-See option {b -C} for the syntax of <display>
+See option {b -E} for the syntax of <display>
 
 {b -help}  Display this list of options
 

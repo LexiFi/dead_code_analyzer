@@ -573,7 +573,7 @@ let parse () =
     DeadFlag.(
     update_style ((if print = "all" then "+" else "-") ^ "all");
     update_basic "-E" DeadFlag.exported print;
-    update_basic "-C" obj print;
+    update_basic "-M" obj print;
     update_basic "-T" typ print;
     update_opt opta print;
     update_opt optn print)
@@ -586,7 +586,7 @@ let parse () =
 
       "--references",
         String (fun dir -> DeadFlag.directories := dir :: !DeadFlag.directories),
-        "<directory>  Consider given directory to collect references.";
+        "<path>  Consider given path to collect references.";
 
       "--underscore", Unit DeadFlag.set_underscore, " Show names starting with an underscore";
 
@@ -602,17 +602,17 @@ let parse () =
       "--all", Unit (update_all "all"), " Enable all warnings";
       "-A", Unit (update_all "all"), " See --all";
 
-      "-M", String (DeadFlag.update_basic "-M" DeadFlag.obj),
-        "<display>  Enable/Disable unused methods warnings.\n    \
+      "-E", String (DeadFlag.update_basic "-E" DeadFlag.exported),
+        "<display>  Enable/Disable unused exported values warnings.\n    \
         <display> can be:\n\
           \tall\n\
           \tnothing\n\
           \t\"threshold:<integer>\": report elements used up to the given integer\n\
           \t\"calls:<integer>\": like threshold + show call sites";
 
-      "-E", String (DeadFlag.update_basic "-E" DeadFlag.exported),
-        "<display>  Enable/Disable unused exported values warnings.\n    \
-        See option -C for the syntax of <display>";
+      "-M", String (DeadFlag.update_basic "-M" DeadFlag.obj),
+        "<display>  Enable/Disable unused methods warnings.\n    \
+        See option -E for the syntax of <display>";
 
       "-Oa", String (DeadFlag.update_opt DeadFlag.opta),
         "<display>  Enable/Disable optional arguments always used warnings.\n    \
@@ -643,12 +643,12 @@ let parse () =
 
       "-T", String (DeadFlag.update_basic "-T" DeadFlag.typ),
         "<display>  Enable/Disable unused constructors/records fields warnings.\n    \
-        See option -C for the syntax of <display>";
+        See option -E for the syntax of <display>";
 
     ]
     (Printf.eprintf "Scanning files...\n%!";
     load_file ~cmi:true)
-    ("Usage: " ^ Sys.argv.(0) ^ " <options> <directory|file>\nOptions are:"))
+    ("Usage: " ^ Sys.argv.(0) ^ " <options> <path>\nOptions are:"))
 
 
 let () =

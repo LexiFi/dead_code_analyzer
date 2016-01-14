@@ -54,7 +54,7 @@ Both will be produced in the `build` directory.
 
 ## Usage
 
-`dead_code_analyzer.<byt|opt> <options> <paths>`
+`dead_code_analyzer.<byt|opt> <options> <path>`
 
 The given paths can be files and directories.
 For more information about the usage, use the *-help* option.
