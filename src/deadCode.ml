@@ -28,6 +28,8 @@ let bad_files = ref []
 
 let var_name = ref ""
 
+let main_files = Hashtbl.create 256
+
 
                 (********   PROCESSING   ********)
 
@@ -332,7 +334,9 @@ let kind fn =
 
 let regabs fn =
   current_src := fn;
-  hashtbl_add_unique_to_list abspath (unit fn) fn
+  hashtbl_add_unique_to_list abspath (unit fn) fn;
+  if !DeadCommon.declarations then
+    hashtbl_add_unique_to_list main_files (unit fn) ()
 
 
 let read_interface fn src = let open Cmi_format in
@@ -469,14 +473,17 @@ let analyze_opt_args () =
   List.iter (fun f -> f ()) !DeadArg.last;
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
+  let dec_loc loc = Hashtbl.mem main_files (unit loc.Lexing.pos_fname) in
 
   let analyze = fun (loc, lab, has_val, call_site) ->
     let slot =
       try Hashtbl.find tbl (loc, lab)
       with Not_found ->
         let r = {with_val = []; without_val = []} in
-        all := (loc, lab, r) :: !all;
-        Hashtbl.add tbl (loc, lab) r;
+        if dec_loc loc then begin
+          all := (loc, lab, r) :: !all;
+          Hashtbl.add tbl (loc, lab) r
+        end;
         r
     in
     if has_val then slot.with_val <- call_site :: slot.with_val
