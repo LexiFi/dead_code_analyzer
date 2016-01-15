@@ -299,7 +299,10 @@ let collect_references =                          (* Tast_mapper *)
 
 (* Checks the nature of the file *)
 let kind fn =
-  if not (DeadFlag.is_excluded fn) then begin
+  if not (Sys.file_exists fn) then begin
+    prerr_endline ("Warning: '" ^fn ^ "' not found");
+    `Ignore
+  end else if not (DeadFlag.is_excluded fn) then begin
     let good_ext base ext =
       let fn = base ^ ext in
       Sys.file_exists fn && not (DeadFlag.is_excluded fn)
@@ -405,9 +408,9 @@ let eom loc_dep =
 
 
 (* Starting point *)
-let rec load_file ~cmi fn =
+let rec load_file fn =
   match kind fn with
-  | `Iface src when cmi ->
+  | `Iface src when !DeadCommon.declarations ->
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       read_interface fn src
@@ -452,7 +455,7 @@ let rec load_file ~cmi fn =
       let next = Sys.readdir fn in
       Array.sort compare next;
       Array.iter
-        (fun s -> load_file ~cmi (fn ^ "/" ^ s))
+        (fun s -> load_file (fn ^ "/" ^ s))
         next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 
@@ -647,17 +650,18 @@ let parse () =
 
     ]
     (Printf.eprintf "Scanning files...\n%!";
-    load_file ~cmi:true)
+    load_file)
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <path>\nOptions are:"))
 
 
 let () =
 try
     parse ();
+    DeadCommon.declarations := false;
 
     let oldstyle = !DeadFlag.style in
     DeadFlag.update_style "-all";
-    List.iter (load_file ~cmi:false) !DeadFlag.directories;
+    List.iter load_file !DeadFlag.directories;
     DeadFlag.style := oldstyle;
 
     Printf.eprintf " [DONE]\n\n%!";

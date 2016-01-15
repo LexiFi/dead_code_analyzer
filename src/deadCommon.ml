@@ -52,6 +52,8 @@ let mods : string list ref = ref []                                             
 
 let depth = ref (-1)
 
+let declarations = ref true
+
 let _none = "_none_"
 let _obj = "*obj*"
 let _include = "*include*"
