@@ -38,7 +38,7 @@ let () =
   DeadLexiFi.sig_value :=
     (fun value ->
       let add strct = match strct.pstr_desc with
-        | Pstr_eval ({pexp_desc=Pexp_constant (Const_string (s, _)); _}, _) ->
+        | Pstr_eval ({pexp_desc=Pexp_constant (PConst_string (s, _)); _}, _) ->
             hashtbl_add_unique_to_list str s value.val_loc.Location.loc_start
         | _ -> ()
       in
