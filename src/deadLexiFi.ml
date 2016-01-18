@@ -63,6 +63,15 @@ let () =
       | _ -> ()
     );
 
+  DeadLexiFi.type_decl :=
+    (fun td ->
+       List.iter
+         (fun (_, strin) ->
+            used := (strin, td.typ_loc.Location.loc_start) :: !used;
+         )
+         (Ast_helper.get_str_props td.typ_type.type_attributes)
+    );
+
 
   DeadLexiFi.tstr_type :=
     (fun typ ctype ->

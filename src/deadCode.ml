@@ -294,9 +294,15 @@ let collect_references =                          (* Tast_mapper *)
     (fun self x ->
      !DeadLexiFi.type_ext x; super.Tast_mapper.typ self x)
   in
+  let type_declaration self x =
+    !DeadLexiFi.type_decl x;
+    super.Tast_mapper.type_declaration self x
+  in
   Tast_mapper.{ super with
                 structure_item; expr; pat; value_binding;
-                module_expr; class_structure; class_field; typ }
+                module_expr; class_structure; class_field; typ;
+                type_declaration
+              }
 
 
 (* Checks the nature of the file *)
@@ -698,4 +704,3 @@ try
   with exn ->
     Location.report_exception Format.err_formatter exn;
     exit 2
-

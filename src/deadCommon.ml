@@ -179,7 +179,7 @@ let opt_args : (Lexing.position * string * bool * Lexing.position) list ref = re
 module VdNode = struct
 
   type t = (string list * Lexing.position option)
- 
+
   let vd_nodes = LocHash.create 256
 
   let parents = LocHash.create 256
@@ -478,6 +478,9 @@ module DeadLexiFi = struct
     ref (fun _ _ -> ())
 
   let type_ext : (Typedtree.core_type -> unit) ref =
+    ref (fun _ -> ())
+
+  let type_decl : (Typedtree.type_declaration -> unit) ref =
     ref (fun _ -> ())
 
   let tstr_type : (Typedtree.type_declaration -> string -> unit) ref =
