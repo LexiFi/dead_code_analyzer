@@ -109,7 +109,7 @@ let () =
           hashtbl_find_list str strin
           |> List.iter
             (fun loc ->
-              if exported DeadFlag.typ loc then
+              if exported DeadFlag.exported loc then
                 LocHash.add_set references loc pos
             )
         )
