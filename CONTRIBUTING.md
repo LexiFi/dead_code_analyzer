@@ -31,7 +31,7 @@ with its documentation.
 
 If you would like to contribute but do not know where to start, you can still check the `TODO.md`
 
-Seperating style-related, code cleaning and similar changes from functional ones would be nice.
+Separating style-related, code cleaning and similar changes from functional ones would be nice.
 Writing new tests (i.e. not something already existing) for existing features would be very nice.
 Having fun would be the best.
 

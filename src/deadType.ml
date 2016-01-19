@@ -1,8 +1,8 @@
 (***************************************************************************)
 (*                                                                         *)
-(**  Copyright (c) 2014-2016 LexiFi SAS. All rights reserved.              *)
+(*   Copyright (c) 2014-2016 LexiFi SAS. All rights reserved.              *)
 (*                                                                         *)
-(*   This source code is licensed under the ISC License                    *)
+(*   This source code is licensed under the MIT License                    *)
 (*   found in the LICENSE file at the root of this source tree             *)
 (*                                                                         *)
 (***************************************************************************)
@@ -33,9 +33,9 @@ let is_unit t = match (Ctype.repr t).desc with
 let nb_args ~keep typ =
   let rec loop n = function
     | Tarrow (_, _, typ, _) when keep = `All -> loop (n + 1) typ.desc
-    | Tarrow (Labelled _, _, typ, _) when keep = `Lbl -> loop (n + 1) typ.desc 
-    | Tarrow (Optional _, _, typ, _) when keep = `Opt -> loop (n + 1) typ.desc 
-    | Tarrow (Nolabel, _, typ, _) when keep = `Reg -> loop (n + 1) typ.desc 
+    | Tarrow (Labelled _, _, typ, _) when keep = `Lbl -> loop (n + 1) typ.desc
+    | Tarrow (Optional _, _, typ, _) when keep = `Opt -> loop (n + 1) typ.desc
+    | Tarrow (Nolabel, _, typ, _) when keep = `Reg -> loop (n + 1) typ.desc
     | Tarrow (_, _, typ, _) -> loop n typ.desc
     | _ -> n
   in
