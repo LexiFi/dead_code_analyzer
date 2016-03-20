@@ -23,7 +23,7 @@ about suspicious code:
  - Class fields never used. (Can be dropped from the signature)
 
  - Optional arguments for which either all call sites or none of them
-   provide a value (other than `None`. (The argument can be made mandatory or dropped.)
+   provide a value (other than `None`). (The argument can be made mandatory or dropped.)
 
  - Other stylistic issues:  patterns matching a value of type `unit`
    which are not `()` (typically, `_` or a variable);  let-binding
