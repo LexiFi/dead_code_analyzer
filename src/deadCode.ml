@@ -24,11 +24,9 @@ open DeadCommon
 
                 (********   ATTRIBUTES   ********)
 
-let bad_files = ref []
+let bad_files = ref []                (* unreadable cmi/cmt files *)
 
-let var_name = ref ""
-
-let main_files = Hashtbl.create 256
+let main_files = Hashtbl.create 256   (* names -> paths *)
 
 
                 (********   PROCESSING   ********)
@@ -181,7 +179,6 @@ let pat super self p =
             DeadType.collect_references lab_loc pat_loc
         )
         l
-  | Tpat_var (id, _) -> var_name := id.Ident.name
   | _ -> ()
   end;
   super.Tast_mapper.pat self p

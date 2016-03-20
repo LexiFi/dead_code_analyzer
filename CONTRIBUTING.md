@@ -8,14 +8,14 @@ You should not:
 - use more than 100 columns. Less than 80 is even better;
 - leave trailing whitespace.
 
-Otherwise, try to keep constitent with surrounding code and avoid super-weird construct
+Otherwise, try to keep constitent with surrounding code and avoid any super-weird construct
 (unless it is really useful, very well documented and maintainable).
 
 
 ## Testing
 
 Please verify that your modifications are valid:
-- Add tests for your work in the `examples` directory.;
+- Add tests for your work in the `examples` directory;
 - Update the expected results found in the `check` directory according to your changes
 and common sense (i.e. do not expect a result that is obviously wrong);
 - Run `make check` and verify nothing is broken;

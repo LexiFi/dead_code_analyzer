@@ -36,7 +36,7 @@
         let x = 0
         let () = ignore x
       ]}
-  will lead to reporting [x] in the almost unused subsection because its number of use <= 1.
+  will lead to reporting [x] in the almost unused subsection because its number of uses <= threshold (1).
 
 
   {2 Unused Constructors/Record Fields}
