@@ -143,7 +143,9 @@ let prloc ?(call_site = false) ?fn (loc : Lexing.position) =
   let col = loc.Lexing.pos_cnum - loc.Lexing.pos_bol in
   begin match fn with
   | Some s ->
-      print_string (Filename.dirname s ^ "/" ^ file)
+      (* print_string (Filename.dirname s ^ "/" ^ file) *)
+      (* s should contain the whole path (thus be sufficient) *)
+      print_string s
   | _ -> match find_abspath file with
     | s -> print_string s
     | exception Not_found ->
