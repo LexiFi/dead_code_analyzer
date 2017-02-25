@@ -140,7 +140,7 @@ let rec treat_fields action typ = match typ.desc with
 let rec repr_exp expr f =
   match expr.exp_desc with
     | Texp_sequence (_, expr)
-    | Texp_function (_, {c_rhs=expr; _}::_, _)
+    | Texp_function { cases = {c_rhs=expr; _}::_ ; _ }
     | Texp_apply (expr, _) -> repr_exp expr f
     | _ -> f expr
 
