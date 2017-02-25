@@ -113,11 +113,10 @@ and check e =
                 _);
               _};
           _}],
-        { exp_desc = Texp_function (
-            _,
+        { exp_desc = Texp_function { cases =
             [{c_lhs = {pat_desc = Tpat_var (_, _); pat_loc = {loc_ghost = true; _}; _};
-              c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}],
-            _);
+              c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}];
+            _ };
           exp_loc = {loc_ghost = true; _};_}) ->
       process loc args
   | _ -> ()
@@ -126,7 +125,8 @@ and check e =
 let node_build loc expr =
   let rec loop loc expr =
     match expr.exp_desc with
-    | Texp_function (lab, [{c_lhs = {pat_type; _}; c_rhs = exp; _}], _) ->
+    | Texp_function { arg_label = lab;
+                      cases = [{c_lhs = {pat_type; _}; c_rhs = exp; _}]; _ } ->
         DeadType.check_style pat_type expr.exp_loc.Location.loc_start;
         begin match lab with
         | Asttypes.Optional s ->
