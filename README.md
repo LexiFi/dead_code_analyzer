@@ -34,7 +34,7 @@ about suspicious code:
 
 ## Requirements
 
-- Currently tested and working on **OCaml 4.03.0+trunk**
+- Currently tested and working on **OCaml 4.05.0+trunk**
 
 
 ## Install
