@@ -31,10 +31,13 @@ let main_files = Hashtbl.create 256   (* names -> paths *)
 
                 (********   PROCESSING   ********)
 
+let is_deprecated value =
+  List.exists (fun (s,_) -> s.Location.txt = "ocaml.deprecated") value.Types.val_attributes
+
 let rec collect_export ?(mod_type = false) path u stock = function
 
   | Sig_value (id, ({Types.val_loc; val_type; _} as value))
-    when not val_loc.Location.loc_ghost && stock == decs ->
+    when not val_loc.Location.loc_ghost && not (is_deprecated value) && stock == decs ->
       if !DeadFlag.exported.DeadFlag.print then export path u stock id val_loc;
       let path = Ident.{id with name = id.name ^ "*"} :: path in
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
