@@ -182,7 +182,7 @@ let exclude, is_excluded =
   let tbl = Hashtbl.create 10 in
   let rec split_path s =
     let open Filename in
-    if s = current_dir_name then [s]
+    if s = current_dir_name || s = dir_sep then [s]
     else (basename s) :: (split_path (dirname s))
   in
   let rec norm_path = function
