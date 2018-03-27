@@ -178,25 +178,27 @@ let internal = ref false
 let set_internal () = internal := true
 
 
-let exclude, is_excluded =
-  let tbl = Hashtbl.create 10 in
+let normalize_path s =
   let rec split_path s =
     let open Filename in
-    if s = current_dir_name then [s]
+    if s = current_dir_name || s = dir_sep then [s]
     else (basename s) :: (split_path (dirname s))
   in
   let rec norm_path = function
     | [] -> []
     | x :: ((y :: _) as yss) when x = y && x = Filename.current_dir_name -> norm_path yss
     | x :: xss ->
-        let yss = List.filter (fun x -> x <> Filename.current_dir_name) xss in
-        x :: yss
+      let yss = List.filter (fun x -> x <> Filename.current_dir_name) xss in
+      x :: yss
   in
   let rec concat_path = function
     | [] -> ""
     | x :: xs -> Filename.concat x (concat_path xs)
   in
-  let normalize_path s = concat_path (norm_path (List.rev (split_path s))) in
+  concat_path (norm_path (List.rev (split_path s)))
+
+let exclude, is_excluded =
+  let tbl = Hashtbl.create 10 in
   let exclude s = Hashtbl.replace tbl (normalize_path s) () in
   let is_excluded s = Hashtbl.mem tbl (normalize_path s) in
   exclude, is_excluded

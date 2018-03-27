@@ -301,6 +301,16 @@ let collect_references =                          (* Tast_mapper *)
                 type_declaration
               }
 
+let starts_with prefix s =
+  let len = String.length prefix in
+  if len > String.length s then false
+  else String.sub s 0 len = prefix
+
+let ends_with suffix s =
+  let len = String.length suffix in
+  let s_len = String.length s in
+  if len > s_len then false
+  else String.sub s (s_len - len) len = suffix
 
 (* Checks the nature of the file *)
 let kind fn =
@@ -308,28 +318,52 @@ let kind fn =
     prerr_endline ("Warning: '" ^fn ^ "' not found");
     `Ignore
   end else if not (DeadFlag.is_excluded fn) then begin
-    let good_ext base ext =
-      let fn = base ^ ext in
-      Sys.file_exists fn && not (DeadFlag.is_excluded fn)
+    (* When searching source files according to *.cmi or *.cmt files, *)
+    (* we should consider dune(formerly known as jbuilder) puts the *)
+    (* cmi/cmt files in a separate folder named ".<name>.objs" or ".<name>.eobjs"  *)
+    let good_exts base exts =
+      let open DeadFlag in
+      let good_ext base ext =
+        let fn = base ^ ext in
+        Sys.file_exists fn && not (is_excluded fn)
+      in
+      let base = normalize_path base in
+      let upper_base =
+        let upper_d, cur_dir =
+          let d = Filename.dirname base in
+          Filename.dirname d, Filename.basename d
+        in
+        if starts_with "." cur_dir
+        && (ends_with ".objs" cur_dir || ends_with ".eobjs" cur_dir) then begin
+          let f = Filename.basename base in
+          Some (Filename.concat upper_d f)
+        end
+        else None
+      in
+      let rec find_source = function
+        | [] -> ""
+        | ext :: tl ->
+          if good_ext base ext then base ^ ext
+          else begin
+            match upper_base with
+            | Some base ->
+              if good_ext base ext then base ^ ext else find_source tl
+            | None ->
+              find_source tl
+          end
+      in
+      find_source exts
     in
     if Filename.check_suffix fn ".cmi" then
       let base = Filename.chop_suffix fn ".cmi" in
-      let good_ext = good_ext base in
-      if      good_ext ".mli"         then  `Iface (base ^ ".mli")
-      else if good_ext ".mfi"         then  `Iface (base ^ ".mfi")
-      else if good_ext ".ml"          then  `Iface (base ^ ".ml")
-      else if good_ext ".mf"          then  `Iface (base ^ ".mf")
-      else if good_ext ".mll"         then  `Iface (base ^ ".mll")
-      else if good_ext ".mfl"         then  `Iface (base ^ ".mfl")
-      else          (* default *)           `Ignore
+      match good_exts base [".mli"; ".mfi"; ".ml"; ".mf"; ".mll"; ".mfl"] with
+      | "" -> `Ignore
+      | src -> `Iface src
     else if Filename.check_suffix fn ".cmt" then
       let base = Filename.chop_suffix fn ".cmt" in
-      let good_ext = good_ext base in
-      if      good_ext ".ml"          then  `Implem (base ^ ".ml")
-      else if good_ext ".mf"          then  `Implem (base ^ ".mf")
-      else if good_ext ".mll"         then  `Implem (base ^ ".mll")
-      else if good_ext ".mfl"         then  `Implem (base ^ ".mfl")
-      else          (* default *)           `Ignore
+      match good_exts base [".ml"; ".mf"; ".mll"; ".mfl"] with
+      | "" -> `Ignore
+      | src -> `Implem src
     else if Sys.is_directory fn       then  `Dir
     else            (* default *)           `Ignore
   end else          (* default *)           `Ignore
