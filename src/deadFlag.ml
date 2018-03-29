@@ -181,7 +181,7 @@ let set_internal () = internal := true
 let normalize_path s =
   let rec split_path s =
     let open Filename in
-    if s = current_dir_name || s = dir_sep then [s]
+    if s = current_dir_name || s = dirname s then [s]
     else (basename s) :: (split_path (dirname s))
   in
   let rec norm_path = function
