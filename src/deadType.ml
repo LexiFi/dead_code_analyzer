@@ -92,8 +92,11 @@ let is_type s =
   in
   if not (String.contains s '.') then false
   else
-    let [@ocaml.warning "-8"] hd::cont::_ = blk s 0 0 [] in
-    String.capitalize_ascii hd = hd || String.lowercase_ascii cont = cont
+    match blk s 0 0 [] with
+    | hd :: cont :: _ ->
+      String.capitalize_ascii hd = hd || String.lowercase_ascii cont = cont
+    | _ ->
+      assert false
 
 
 
