@@ -357,12 +357,16 @@ let kind fn =
     if Filename.check_suffix fn ".cmi" then
       let base = Filename.chop_suffix fn ".cmi" in
       match good_exts base [".mli"; ".mfi"; ".ml"; ".mf"; ".mll"; ".mfl"] with
-      | "" -> `Ignore
+      | "" ->
+        if !DeadFlag.verbose then Printf.eprintf "Ignoring %s (no source?)\n%!" base;
+        `Ignore
       | src -> `Iface src
     else if Filename.check_suffix fn ".cmt" then
       let base = Filename.chop_suffix fn ".cmt" in
       match good_exts base [".ml"; ".mf"; ".mll"; ".mfl"] with
-      | "" -> `Ignore
+      | "" ->
+        if !DeadFlag.verbose then Printf.eprintf "Ignoring %s (no source?)\n%!" base;
+        `Ignore
       | src -> `Implem src
     else if Sys.is_directory fn       then  `Dir
     else            (* default *)           `Ignore
