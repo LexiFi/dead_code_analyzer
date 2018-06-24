@@ -327,7 +327,8 @@ let kind fn =
         let fn = base ^ ext in
         Sys.file_exists fn && not (is_excluded fn)
       in
-      let base = normalize_path base in
+      (* normalize_path would append a slash, use it only on the dirname *)
+      let base = Filename.(concat (normalize_path (dirname base)) (basename base)) in
       let upper_base =
         let upper_d, cur_dir =
           let d = Filename.dirname base in
