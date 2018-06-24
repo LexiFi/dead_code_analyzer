@@ -110,7 +110,7 @@ and check e =
         [{vb_expr =
             { exp_desc = Texp_apply (
                 {exp_desc = Texp_ident (_, _, {val_loc = {Location.loc_start = loc; _}; _}); _},
-                _);
+                _) | Texp_ident(_, _, {val_loc = {Location.loc_start = loc; _}; _});
               _};
           _}],
         { exp_desc = Texp_function { cases =
