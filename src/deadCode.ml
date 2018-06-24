@@ -312,6 +312,16 @@ let ends_with suffix s =
   if len > s_len then false
   else String.sub s (s_len - len) len = suffix
 
+let remove_wrap name =
+  let n = String.length name in
+  let rec loop i =
+    if i < n - 1 then
+      if name.[i] == '_' && name.[i+1] == '_' then
+        String.uncapitalize_ascii (String.sub name (i+2) (n - i - 2))
+      else loop (i+1)
+    else name
+  in loop 0
+
 (* Checks the nature of the file *)
 let kind fn =
   if not (Sys.file_exists fn) then begin
@@ -336,7 +346,7 @@ let kind fn =
         in
         if starts_with "." cur_dir
         && (ends_with ".objs" cur_dir || ends_with ".eobjs" cur_dir) then begin
-          let f = Filename.basename base in
+          let f = remove_wrap (Filename.basename base) in
           Some (Filename.concat upper_d f)
         end
         else None
