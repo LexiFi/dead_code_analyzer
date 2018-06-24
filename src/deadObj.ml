@@ -341,7 +341,7 @@ let arg typ args =
           arg self typ (List.tl args)
       | Tarrow (_, _, typ, _) ->
           arg self typ args
-      | Tobject _ ->
+      | Tobject _ when not self ->
           let f exp =
             treat_fields
               (fun s ->
