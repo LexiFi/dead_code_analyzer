@@ -188,6 +188,8 @@ let normalize_path s =
     | [] -> []
     | x :: ((y :: _) as yss) when x = y && x = Filename.current_dir_name -> norm_path yss
     | x :: xss ->
+      if x = Filename.current_dir_name then norm_path xss (* strip leading ./ *)
+      else
       let yss = List.filter (fun x -> x <> Filename.current_dir_name) xss in
       x :: yss
   in
