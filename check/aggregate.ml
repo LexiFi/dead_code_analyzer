@@ -72,5 +72,8 @@ let () =
   print_endline "~~~~~~~~~~~~~~~~~~~~~~~";
   print_endline "|                     |";
   print_endline "[>  Unified Results  <]";
-  print_res     "|                     |" total err
+  print_res     "|                     |" total err;
+
+  if err > 0 then
+    exit 1
 
