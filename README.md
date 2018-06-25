@@ -2,6 +2,8 @@
 Dead-code analyzer for OCaml
 
 
+[![Build Status](https://travis-ci.com/LexiFi/dead_code_analyzer.svg?branch=master)](https://travis-ci.com/LexiFi/dead_code_analyzer)
+
 ## Overview
 
 The tool assumes that **.mli** files are compiled with **-keep-locs** and **.ml**
