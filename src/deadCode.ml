@@ -36,7 +36,7 @@ let rec collect_export ?(mod_type = false) path u stock = function
   | Sig_value (id, ({Types.val_loc; val_type; _} as value))
     when not val_loc.Location.loc_ghost && stock == decs ->
       if !DeadFlag.exported.DeadFlag.print then export path u stock id val_loc;
-      let path = Ident.{id with name = id.name ^ "*"} :: path in
+      let path = Ident.(with_name id (name id ^ "*")) :: path in
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
 
@@ -207,9 +207,10 @@ let expr super self e =
     when exported DeadFlag.typ loc ->
       DeadType.collect_references loc exp_loc
 
-  | Texp_send (e2, Tmeth_name s, _)
-  | Texp_send (e2, Tmeth_val {name = s; _}, _) ->
+  | Texp_send (e2, Tmeth_name s, _) ->
       DeadObj.collect_references ~meth:s ~call_site:e.exp_loc.Location.loc_start e2
+  | Texp_send (e2, Tmeth_val id, _) ->
+      DeadObj.collect_references ~meth:(name id) ~call_site:e.exp_loc.Location.loc_start e2
 
 
   | Texp_apply (exp, args) ->

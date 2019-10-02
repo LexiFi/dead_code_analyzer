@@ -167,7 +167,7 @@ let collect_export path u stock ~obj ~cltyp loc =
 
   let pos = loc.Location.loc_start in
 
-  begin match List.rev_map (fun id -> id.Ident.name) path with
+  begin match List.rev_map Ident.name path with
   | h :: t
     when !last_class == Lexing.dummy_pos || !last_class <= pos || decs != incl ->
       let short = String.concat "." t in

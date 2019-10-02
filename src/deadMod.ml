@@ -28,27 +28,27 @@ let rec sign ?(isfunc = false) = function
 
 
 let item maker = function
-  | Sig_value ({name; _}, {val_loc = {Location.loc_start= loc; _}; _}) ->
-      (name, loc)::[]
-  | Sig_type ({name=t; _}, {type_kind; _}, _) -> begin match type_kind with
+  | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}) ->
+      (name id, loc)::[]
+  | Sig_type (tid, {type_kind; _}, _) -> begin match type_kind with
     | Type_record (l, _) ->
         List.map
-          (fun {Types.ld_id={name; _}; ld_loc = {Location.loc_start = loc; _}; _} ->
-            (t ^ "." ^ name, loc)
+          (fun {Types.ld_id=id; ld_loc = {Location.loc_start = loc; _}; _} ->
+            (name tid ^ "." ^ name id, loc)
           )
           l
     | Type_variant l ->
         List.map
-          (fun {Types.cd_id={name; _}; cd_loc = {Location.loc_start = loc; _}; _} ->
-            (t ^ "." ^ name, loc)
+          (fun {Types.cd_id=id; cd_loc = {Location.loc_start = loc; _}; _} ->
+            (name tid ^ "." ^ name id, loc)
           )
           l
     | _ -> [] end
-  | Sig_module ({name; _}, {md_type; _}, _)
-  | Sig_modtype ({name; _}, {mtd_type = Some md_type; _}) ->
-      List.map (fun (n, l) -> (name ^ "." ^ n, l)) (maker md_type)
-  | Sig_class ({name; _}, {cty_loc = {Location.loc_start = loc; _}; _}, _) ->
-      (name ^ "#", loc) :: []
+  | Sig_module (id, {md_type; _}, _)
+  | Sig_modtype (id, {mtd_type = Some md_type; _}) ->
+      List.map (fun (n, l) -> (name id ^ "." ^ n, l)) (maker md_type)
+  | Sig_class (id, {cty_loc = {Location.loc_start = loc; _}; _}, _) ->
+      (name id ^ "#", loc) :: []
   | _ -> []
 
 let rec make_content typ =
