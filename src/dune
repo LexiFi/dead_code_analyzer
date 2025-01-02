@@ -1,0 +1,4 @@
+(executable
+ (public_name dead_code_analyzer)
+ (name deadCode)
+ (libraries compiler-libs.common))
