@@ -18,37 +18,36 @@ open DeadCommon
 let defined : string list ref = ref []
 
 
-let rec sign ?(isfunc = false) = function
+let rec sign = function
   | Mty_signature sg -> sg
-  | Mty_functor (_, t, _) when isfunc -> begin match t with
-    | None -> []
-    | Some t -> sign t end
-  | Mty_functor (_, _, t) -> sign t
+  | Mty_functor (_, t) -> sign t
   | _ -> []
 
 
 let item maker = function
-  | Sig_value ({name; _}, {val_loc = {Location.loc_start= loc; _}; _}) ->
-      (name, loc)::[]
-  | Sig_type ({name=t; _}, {type_kind; _}, _) -> begin match type_kind with
+  | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}, _) ->
+      (Ident.name id, loc)::[]
+  | Sig_type (id, {type_kind; _}, _, _) ->
+    let t = Ident.name id in
+    begin match type_kind with
     | Type_record (l, _) ->
         List.map
-          (fun {Types.ld_id={name; _}; ld_loc = {Location.loc_start = loc; _}; _} ->
-            (t ^ "." ^ name, loc)
+          (fun {Types.ld_id; ld_loc = {Location.loc_start = loc; _}; _} ->
+            (t ^ "." ^ (Ident.name ld_id), loc)
           )
           l
-    | Type_variant l ->
+    | Type_variant (l, _) ->
         List.map
-          (fun {Types.cd_id={name; _}; cd_loc = {Location.loc_start = loc; _}; _} ->
-            (t ^ "." ^ name, loc)
+          (fun {Types.cd_id; cd_loc = {Location.loc_start = loc; _}; _} ->
+            (t ^ "." ^ Ident.name cd_id, loc)
           )
           l
     | _ -> [] end
-  | Sig_module ({name; _}, {md_type; _}, _)
-  | Sig_modtype ({name; _}, {mtd_type = Some md_type; _}) ->
-      List.map (fun (n, l) -> (name ^ "." ^ n, l)) (maker md_type)
-  | Sig_class ({name; _}, {cty_loc = {Location.loc_start = loc; _}; _}, _) ->
-      (name ^ "#", loc) :: []
+  | Sig_module (id, _, {md_type; _}, _, _)
+  | Sig_modtype (id, {mtd_type = Some md_type; _}, _) ->
+      List.map (fun (n, l) -> (Ident.name id ^ "." ^ n, l)) (maker md_type)
+  | Sig_class (id, {cty_loc = {Location.loc_start = loc; _}; _}, _, _) ->
+      (Ident.name id ^ "#", loc) :: []
   | _ -> []
 
 let rec make_content typ =
@@ -57,7 +56,7 @@ let rec make_content typ =
 
 
 let rec make_arg typ =
-  List.map (item make_arg) (sign ~isfunc:true typ)
+  List.map (item make_arg) (sign typ)
   |> List.flatten
 
 
