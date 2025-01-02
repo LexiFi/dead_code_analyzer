@@ -38,12 +38,12 @@ let () =
   DeadLexiFi.sig_value :=
     (fun value ->
       let add strct = match strct.pstr_desc with
-        | Pstr_eval ({pexp_desc=Pexp_constant (PConst_string (s, _)); _}, _) ->
-            hashtbl_add_unique_to_list str s value.val_loc.Location.loc_start
+        | Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _) ->
+            hashtbl_add_unique_to_list str s value.val_loc.loc_start
         | _ -> ()
       in
       let add = function
-        | ({Asttypes.txt="mlfi.value_approx"; _}, PStr structure) ->
+        | {attr_name = {txt = "mlfi.value_approx"; _}; attr_payload = PStr structure; _} ->
             List.iter add structure
         | _ -> ()
       in
@@ -53,23 +53,21 @@ let () =
 
   DeadLexiFi.type_ext :=
     (fun ct ->
-      match ct.ctyp_desc with
-      | Ttyp_props (props, _) ->
-          List.iter
-            (fun (_, strin) ->
-              used := (strin, ct.ctyp_loc.Location.loc_start) :: !used;
-            )
-            props
-      | _ -> ()
+      (* TO CHECK *)
+      List.iter
+        (fun {attr_name = {txt; _}; _} ->
+          used := (txt, ct.ctyp_loc.loc_start) :: !used;
+        )
+        ct.ctyp_attributes
     );
 
   DeadLexiFi.type_decl :=
     (fun td ->
        List.iter
-         (fun (_, strin) ->
-            used := (strin, td.typ_loc.Location.loc_start) :: !used;
+         (fun {attr_name = {txt; _}; _} ->
+            used := (txt, td.typ_loc.loc_start) :: !used;
          )
-         (Ast_helper.get_str_props td.typ_type.type_attributes)
+         td.typ_type.type_attributes
     );
 
 
@@ -124,7 +122,7 @@ let () =
         )
         !used;
       let rec process (p, typ, call_site) =
-        match typ.desc with
+        match get_desc typ with
         | Tarrow (_, t, _, _) | Tlink t -> process (p, t, call_site)
         | Ttuple ts -> List.iter (fun t -> process (p, t, call_site)) ts
         | Tconstr (path, ts, _) ->
