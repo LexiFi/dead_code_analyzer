@@ -83,7 +83,7 @@ and check e =
   (* Optional arguments used to match a signature are considered used *)
   let get_sig_args typ =
     let rec loop args typ =
-      match typ.desc with
+      match get_desc typ with
       | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
           loop ((arg, Some {e with exp_desc = Texp_constant (Asttypes.Const_int 0)})::args) t
       | Tarrow (_, _, t, _)
@@ -97,8 +97,8 @@ and check e =
       process loc (get_sig_args e.exp_type)
   | Texp_apply (exp, _) ->
       begin match exp.exp_desc with
-      | Texp_ident (_, _, {val_loc = {Location.loc_start = loc; loc_ghost}; _})
-      | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost}; _}) ->
+      | Texp_ident (_, _, {val_loc = {Location.loc_start = loc; loc_ghost; _}; _})
+      | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost; _}; _}) ->
         process loc (get_sig_args e.exp_type);
         if not loc_ghost then
           last_loc := loc
@@ -113,10 +113,10 @@ and check e =
                 _) | Texp_ident(_, _, {val_loc = {Location.loc_start = loc; _}; _});
               _};
           _}],
-        { exp_desc = Texp_function { cases =
-            [{c_lhs = {pat_desc = Tpat_var (_, _); pat_loc = {loc_ghost = true; _}; _};
+        { exp_desc = Texp_function (_, Tfunction_cases { cases =
+            [{c_lhs = {pat_desc = Tpat_var _; pat_loc = {loc_ghost = true; _}; _};
               c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}];
-            _ };
+            _ });
           exp_loc = {loc_ghost = true; _};_}) ->
       process loc args
   | _ -> ()
@@ -125,16 +125,22 @@ and check e =
 let node_build loc expr =
   let rec loop loc expr =
     match expr.exp_desc with
-    | Texp_function { arg_label = lab;
-                      cases = [{c_lhs = {pat_type; _}; c_rhs = exp; _}]; _ } ->
-        DeadType.check_style pat_type expr.exp_loc.Location.loc_start;
-        begin match lab with
-        | Asttypes.Optional s ->
-            if !DeadFlag.optn.print || !DeadFlag.opta.print then
+    | Texp_function (fp, body) ->
+      List.iter
+        (function
+        | {fp_arg_label = Asttypes.Optional s; _} when !DeadFlag.optn.print || !DeadFlag.opta.print ->
               let opts, next = VdNode.get loc in
-              VdNode.update loc (s :: opts, next);
-            loop loc exp
-        | _ -> () end
+              VdNode.update loc (s :: opts, next)
+        | _ -> ()
+        )
+      fp;
+      begin match body with
+      | Tfunction_body exp -> loop loc exp
+      | Tfunction_cases {cases = [{c_lhs = {pat_type; _}; c_rhs = exp; _}]; _} ->
+        DeadType.check_style pat_type expr.exp_loc.Location.loc_start;
+        loop loc exp
+      | _ -> ()
+      end
     | Texp_apply (exp, _) ->
         begin match exp.exp_desc with
         | Texp_ident (_, _, {val_loc = {Location.loc_start = loc2; _}; _})
