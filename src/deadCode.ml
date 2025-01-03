@@ -33,21 +33,21 @@ let main_files = Hashtbl.create 256   (* names -> paths *)
 
 let rec collect_export ?(mod_type = false) path u stock = function
 
-  | Sig_value (id, ({Types.val_loc; val_type; _} as value))
+  | Sig_value (id, ({Types.val_loc; val_type; _} as value), _)
     when not val_loc.Location.loc_ghost && stock == decs ->
       if !DeadFlag.exported.DeadFlag.print then export path u stock id val_loc;
-      let path = Ident.{id with name = id.name ^ "*"} :: path in
+      let path = Ident.create_persistent (Ident.name id ^ "*") :: path in
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
 
-  | Sig_type (id, t, _) when stock == decs ->
+  | Sig_type (id, t, _, _) when stock == decs ->
       DeadType.collect_export (id :: path) u stock t
 
-  | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _) ->
+  | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _, _) ->
       DeadObj.collect_export (id :: path) u stock ~cltyp:t loc
 
-  | (Sig_module (id, {Types.md_type = t; _}, _)
-  | Sig_modtype (id, {Types.mtd_type = Some t; _})) as s ->
+  | (Sig_module (id, _, {Types.md_type = t; _}, _, _)
+  | Sig_modtype (id, {Types.mtd_type = Some t; _}, _)) as s ->
       let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
       if collect then
         DeadMod.sign t
@@ -62,11 +62,10 @@ let rec treat_exp exp args =
 
   | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; _}; _})
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; _}; _}) ->
-      DeadArg.process loc args;
+      DeadArg.process loc args
 
-  | Texp_match (_, l1, l2, _) ->
-      List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l1;
-      List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l2
+  | Texp_match (_, l, _) ->
+      List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
 
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
@@ -87,7 +86,7 @@ let value_binding super self x =
   | { vb_pat =
         { pat_desc = Tpat_var (
             _,
-            {loc = {Location.loc_start = loc1; loc_ghost = false; _}; _});
+            {loc = {Location.loc_start = loc1; loc_ghost = false; _}; _}, _);
           _};
       vb_expr =
         { exp_desc = Texp_ident (
@@ -101,7 +100,7 @@ let value_binding super self x =
   | { vb_pat =
         { pat_desc = Tpat_var (
             _,
-            {loc = {Location.loc_start = loc; loc_ghost = false; _}; _});
+            {loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _);
           _};
       vb_expr = exp;
       _
@@ -123,7 +122,7 @@ let structure_item super self i =
   begin match i.str_desc with
   | Tstr_type  (_, l) when !DeadFlag.typ.DeadFlag.print ->
       List.iter DeadType.tstr l
-  | Tstr_module  {mb_name = {txt; _}; _} ->
+  | Tstr_module  {mb_name = {txt = Some txt; _}; _} ->
       mods := txt :: !mods;
       DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined
   | Tstr_class l when !DeadFlag.obj.DeadFlag.print -> List.iter DeadObj.tstr l
@@ -131,7 +130,7 @@ let structure_item super self i =
       let collect_include signature =
         let prev_last_loc = !last_loc in
         List.iter
-          (collect_export ~mod_type:true [Ident.create (unit !current_src)] _include incl)
+          (collect_export ~mod_type:true [Ident.create_persistent (unit !current_src)] _include incl)
           signature;
         last_loc := prev_last_loc;
       in
@@ -140,8 +139,9 @@ let structure_item super self i =
         | Tmod_ident (_, _) -> collect_include (DeadMod.sign mod_expr.mod_type)
         | Tmod_structure structure -> collect_include structure.str_type
         | Tmod_unpack (_, mod_type) -> collect_include (DeadMod.sign mod_type)
-        | Tmod_functor (_, _, _, mod_expr)
+        | Tmod_functor (_, mod_expr)
         | Tmod_apply (_, mod_expr, _)
+        | Tmod_apply_unit mod_expr
         | Tmod_constraint (mod_expr, _, _, _) -> includ mod_expr
       in
       includ i.incl_mod
@@ -155,7 +155,8 @@ let structure_item super self i =
   r
 
 
-let pat super self p =
+let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -> k general_pattern =
+ fun super self p ->
   let pat_loc = p.pat_loc.Location.loc_start in
   let u s =
     let err = (!current_src, pat_loc, Printf.sprintf "unit pattern %s" s) in
@@ -165,10 +166,10 @@ let pat super self p =
   if DeadType.is_unit p.pat_type && !DeadFlag.style.DeadFlag.unit_pat then begin
     match p.pat_desc with
       | Tpat_construct _ -> ()
-      | Tpat_var (_, {txt = "eta"; loc = _})
+      | Tpat_var (_, {txt = "eta"; loc = _}, _)
         when p.pat_loc = Location.none -> ()
-      | Tpat_var (_, {txt; _})-> if check_underscore txt then u txt
-      | Tpat_any -> if not !DeadFlag.underscore then u "_"
+      | Tpat_var (_, {txt; _}, _) when check_underscore txt -> u txt
+      | Tpat_any when not !DeadFlag.underscore -> u "_"
       | _ -> u ""
   end;
   begin match p.pat_desc with
@@ -192,7 +193,6 @@ let expr super self e =
   in
   extra e.exp_extra;
   let exp_loc = e.exp_loc.Location.loc_start in
-  let open Ident in
   begin match e.exp_desc with
 
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
@@ -207,9 +207,10 @@ let expr super self e =
     when exported DeadFlag.typ loc ->
       DeadType.collect_references loc exp_loc
 
-  | Texp_send (e2, Tmeth_name s, _)
-  | Texp_send (e2, Tmeth_val {name = s; _}, _) ->
-      DeadObj.collect_references ~meth:s ~call_site:e.exp_loc.Location.loc_start e2
+  | Texp_send (e2, Tmeth_name meth) ->
+    DeadObj.collect_references ~meth ~call_site:e.exp_loc.Location.loc_start e2
+  | Texp_send (e2, Tmeth_val id) ->
+    DeadObj.collect_references ~meth:(Ident.name id) ~call_site:e.exp_loc.Location.loc_start e2
 
 
   | Texp_apply (exp, args) ->
@@ -229,7 +230,7 @@ let expr super self e =
   | Texp_let (_, [{vb_pat; _}], _)
     when DeadType.is_unit vb_pat.pat_type && !DeadFlag.style.DeadFlag.seq ->
       begin match vb_pat.pat_desc with
-      | Tpat_var (id, _) when not (check_underscore (Ident.name id)) -> ()
+      | Tpat_var (id, _, _) when not (check_underscore (Ident.name id)) -> ()
       | _ ->
           let err =
             ( !current_src,
@@ -242,7 +243,7 @@ let expr super self e =
 
   | Texp_let (
         Asttypes.Nonrecursive,
-        [{vb_pat = {pat_desc = Tpat_var (id1, _); pat_loc = {loc_start = loc; _}; _}; _}],
+        [{vb_pat = {pat_desc = Tpat_var (id1, _, _); pat_loc = {loc_start = loc; _}; _}; _}],
         {exp_desc = Texp_ident (Path.Pident id2, _, _); exp_extra = []; _})
     when id1 = id2
          && !DeadFlag.style.DeadFlag.binding
@@ -269,7 +270,9 @@ let collect_references =                          (* Tast_mapper *)
   in
 
   let expr = wrap (expr super) (fun x -> x.exp_loc) in
-  let pat = wrap (pat super) (fun x -> x.pat_loc) in
+  let pat: 'k. Tast_mapper.mapper -> 'k general_pattern -> 'k general_pattern =
+    fun m p -> wrap (pat super) (fun x -> x.pat_loc) m p
+  in
   let structure_item = wrap (structure_item super) (fun x -> x.str_loc) in
   let value_binding = wrap (value_binding super) (fun x -> x.vb_expr.exp_loc) in
   let module_expr =
@@ -400,7 +403,7 @@ let read_interface fn src = let open Cmi_format in
        || !DeadFlag.typ.DeadFlag.print
     then
       let f =
-        collect_export [Ident.create (String.capitalize_ascii u)] u decs
+        collect_export [Ident.create_persistent (String.capitalize_ascii u)] u decs
       in
       List.iter f (read_cmi fn).cmi_sign;
       last_loc := Lexing.dummy_pos
@@ -485,7 +488,7 @@ let rec load_file fn =
       | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
           let prepare = function
             | {Types.val_loc = {Location.loc_start = loc1; loc_ghost = false; _}; _},
-              {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false}; _} ->
+              {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false; _}; _} ->
                 VdNode.merge_locs ~force:true loc2 loc1
             | _ -> ()
           in
