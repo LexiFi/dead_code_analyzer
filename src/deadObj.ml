@@ -126,12 +126,12 @@ let rec sign = function
   | Cty_constr (_, _, t) -> sign t
 
 
-let rec treat_fields action typ = match typ.desc with
+let rec treat_fields action typ = match get_desc typ with
   | Tobject (t, _)
   | Tarrow (_, _, t, _)
   | Tlink t -> treat_fields action t
   | Tfield (s, k, _, t) ->
-      if Btype.field_kind_repr k = Fpresent && s.[0] > 'Z' then
+      if field_kind_repr k <> Fabsent && s.[0] > 'Z' then
         action s;
       treat_fields action t
   | _ -> ()
@@ -140,7 +140,7 @@ let rec treat_fields action typ = match typ.desc with
 let rec repr_exp expr f =
   match expr.exp_desc with
     | Texp_sequence (_, expr)
-    | Texp_function { cases = {c_rhs=expr; _}::_ ; _ }
+    | Texp_function (_, Tfunction_cases { cases = {c_rhs=expr; _}::_ ; _ })
     | Texp_apply (expr, _) -> repr_exp expr f
     | _ -> f expr
 
@@ -167,7 +167,7 @@ let collect_export path u stock ~obj ~cltyp loc =
 
   let pos = loc.Location.loc_start in
 
-  begin match List.rev_map (fun id -> id.Ident.name) path with
+  begin match List.rev_map (fun id -> Ident.name id) path with
   | h :: t
     when !last_class == Lexing.dummy_pos || !last_class <= pos || decs != incl ->
       let short = String.concat "." t in
@@ -192,7 +192,7 @@ let collect_export path u stock ~obj ~cltyp loc =
 
   let save id =
     if not (Sys.file_exists (Filename.chop_extension !current_src ^ ".csml")) then
-      export ~sep:"#" path u stock (Ident.create id) loc;
+      export ~sep:"#" path u stock (Ident.create_persistent id) loc;
   in
 
   let typ = match cltyp with
@@ -268,12 +268,12 @@ let add_var loc expr =
 let class_structure cl_struct =
   let rec add_aliases pat =
     begin match pat.pat_desc with
-    | Tpat_alias (_, _, _)
-    | Tpat_var (_, _) when not pat.pat_loc.Location.loc_ghost ->
+    | Tpat_alias _
+    | Tpat_var _ when not pat.pat_loc.Location.loc_ghost ->
         add_equal pat.pat_loc.Location.loc_start !last_class
     | _ -> () end;
     match pat.pat_desc with
-    | Tpat_alias (pat, _, _) -> add_aliases pat
+    | Tpat_alias (pat, _, _, _) -> add_aliases pat
     | _ -> ()
   in
   add_aliases cl_struct.cstr_self
@@ -290,7 +290,7 @@ let class_field f =
     | Tcl_apply (cl_exp, _)
     | Tcl_let (_, _, _, cl_exp)
     | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp
-    | Tcl_structure _ -> _none
+    | Tcl_structure _ | Tcl_open _ -> _none
   in
 
   let update_overr b s =
@@ -334,7 +334,7 @@ let arg typ args =
     | _ -> ()
   in
   let rec arg self typ args =
-    if args <> [] then match typ.desc with
+    if args <> [] then match get_desc typ with
       | Tlink t -> arg self t args
       | Tarrow (_, t, typ, _) when not self ->
           arg self t [(List.hd args)];
