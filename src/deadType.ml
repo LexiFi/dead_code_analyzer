@@ -25,27 +25,27 @@ let dependencies = ref []   (* like the cmt value_dependencies but for types *)
 
                 (********   HELPERS   ********)
 
-let is_unit t = match (Ctype.repr t).desc with
+let is_unit t = match get_desc t with
   | Tconstr (p, [], _) -> Path.same p Predef.path_unit
   | _ -> false
 
 
 let nb_args ~keep typ =
   let rec loop n = function
-    | Tarrow (_, _, typ, _) when keep = `All -> loop (n + 1) typ.desc
-    | Tarrow (Labelled _, _, typ, _) when keep = `Lbl -> loop (n + 1) typ.desc
-    | Tarrow (Optional _, _, typ, _) when keep = `Opt -> loop (n + 1) typ.desc
-    | Tarrow (Nolabel, _, typ, _) when keep = `Reg -> loop (n + 1) typ.desc
-    | Tarrow (_, _, typ, _) -> loop n typ.desc
+    | Tarrow (_, _, typ, _) when keep = `All -> loop (n + 1) (get_desc typ)
+    | Tarrow (Labelled _, _, typ, _) when keep = `Lbl -> loop (n + 1) (get_desc typ)
+    | Tarrow (Optional _, _, typ, _) when keep = `Opt -> loop (n + 1) (get_desc typ)
+    | Tarrow (Nolabel, _, typ, _) when keep = `Reg -> loop (n + 1) (get_desc typ)
+    | Tarrow (_, _, typ, _) -> loop n (get_desc typ)
     | _ -> n
   in
-  loop 0 typ.desc
+  loop 0 (get_desc typ)
 
 
-let rec _TO_STRING_ typ = begin [@warning "-11"] match typ.desc with
+let rec _TO_STRING_ typ = begin [@warning "-11"] match get_desc typ with
   | Tvar i -> begin match i with Some id -> id | None -> "'a" end
   | Tarrow (_, t1, t2, _) ->
-      begin match t1.desc with
+      begin match get_desc t1 with
       | Tarrow _ -> "(" ^ _TO_STRING_ t1 ^ ")"
       | _ -> _TO_STRING_ t1 end
       ^ " -> " ^ _TO_STRING_ t2
@@ -56,16 +56,16 @@ let rec _TO_STRING_ typ = begin [@warning "-11"] match typ.desc with
   | Tconstr (path, l, _) -> make_name path l
   | Tobject (self, _) -> "< " ^ _TO_STRING_ self ^ " >"
   | Tfield (s, k, _, t1) ->
-      if Btype.field_kind_repr k = Fpresent then
+      if field_kind_repr k <> Fabsent then
         s
-        ^ begin match t1.desc with
+        ^ begin match get_desc t1 with
           | Tfield _ -> "; " ^ _TO_STRING_ t1
           | _ -> "" end
       else _TO_STRING_ t1
   | Tnil -> "Tnil"
   | Tlink t -> _TO_STRING_ t
   | Tsubst _ -> "Tsubst _"
-  | Tvariant {row_more; _} -> _TO_STRING_ row_more
+  | Tvariant r -> _TO_STRING_ (row_more r)
   | Tunivar _ -> "Tunivar _"
   | Tpoly (t, _) -> _TO_STRING_ t
   | Tpackage _ -> "Tpackage _"
@@ -112,7 +112,7 @@ let collect_export path u stock t =
   let save id loc =
     if t.type_manifest = None then
       export path u stock id loc;
-    let path = String.concat "." @@ List.rev_map (fun id -> id.Ident.name) (id::path) in
+    let path = String.concat "." @@ List.rev_map (fun id -> Ident.name id) (id::path) in
     Hashtbl.replace fields path loc.Location.loc_start
   in
 
@@ -124,7 +124,7 @@ let collect_export path u stock t =
             !DeadLexiFi.export_type ld_loc.Location.loc_start (_TO_STRING_ ld_type)
           )
           l
-    | Type_variant l ->
+    | Type_variant (l, _) ->
         List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
     | _ -> ()
 
@@ -136,7 +136,7 @@ let collect_references loc exp_loc =
 (* Look for bad style typing *)
 let rec check_style t loc =
   if !DeadFlag.style.DeadFlag.opt_arg then
-    match t.desc with
+    match get_desc t with
       | Tlink t -> check_style t loc
       | Tarrow (lab, _, t, _) -> begin
           match lab with
