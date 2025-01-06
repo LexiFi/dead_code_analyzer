@@ -32,20 +32,5 @@ lexifi-opt:$(SRCFST) deadLexiFi.ml $(SRCSND)
 	cp -rf . ../build
 	make clean
 
-debug: $(SRCFST) $(SRCSND)
-	$(OCAMLC) -g -o dead_code_analyzer.byt$(EXE) $(LIBS) $(SRCFST) $(SRCSND)
-	cp -rf . ../build
-	make clean
-
-prof: $(SRCFST) $(SRCSND)
-	ocamlcp -P a $(COMPFLAGS) -o dead_code_analyzer.byt$(EXE) $(LIBS) $(SRCFST) $(SRCSND)
-	cp -rf . ../build
-	make clean
-
-prof-opt: $(SRCFST) $(SRCSND)
-	ocamloptp -P a -p $(COMPFLAGS) -o dead_code_analyzer.opt$(EXE) $(LIBS:.cma=.cmxa) $(SRCFST) $(SRCSND)
-	cp -rf . ../build
-	make clean
-
 clean:
 	rm -f *~ *.cm* *.a *.lib *.o *.obj dead_code_analyzer.byt$(EXE) dead_code_analyzer.opt$(EXE)
