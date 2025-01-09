@@ -1,8 +1,0 @@
-(library
-(name examples)
-(flags :standard -w -A -bin-annot -keep-locs))
-
-(rule
- (alias run)
- (deps (universe))
- (action (run ../src/deadCode.exe %{env:DEADFLAGS=} .)))
