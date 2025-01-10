@@ -1,5 +1,8 @@
 .PHONY: clean examples check
 
+all:
+	dune build
+
 check:
 	make -C check
 
@@ -9,4 +12,3 @@ examples:
 clean:
 	make -C examples clean
 	make -C check clean
-	rm -rf build
