@@ -10,5 +10,6 @@ examples:
 	make -C examples
 
 clean:
+	dune clean
 	make -C examples clean
 	make -C check clean
