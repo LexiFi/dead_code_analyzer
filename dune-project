@@ -18,6 +18,6 @@
  (synopsis "Dead code analyzer for OCaml")
  (license MIT)
  (depends
-  (ocaml (>= 5))
-  (compiler-libs.common (>= 1.0.7)))
+  (ocaml (and (>= 5) (< 5.3)))
+ )
 )
