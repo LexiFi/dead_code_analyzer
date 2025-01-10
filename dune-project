@@ -1,5 +1,7 @@
 (lang dune 3.16)
 
+(name dead_code_analyzer)
+
 (generate_opam_files true)
 
 (version 0.9)
