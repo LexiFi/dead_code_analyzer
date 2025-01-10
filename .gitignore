@@ -16,7 +16,4 @@
 *.o
 *.opt
 *.out
-*.swo
-*.swp
-build
 _build
