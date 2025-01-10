@@ -9,7 +9,7 @@ SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
 
 all: build
 	dune build ..
-	../_build/default/src/deadCode.exe $(DEADFLAGS) .
+	../_build/install/default/bin/dead_code_analyzer $(DEADFLAGS) .
 
 build:
 	$(OCAMLC) -c $(SRC)
