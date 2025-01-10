@@ -1,4 +1,3 @@
-include $(shell ocamlc -where)/Makefile.config
 
 LIBS=str.cma
 COMPFLAGS=-w +A-4-9-40-42 -bin-annot -keep-locs
