@@ -1,1 +1,1 @@
-./examples/let-test.ml:3: g
+./examples/let_test.ml:3: g

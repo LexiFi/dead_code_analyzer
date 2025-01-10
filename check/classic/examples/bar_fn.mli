@@ -1,1 +1,1 @@
-./examples/bar-fn.ml:3: h
+./examples/bar_fn.ml:3: h

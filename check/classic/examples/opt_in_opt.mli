@@ -1,1 +1,1 @@
-./examples/opt-in-opt.ml:7: x
+./examples/opt-in_opt.ml:7: x

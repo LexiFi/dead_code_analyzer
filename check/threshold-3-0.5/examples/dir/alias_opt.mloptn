@@ -1,3 +1,3 @@
-./examples/dir/alias-opt.ml:2: ?b
-./examples/dir/alias-opt.ml:11: ?a
-./examples/dir/alias-opt.ml:11: ?b
+./examples/dir/alias_opt.ml:2: ?b
+./examples/dir/alias_opt.ml:11: ?a
+./examples/dir/alias_opt.ml:11: ?b

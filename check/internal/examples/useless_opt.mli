@@ -1,1 +1,1 @@
-./examples/useless-opt.ml:3: x
+./examples/useless_opt.ml:3: x
