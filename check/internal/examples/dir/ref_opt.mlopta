@@ -1,2 +1,2 @@
-./examples/dir/ref-opt.ml:1: ?a
-./examples/dir/ref-opt.ml:1: ?b
+./examples/dir/ref_opt.ml:1: ?a
+./examples/dir/ref_opt.ml:1: ?b

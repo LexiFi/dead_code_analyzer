@@ -1,1 +1,1 @@
-./examples/dir/match-opt.ml:8: l
+./examples/dir/match_opt.ml:8: l
