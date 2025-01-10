@@ -18,19 +18,19 @@ opt:
 	make EXT=opt
 
 internal: prepare check.$(EXT)$(EXE)
-	../_build/default/src/deadCode.exe -A --internal ../examples > $(TARGET)
+	../_build/install/default/bin/dead_code_analyzer -A --internal ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./internal $(TARGET)
 
 classic: prepare check.$(EXT)$(EXE)
-	../_build/default/src/deadCode.exe -A ../examples > $(TARGET)
+	../_build/install/default/bin/dead_code_analyzer -A ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./classic $(TARGET)
 
 threshold-1: prepare check.$(EXT)$(EXE)
-	../_build/default/src/deadCode.exe -A --internal -E threshold:1 -M threshold:1 -T threshold:1 ../examples > $(TARGET)
+	../_build/install/default/bin/dead_code_analyzer -A --internal -E threshold:1 -M threshold:1 -T threshold:1 ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
 
 threshold-3-0.5: prepare check.$(EXT)$(EXE)
-	../_build/default/src/deadCode.exe -A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3 ../examples > $(TARGET)
+	../_build/install/default/bin/dead_code_analyzer -A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3 ../examples > $(TARGET)
 	./check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
 
 prepare:
