@@ -1,6 +1,6 @@
 (***************************************************************************)
 (*                                                                         *)
-(*   Copyright (c) 2014-2016 LexiFi SAS. All rights reserved.              *)
+(*   Copyright (c) 2014-2025 LexiFi SAS. All rights reserved.              *)
 (*                                                                         *)
 (*   This source code is licensed under the MIT License                    *)
 (*   found in the LICENSE file at the root of this source tree             *)
