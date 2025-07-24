@@ -104,12 +104,18 @@ let hashtbl_replace_list hashtbl key l =
 
 let hashtbl_merge_unique_list tbl1 key1 tbl2 key2 =
   List.iter (fun elt -> hashtbl_add_unique_to_list tbl1 key1 elt) (hashtbl_find_list tbl2 key2)
+let is_sub_path ?(sep = '/') sub_path path =
+  let len_sub = String.length sub_path in
+  let len_path = String.length path in
+  let diff_len = len_path - len_sub in
+  let compatible_length =
+    (* sub_path is smaller than path and would start right after a separator*)
+    diff_len = 0 || diff_len > 0 && path.[diff_len - 1] = sep
+  in
+  compatible_length && String.sub path diff_len len_sub = sub_path
 
-let find_path fn ?(sep = '/') l = List.find
-  (fun path ->
-    let lp = String.length path and lf = String.length fn in
-    (lp > lf && path.[lp - lf - 1] = sep || lp = lf) && String.sub path (lp - lf) lf = fn)
-  l
+let find_path fn ?(sep = '/') l =
+  List.find (is_sub_path ~sep fn) l
 
 let find_abspath fn =
   find_path fn (hashtbl_find_list abspath (unit fn))

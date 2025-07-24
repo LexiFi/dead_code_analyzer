@@ -213,7 +213,8 @@ let expr super self e =
 
   | Texp_send (e2, Tmeth_name meth) ->
     DeadObj.collect_references ~meth ~call_site:e.exp_loc.Location.loc_start e2
-  | Texp_send (e2, Tmeth_val id) ->
+  | Texp_send (e2, Tmeth_val id)
+  | Texp_send (e2, Tmeth_ancestor (id, _)) ->
     DeadObj.collect_references ~meth:(Ident.name id) ~call_site:e.exp_loc.Location.loc_start e2
 
 

@@ -73,12 +73,18 @@ let add_path path loc =
 
 let get_loc path =
   let path =
-    try
-      Hashtbl.fold (fun _ (_, path) acc -> path::acc) incl []
-      |> find_path path ~sep:'.'
-    with Not_found -> try Hashtbl.find defined path with Not_found -> path
+    let exported_path =
+      Hashtbl.to_seq_values incl
+      |> Seq.find (fun (_, exported_path) -> is_sub_path ~sep:'.' path exported_path)
+    in
+    match exported_path with
+    | Some (_, exported_path) -> exported_path
+    | None ->
+      try Hashtbl.find defined path
+      with Not_found -> path
   in
-  try repr_loc (Hashtbl.find path2loc path) with Not_found -> Lexing.dummy_pos
+  try repr_loc (Hashtbl.find path2loc path)
+  with Not_found -> Lexing.dummy_pos
 
 
 let know_path path =
@@ -206,7 +212,6 @@ let collect_export path u stock ~obj ~cltyp loc =
 
 
 let collect_references ~meth ~call_site expr =
-
   let loc = locate expr in
 
   if not (is_ghost loc) then begin
@@ -304,6 +309,7 @@ let class_field f =
       let path = locate cl_exp in
       if path != _none then begin
         hashtbl_add_unique_to_list inheritances !last_class path;
+        add_equal f.cf_loc.Location.loc_start cl_exp.cl_loc.Location.loc_start;
         let loc = get_loc path in
         let equal () = add_equal cl_exp.cl_loc.Location.loc_start (get_loc path) in  (* for uses inside class def *)
         if loc == Lexing.dummy_pos then later := equal :: !later
