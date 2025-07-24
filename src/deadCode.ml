@@ -159,8 +159,7 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
  fun super self p ->
   let pat_loc = p.pat_loc.Location.loc_start in
   let u s =
-    let err = (!current_src, pat_loc, Printf.sprintf "unit pattern %s" s) in
-    style := err :: !style
+    register_style pat_loc (Printf.sprintf "unit pattern %s" s)
   in
   let open Asttypes in
   if DeadType.is_unit p.pat_type && !DeadFlag.style.DeadFlag.unit_pat then begin
@@ -168,8 +167,13 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
       | Tpat_construct _ -> ()
       | Tpat_var (_, {txt = "eta"; loc = _}, _)
         when p.pat_loc = Location.none -> ()
-      | Tpat_var (_, {txt; _}, _) when check_underscore txt -> u txt
-      | Tpat_any when not !DeadFlag.underscore -> u "_"
+      | Tpat_var (_, {txt; _}, _) -> if check_underscore txt then u txt
+      | Tpat_any -> if not !DeadFlag.underscore then u "_"
+      | Tpat_value tpat_arg ->
+        begin match (tpat_arg :> value general_pattern) with
+        | {pat_desc=Tpat_construct _; _} -> ()
+        | _ -> u "other"
+        end
       | _ -> u ""
   end;
   begin match p.pat_desc with
@@ -232,13 +236,23 @@ let expr super self e =
       begin match vb_pat.pat_desc with
       | Tpat_var (id, _, _) when not (check_underscore (Ident.name id)) -> ()
       | _ ->
-          let err =
-            ( !current_src,
-              vb_pat.pat_loc.Location.loc_start,
+          register_style
+            vb_pat.pat_loc.Location.loc_start
+            "let () = ... in ... (=> use sequence)"
+      end
+
+  | Texp_match (_, [{c_lhs; _}], _)
+    when DeadType.is_unit c_lhs.pat_type && !DeadFlag.style.DeadFlag.seq ->
+      begin match c_lhs.pat_desc with
+      | Tpat_value tpat_arg ->
+        begin match (tpat_arg :> value general_pattern) with
+        | {pat_desc=Tpat_construct _; _} ->
+            register_style
+              c_lhs.pat_loc.Location.loc_start
               "let () = ... in ... (=> use sequence)"
-            )
-          in
-          style := err :: !style
+        | _ -> ()
+        end
+      | _ -> ()
       end
 
   | Texp_let (
@@ -248,7 +262,7 @@ let expr super self e =
     when id1 = id2
          && !DeadFlag.style.DeadFlag.binding
          && check_underscore (Ident.name id1) ->
-      style := (!current_src, loc, "let x = ... in x (=> useless binding)") :: !style
+      register_style loc "let x = ... in x (=> useless binding)"
 
   | _ -> ()
   end;

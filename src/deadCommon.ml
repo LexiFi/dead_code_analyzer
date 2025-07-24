@@ -33,21 +33,30 @@ module LocHash = struct
     replace h1 k1 (LocSet.union l1 l2)
 end
 
-let abspath : (string, string) Hashtbl.t = Hashtbl.create 256                  (* longest paths known *)
+(* longest paths known *)
+let abspath : (string, string) Hashtbl.t = Hashtbl.create 256
 
+(* all exported value declarations *)
+let decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
 
-let decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
+(* all exported value declarations *)
+let incl : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
 
-let incl : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256                         (* all exported value declarations *)
+(* all value references *)
+let references : LocSet.t LocHash.t  = LocHash.create 256
 
-let references : LocSet.t LocHash.t  = LocHash.create 256      (* all value references *)
+(* link from fields (record/variant) paths and locations *)
+let fields : (string, Lexing.position) Hashtbl.t = Hashtbl.create 256
 
-let fields : (string, Lexing.position) Hashtbl.t = Hashtbl.create 256      (* link from fields (record/variant) paths and locations *)
+(* patterns of type unit which are not () *)
+let style : (string * Lexing.position * string) list ref = ref []
 
-let style : (string * Lexing.position * string) list ref = ref []                        (* patterns of type unit which are not () *)
-let last_loc = ref Lexing.dummy_pos                                  (* helper to diagnose occurrences of Location.none in the typedtree *)
+(* helper to diagnose occurrences of Location.none in the typedtree *)
+let last_loc = ref Lexing.dummy_pos
 let current_src = ref ""
-let mods : string list ref = ref []                                                 (* module path *)
+
+(* module path *)
+let mods : string list ref = ref []
 
 
 let depth = ref (-1)
@@ -64,6 +73,8 @@ let _variant = ": variant :"
 
 let unit fn = try Filename.chop_extension (Filename.basename fn) with Invalid_argument _ -> fn
 
+let register_style loc msg =
+  style := (!current_src, loc, msg)::!style
 
 let is_ghost loc =
   loc.Lexing.pos_lnum <= 0 || loc.Lexing.pos_cnum - loc.Lexing.pos_bol < 0
@@ -207,7 +218,7 @@ module VdNode = struct
     begin match loc1 with
     | Some loc1 ->
         LocHash.find_set parents loc1
-        |> LocSet.filter (( <> ) loc)
+        |> LocSet.remove loc
         |> LocHash.replace parents loc1
     | None -> ()
     end;
