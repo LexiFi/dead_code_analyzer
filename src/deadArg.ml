@@ -126,14 +126,23 @@ let node_build loc expr =
   let rec loop loc expr =
     match expr.exp_desc with
     | Texp_function (fp, body) ->
-      List.iter
-        (function
-        | {fp_arg_label = Asttypes.Optional s; _} when !DeadFlag.optn.print || !DeadFlag.opta.print ->
-              let opts, next = VdNode.get loc in
-              VdNode.update loc (s :: opts, next)
+      let check_param_style = function
+        | Tparam_pat {pat_type; _}
+        | Tparam_optional_default ({pat_type; _}, _) ->
+          DeadType.check_style pat_type expr.exp_loc.Location.loc_start
+      in
+      let register_optional_param = function
+        | Asttypes.Optional s when !DeadFlag.optn.print || !DeadFlag.opta.print ->
+          let opts, next = VdNode.get loc in
+          VdNode.update loc (s :: opts, next)
         | _ -> ()
+      in
+      List.iter
+        (fun {fp_kind; fp_arg_label; _} ->
+          check_param_style fp_kind;
+          register_optional_param fp_arg_label
         )
-      fp;
+        fp;
       begin match body with
       | Tfunction_body exp -> loop loc exp
       | Tfunction_cases {cases = [{c_lhs = {pat_type; _}; c_rhs = exp; _}]; _} ->
