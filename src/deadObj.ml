@@ -147,6 +147,7 @@ let rec repr_exp expr f =
   match expr.exp_desc with
     | Texp_sequence (_, expr)
     | Texp_function (_, Tfunction_cases { cases = {c_rhs=expr; _}::_ ; _ })
+    | Texp_function (_, Tfunction_body expr)
     | Texp_apply (expr, _) -> repr_exp expr f
     | _ -> f expr
 
