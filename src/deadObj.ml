@@ -336,47 +336,48 @@ let class_field f =
 
 
 let arg typ args =
-  let apply_to_exp f = function
-    | (_, Some exp) :: _ -> f exp
+  let rec get_deep_desc typ =
+    match get_desc typ with
+    | Tlink t -> get_deep_desc t
+    | t -> t
+  in
+  let ( let$ ) x f = Option.iter f x in
+  let exp_opt_of_arg (_, exp) = exp in
+  let rec collect_type_related_references is_self typ arg =
+    match get_deep_desc typ with
+    | Tarrow (_, _, typ, _) ->
+      collect_type_related_references is_self typ arg
+    | Tobject _ when not is_self ->
+      let$ exp = exp_opt_of_arg arg in
+      let call_site = exp.exp_loc.Location.loc_start in
+      treat_fields
+        (fun meth -> collect_references ~meth ~call_site exp)
+        typ
+    | Tconstr (_, _, _) ->
+      let$ exp = exp_opt_of_arg arg in
+      let loc = locate exp in
+      let collect () =
+        let call_site = exp.exp_loc.Location.loc_start in
+        List.iter
+          (fun (_, meth) -> collect_references ~meth ~call_site exp)
+          (hashtbl_find_list content loc)
+      in
+      if hashtbl_find_list content loc = [] then
+        later := collect :: !later
+      else collect ()
+    | Tvar _ when not is_self->
+      let$ exp = exp_opt_of_arg arg in
+      collect_type_related_references true exp.exp_type arg
     | _ -> ()
   in
-  let rec arg self typ args =
-    if args <> [] then match get_desc typ with
-      | Tlink t -> arg self t args
-      | Tarrow (_, t, typ, _) when not self ->
-          arg self t [(List.hd args)];
-          arg self typ (List.tl args)
-      | Tarrow (_, _, typ, _) ->
-          arg self typ args
-      | Tobject _ when not self ->
-          let f exp =
-            treat_fields
-              (fun s ->
-                collect_references ~meth:s ~call_site:exp.exp_loc.Location.loc_start exp
-              )
-              typ
-          in
-          apply_to_exp f args
-      | Tconstr (_, _, _) ->
-          let f exp =
-            let loc = locate exp in
-            let collect () =
-              List.iter
-                (fun (_, s) ->
-                  collect_references ~meth:s ~call_site:exp.exp_loc.Location.loc_start exp
-                )
-                (hashtbl_find_list content loc)
-            in
-            if hashtbl_find_list content loc = [] then
-              later := collect :: !later
-            else collect ()
-          in
-          apply_to_exp f args
-      | Tvar _ when not self->
-          let f exp = arg true exp.exp_type args in
-          apply_to_exp f args
-      | _ -> ()
-  in arg false typ args
+  let rec loop typ args =
+    match get_deep_desc typ, args with
+    | Tarrow (_, t, typ, _), hd::tl ->
+      collect_type_related_references false t hd;
+      loop typ tl
+    | _, _ -> ()
+  in
+  loop typ args
 
 
 let coerce expr typ =
