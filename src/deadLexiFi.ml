@@ -122,8 +122,8 @@ let () =
         )
         !used;
       let rec process (p, typ, call_site) =
-        match get_desc typ with
-        | Tarrow (_, t, _, _) | Tlink t -> process (p, t, call_site)
+        match get_deep_desc typ with
+        | Tarrow (_, t, _, _) -> process (p, t, call_site)
         | Ttuple ts -> List.iter (fun t -> process (p, t, call_site)) ts
         | Tconstr (path, ts, _) ->
             let name = Path.name path in

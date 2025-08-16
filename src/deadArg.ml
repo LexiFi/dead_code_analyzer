@@ -83,11 +83,10 @@ and check e =
   (* Optional arguments used to match a signature are considered used *)
   let get_sig_args typ =
     let rec loop args typ =
-      match get_desc typ with
+      match get_deep_desc typ with
       | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
           loop ((arg, Some {e with exp_desc = Texp_constant (Asttypes.Const_int 0)})::args) t
-      | Tarrow (_, _, t, _)
-      | Tlink t -> loop args t
+      | Tarrow (_, _, t, _) -> loop args t
       | _ -> args
     in loop [] typ
   in

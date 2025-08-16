@@ -132,10 +132,9 @@ let rec sign = function
   | Cty_constr (_, _, t) -> sign t
 
 
-let rec treat_fields action typ = match get_desc typ with
+let rec treat_fields action typ = match get_deep_desc typ with
   | Tobject (t, _)
-  | Tarrow (_, _, t, _)
-  | Tlink t -> treat_fields action t
+  | Tarrow (_, _, t, _) -> treat_fields action t
   | Tfield (s, k, _, t) ->
       if field_kind_repr k <> Fabsent && s.[0] > 'Z' then
         action s;
@@ -336,48 +335,29 @@ let class_field f =
 
 
 let arg typ args =
-  let rec get_deep_desc typ =
-    match get_desc typ with
-    | Tlink t -> get_deep_desc t
-    | t -> t
-  in
-  let ( let$ ) x f = Option.iter f x in
-  let exp_opt_of_arg (_, exp) = exp in
-  let rec collect_type_related_references is_self typ arg =
+  let rec collect_type_related_references typ arg =
     match get_deep_desc typ with
     | Tarrow (_, _, typ, _) ->
-      collect_type_related_references is_self typ arg
-    | Tobject _ when not is_self ->
-      let$ exp = exp_opt_of_arg arg in
-      let call_site = exp.exp_loc.Location.loc_start in
-      treat_fields
-        (fun meth -> collect_references ~meth ~call_site exp)
-        typ
-    | Tconstr (_, _, _) ->
-      let$ exp = exp_opt_of_arg arg in
-      let loc = locate exp in
-      let collect () =
+      collect_type_related_references typ arg
+    | Tobject _ -> (
+      match arg with
+      | _, None -> ()
+      | _, Some exp ->
         let call_site = exp.exp_loc.Location.loc_start in
-        List.iter
-          (fun (_, meth) -> collect_references ~meth ~call_site exp)
-          (hashtbl_find_list content loc)
-      in
-      if hashtbl_find_list content loc = [] then
-        later := collect :: !later
-      else collect ()
-    | Tvar _ when not is_self->
-      let$ exp = exp_opt_of_arg arg in
-      collect_type_related_references true exp.exp_type arg
+        treat_fields
+          (fun meth -> collect_references ~meth ~call_site exp)
+          typ
+      )
     | _ -> ()
   in
-  let rec loop typ args =
+  let rec process_args typ args =
     match get_deep_desc typ, args with
     | Tarrow (_, t, typ, _), hd::tl ->
-      collect_type_related_references false t hd;
-      loop typ tl
+      collect_type_related_references t hd;
+      process_args typ tl
     | _, _ -> ()
   in
-  loop typ args
+  process_args typ args
 
 
 let coerce expr typ =
