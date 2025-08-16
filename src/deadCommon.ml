@@ -121,6 +121,11 @@ let find_abspath fn =
   find_path fn (hashtbl_find_list abspath (unit fn))
 
 
+(* We often simply traverse a Tlink to process the linked type *)
+let rec get_deep_desc typ =
+  match Types.get_desc typ with
+  | Tlink t -> get_deep_desc t
+  | t -> t
 
 
 let exported (flag : DeadFlag.basic ref) loc =

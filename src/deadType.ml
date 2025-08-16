@@ -42,10 +42,10 @@ let nb_args ~keep typ =
   loop 0 (get_desc typ)
 
 
-let rec _TO_STRING_ typ = begin [@warning "-11"] match get_desc typ with
+let rec _TO_STRING_ typ = begin [@warning "-11"] match get_deep_desc typ with
   | Tvar i -> begin match i with Some id -> id | None -> "'a" end
   | Tarrow (_, t1, t2, _) ->
-      begin match get_desc t1 with
+      begin match get_deep_desc t1 with
       | Tarrow _ -> "(" ^ _TO_STRING_ t1 ^ ")"
       | _ -> _TO_STRING_ t1 end
       ^ " -> " ^ _TO_STRING_ t2
@@ -58,7 +58,7 @@ let rec _TO_STRING_ typ = begin [@warning "-11"] match get_desc typ with
   | Tfield (s, k, _, t1) ->
       if field_kind_repr k <> Fabsent then
         s
-        ^ begin match get_desc t1 with
+        ^ begin match get_deep_desc t1 with
           | Tfield _ -> "; " ^ _TO_STRING_ t1
           | _ -> "" end
       else _TO_STRING_ t1
@@ -136,8 +136,7 @@ let collect_references loc exp_loc =
 (* Look for bad style typing *)
 let rec check_style t loc =
   if !DeadFlag.style.DeadFlag.opt_arg then
-    match get_desc t with
-      | Tlink t -> check_style t loc
+    match get_deep_desc t with
       | Tarrow (lab, _, t, _) -> begin
           match lab with
             | Optional lab when check_underscore lab ->
