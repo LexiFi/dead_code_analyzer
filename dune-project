@@ -6,7 +6,9 @@
 
 (version 0.9)
 
-(maintainers "Alain Frisch <alain.frisch@lexifi.com>")
+(maintainers
+ "Alain Frisch <alain.frisch@lexifi.com>"
+ "Corentin De Souza <de.souza.corentin@gmail.com>")
 
 (authors
  "Alain Frisch <alain.frisch@lexifi.com>"
@@ -20,6 +22,6 @@
  (synopsis "Dead code analyzer for OCaml")
  (license MIT)
  (depends
-  (ocaml (and (>= 5) (< 5.3)))
+  (ocaml (and (>= 5.2) (< 5.3)))
  )
 )
