@@ -333,22 +333,23 @@ let ends_with suffix s =
 let remove_wrap name =
   let n = String.length name in
   let rec loop i =
-    if i < n - 1 then
-      if name.[i] == '_' && name.[i+1] == '_' then
-        String.uncapitalize_ascii (String.sub name (i+2) (n - i - 2))
-      else loop (i+1)
+    if i > 2 then
+      if name.[i-1] == '_' && name.[i-2] == '_' then
+        String.uncapitalize_ascii (String.sub name i (n - i))
+      else loop (i - 1)
     else name
-  in loop 0
+  in loop (n - 1)
 
 (* Checks the nature of the file *)
 let kind fn =
   if not (Sys.file_exists fn) then begin
-    prerr_endline ("Warning: '" ^fn ^ "' not found");
+    prerr_endline ("Warning: '" ^ fn ^ "' not found");
     `Ignore
   end else if not (DeadFlag.is_excluded fn) then begin
     (* When searching source files according to *.cmi or *.cmt files, *)
-    (* we should consider dune(formerly known as jbuilder) puts the *)
-    (* cmi/cmt files in a separate folder named ".<name>.objs" or ".<name>.eobjs"  *)
+    (* we should consider dune (formerly known as jbuilder) puts the *)
+    (* cmi/cmt files in a separate folder named either: *)
+    (* ".<name>.objs" or ".<name>.eobjs" *)
     let good_exts base exts =
       let open DeadFlag in
       let good_ext base ext =
@@ -356,47 +357,58 @@ let kind fn =
         Sys.file_exists fn && not (is_excluded fn)
       in
       (* normalize_path would append a slash, use it only on the dirname *)
-      let base = Filename.(concat (normalize_path (dirname base)) (basename base)) in
-      let upper_base =
-        let upper_d, cur_dir =
-          let d = Filename.dirname base in
-          Filename.dirname d, Filename.basename d
+      let base =
+        Filename.(concat (normalize_path (dirname base)) (basename base))
+      in
+      let get_upper_base base =
+        let split_upper_curr path =
+          Filename.dirname path, Filename.basename path
         in
-        if starts_with "." cur_dir
-        && (ends_with ".objs" cur_dir || ends_with ".eobjs" cur_dir) then begin
+        let is_objs_dir dir =
+          starts_with "." dir
+          && (ends_with ".objs" dir || ends_with ".eobjs" dir)
+        in
+        let upper_d, cur_dir = split_upper_curr (Filename.dirname base) in
+        if is_objs_dir cur_dir then
           let f = remove_wrap (Filename.basename base) in
           Some (Filename.concat upper_d f)
-        end
-        else None
+        else (
+          (* Try again on upper_d because there might be "byte" and *)
+          (* "native" subdirs in the objs dir *)
+          let upper_d, cur_dir = split_upper_curr upper_d in
+          if is_objs_dir cur_dir then
+            let f = remove_wrap (Filename.basename base) in
+            Some (Filename.concat upper_d f)
+          else None
+        )
       in
-      let rec find_source = function
-        | [] -> ""
+      let rec find_source base = function
+        | [] -> None
         | ext :: tl ->
-          if good_ext base ext then base ^ ext
-          else begin
-            match upper_base with
-            | Some base ->
-              if good_ext base ext then base ^ ext else find_source tl
-            | None ->
-              find_source tl
-          end
+          if good_ext base ext then Some (base ^ ext)
+          else find_source base tl
       in
-      find_source exts
+      match find_source base exts with
+      | Some _ as src -> src
+      | None ->
+        let (let*) = Option.bind in
+        let* base = get_upper_base base in
+        find_source base exts
     in
     if Filename.check_suffix fn ".cmi" then
       let base = Filename.chop_suffix fn ".cmi" in
       match good_exts base [".mli"; ".mfi"; ".ml"; ".mf"; ".mll"; ".mfl"] with
-      | "" ->
+      | None ->
         if !DeadFlag.verbose then Printf.eprintf "Ignoring %s (no source?)\n%!" base;
         `Ignore
-      | src -> `Iface src
+      | Some src -> `Iface src
     else if Filename.check_suffix fn ".cmt" then
       let base = Filename.chop_suffix fn ".cmt" in
       match good_exts base [".ml"; ".mf"; ".mll"; ".mfl"] with
-      | "" ->
+      | None ->
         if !DeadFlag.verbose then Printf.eprintf "Ignoring %s (no source?)\n%!" base;
         `Ignore
-      | src -> `Implem src
+      | Some src -> `Implem src
     else if Sys.is_directory fn       then  `Dir
     else            (* default *)           `Ignore
   end else          (* default *)           `Ignore
