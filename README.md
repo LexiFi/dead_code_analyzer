@@ -20,7 +20,7 @@ about suspicious code:
    the implementation if there is no internal use -- which will be reported
    by standard OCaml warnings).
 
- - Types fields and constructors never used. (Can be dropped from the type)
+ - Types' fields and constructors never used. (Can be dropped from the type)
 
  - Class fields never used. (Can be dropped from the signature)
 
@@ -28,15 +28,15 @@ about suspicious code:
    provide a value (other than `None`). (The argument can be made mandatory or dropped.)
 
  - Other stylistic issues:  patterns matching a value of type `unit`
-   which are not `()` (typically, `_` or a variable);  let-binding
+   which are not `()` (typically, `_` or a variable); let-binding to unit
    `let () = ... in ...` (it's usually better to use sequencing);
    let-binding of the form `let x = ... in x` (the binding is useless);
-   optional argument in argument's type: `val f: ... -> (... -> ?_:_ -> ...) -> ...`
+   optional argument in an argument's type: `val f: ... -> (... -> ?_:_ -> ...) -> ...`
 
 
 ## Requirements
 
-- Currently tested and working on **OCaml 4.05.0+trunk**
+- Currently tested and working on **OCaml 5.2**
 
 
 ## Install
@@ -48,15 +48,13 @@ about suspicious code:
 ### Manual
 
 1. Download the sources.
-2. Build by either
-  - running `make` to generate the `dead_code_analyzer.byt` bytecode executable file;
-  - running `make opt` to generate the `dead_code_analyzer.opt` native-code executable file.
-Both will be produced in the `build` directory.
+2. Build by running `make`
+3. Run the `dead_code_analyzer` located in `_build/install/default/bin/`
 
 
 ## Usage
 
-`dead_code_analyzer.<byt|opt> <options> <path>`
+`dead_code_analyzer <options> <path>`
 
 The given paths can be files and directories.
 For more information about the usage, use the *-help* option.
@@ -69,13 +67,6 @@ For each subset of the tests a file `<subset>.out` is generated, containg the ou
 of the execution on it.
 
 To run a subset of the tests call `make -C check <subset>`.
-
-
-## Documentation
-
-Running `make doc` will produce the documentation as html files in the `doc` directory.
-
-Running `make man` will produce documentation as man pages in the `man/man3` directory.
 
 
 ## Contribute
