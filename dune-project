@@ -1,4 +1,4 @@
-(lang dune 3.16)
+(lang dune 3.20)
 
 (name dead_code_analyzer)
 
