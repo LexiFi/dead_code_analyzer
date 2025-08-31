@@ -75,7 +75,7 @@ let get_loc path =
   let path =
     let exported_path =
       Hashtbl.to_seq_values incl
-      |> Seq.find (fun (_, exported_path) -> is_sub_path ~sep:'.' path exported_path)
+      |> Seq.find (fun (_, exported_path) -> is_sub_path ~sep:"." path exported_path)
     in
     match exported_path with
     | Some (_, exported_path) -> exported_path
