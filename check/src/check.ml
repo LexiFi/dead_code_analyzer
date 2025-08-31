@@ -36,10 +36,54 @@ module StringSet = Set.Make(String)
 module SectionMap = Map.Make(Section)
 
 module Reports = struct
+
+  type report_info = {
+    filepath: string;
+    line_nb : int;
+    value : string;
+  }
+
+  let line_of_report_info ri =
+    Printf.sprintf "%s:%d:%s" ri.filepath ri.line_nb ri.value
+
+  (* Format of report lines is : "file_path:line_number: value"
+     with value possibly containing ':'. In case the line comes from
+     the direct report of dca (is_res_line), the filepath will be relocated
+     to correspond to filepaths coming from expected reports *)
+  let report_info_of_line ~is_res_line line =
+    let report_line_format = "filepath:line_nb:value" in
+    match String.split_on_char ':' line with
+    | [] | _::[] | _::_::[] ->
+      let err =
+        Printf.sprintf
+          "Unrecognized report line format. Expected : '%s'"
+          report_line_format
+      in
+      PP.error ~err ~ctx:line ();
+      None
+    | filepath::line_number::value ->
+      try
+        let line_nb = int_of_string line_number in
+        let filepath = (* relocate to match expected paths *)
+          if is_res_line then Path.relocate filepath
+          else filepath
+        in
+        let filepath = Path.normalize filepath in
+        let value = String.concat ":" value in
+        Some {filepath; line_nb; value}
+      with Failure _int_of_string ->
+        let err =
+          Printf.sprintf
+            "Is not an int. Expected report line format is : '%s'"
+            report_line_format
+        in
+        PP.error ~err ~ctx:line_number ();
+        None
+
   type t = {
     current_filepath : string option; (* file containg current expected reports *)
-    remaining_content : string list; (* expected reports in filename not
-                                        observed yet *)
+    remaining_content : report_info list; (* expected reports in filename not
+                                             observed yet *)
     root : string; (* directory containing the expected reports files*)
     files_map : StringSet.t SectionMap.t (* remaining files containing expected
                                             reports. Once a file is consumed it
@@ -130,28 +174,30 @@ module State = struct
     let scores = Scores.incr_fn state.scores in
     {state with scores}
 
-  let report_fn exp_line state =
-    PP.error ~err:"Not detected" ~ctx:exp_line ();
+  let report_fn ri state =
+    let ctx = Reports.line_of_report_info ri in
+    PP.error ~err:"Not detected" ~ctx ();
     incr_fn state
 
   let incr_fp state =
     let scores = Scores.incr_fp state.scores in
     {state with scores}
 
-  let report_fp res_line state =
-    PP.error ~err:"Should not be detected" ~ctx:res_line ();
+  let report_fp ri state =
+    let ctx = Reports.line_of_report_info ri in
+    PP.error ~err:"Should not be detected" ~ctx ();
     incr_fp state
 
   let incr_success state =
     let scores = Scores.incr_success state.scores in
     {state with scores}
 
-  let report_success res_line state =
-    print_endline res_line;
+  let report_success ri state =
+    let line = Reports.line_of_report_info ri in
+    print_endline line;
     incr_success state
 
   let update_remaining_content state remaining_content =
-    let remaining_content = List.filter (( <> ) "") remaining_content in
     let expected_reports = {state.expected_reports with remaining_content} in
     {state with expected_reports}
 
@@ -206,6 +252,8 @@ module State = struct
           let current_filepath = Some exp_filepath in
           let state =
             In_channel.with_open_text exp_filepath In_channel.input_lines
+            |> List.filter (( <> ) "")
+            |> List.filter_map (Reports.report_info_of_line ~is_res_line:false)
             |> update_remaining_content state
           in
           let expected_reports =
@@ -269,82 +317,39 @@ module State = struct
 
 end
 
-(* Format of report lines is : "file_path:line_number: report_info"
-   with report_info possibly containing ':'. In case the line comes from
-   the direct report of dca (is_res_line), the filepath will be relocated
-   to correspond to filepaths coming from expected reports *)
-let infos_of_report_line ~is_res_line line =
-  let report_line_format = "filepath:line_nb:report_info" in
-  match String.split_on_char ':' line with
-  | [] | _::[] | _::_::[] ->
-    let err =
-      Printf.sprintf
-        "Unrecognized report line format. Expected : '%s'"
-        report_line_format
-    in
-    PP.error ~err ~ctx:line ();
-    None
-  | filepath::line_number::report_info ->
-    try
-      let line_nb = int_of_string line_number in
-      let filepath = (* relocate to match expected paths *)
-        if is_res_line then Path.relocate filepath
-        else filepath
-      in
-      let filepath = Path.normalize filepath in
-      let report_info = String.concat ":" report_info in
-      let line = (* recontruct the line with updated fields *)
-        if is_res_line then
-          String.concat ":" [filepath; line_number; report_info]
-        else line
-      in
-      Some (filepath, line_nb, report_info, line)
-    with Failure _int_of_string ->
-      let err =
-        Printf.sprintf
-          "Is not an int. Expected report line format is : '%s'"
-          report_line_format
-      in
-      PP.error ~err ~ctx:line_number ();
-      None
 
-let rec process_report_line state (filepath, line_number, report_info, res_line) =
-  let state = State.maybe_change_file filepath state in
+let rec process_report_line state (got : Reports.report_info) =
+  let state = State.maybe_change_file got.filepath state in
   match state.expected_reports.remaining_content with
-  | [] -> State.report_fp res_line state
-  | exp_line::remaining_content when exp_line = res_line ->
+  | [] -> State.report_fp got state
+  | expected::remaining_content when expected = got ->
     State.update_remaining_content state remaining_content
-    |> State.report_success res_line
-  | exp_line::remaining_content ->
-    match infos_of_report_line ~is_res_line:false exp_line with
-    | None ->
-      (* exp_line reported in infos_of_report_line as misformatted *)
-      state
-    | Some (exp_filepath, exp_line_number, _, exp_line) ->
-      let compare =
-        let paths_compare = String.compare exp_filepath filepath in
-        if paths_compare = 0 then exp_line_number - line_number
-        else paths_compare
+    |> State.report_success expected
+  | expected::remaining_content ->
+    let compare =
+      let paths_compare = String.compare expected.filepath got.filepath in
+      if paths_compare = 0 then expected.line_nb - got.line_nb
+      else paths_compare
+    in
+    if compare > 0 then State.report_fp got state
+    else if compare < 0 then
+      let state =
+        State.update_remaining_content state remaining_content
+        |> State.report_fn expected
       in
-      if compare > 0 then State.report_fp res_line state
-      else if compare < 0 then
-        let state =
-          State.update_remaining_content state remaining_content
-          |> State.report_fn exp_line
-        in
-        process_report_line state (filepath, line_number, report_info, res_line)
-      else
-        (* The location is fine but report_info does not match.
-           The reports are not organized according to the report_info but
-           only the locations (including the column which is not reported.
-           Check if the current line exists in the remaining_content.
-           If so, then it is a successful report which can be removed from
-           the remaining content. Otherwise, it is a fp. *)
-      if List.mem res_line remaining_content then
-        List.filter (( <> ) res_line) remaining_content
-        |> State.update_remaining_content state
-        |> State.report_success res_line
-      else State.report_fp res_line state
+      process_report_line state got
+    else
+      (* The location is fine but report_info does not match.
+         The reports are not organized according to the report_info but
+         only the locations (including the column which is not reported.
+         Check if the current line exists in the remaining_content.
+         If so, then it is a successful report which can be removed from
+         the remaining content. Otherwise, it is a fp. *)
+    if List.mem got remaining_content then
+      List.filter (( <> ) got) remaining_content
+      |> State.update_remaining_content state
+      |> State.report_success got
+    else State.report_fp got state
 
 let process state res_line =
   let is_report_line, state =
@@ -359,12 +364,12 @@ let process state res_line =
       | Some _ as sec ->
         false, State.change_section sec state
       | None -> (* res_line is a report line *)
-        match infos_of_report_line ~is_res_line:true res_line with
+        match Reports.report_info_of_line ~is_res_line:true res_line with
         | None ->
           (* res_line reported in infos_of_report_line as misformatted *)
           false, state
-        | Some infos ->
-          true, process_report_line state infos
+        | Some got ->
+          true, process_report_line state got
   in
   if not is_report_line then print_endline res_line;
   state

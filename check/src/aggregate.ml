@@ -64,7 +64,7 @@ let update state line =
   let state =
     let end_of_fp = "Should not be detected" ^ PP.style_reset in
     let end_of_fn = "Not detected" ^ PP.style_reset in
-    if String.starts_with ~prefix:"./examples" line then
+    if String.starts_with ~prefix:(Filename.concat "." "examples") line then
       let unique_success_lines =
         add_unique_line state.State.unique_success_lines
       in
