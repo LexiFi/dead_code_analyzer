@@ -1,1 +1,1 @@
-./examples/matchopt.ml:5: w
+./examples/dir/matchopt.ml:5: w

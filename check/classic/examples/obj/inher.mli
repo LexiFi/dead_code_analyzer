@@ -1,2 +1,2 @@
-./exmaples/obj/inher.mli:11: o
-./exmaples/obj/inher.mli:13: f
+./examples/obj/inher.mli:11: o
+./examples/obj/inher.mli:13: f
