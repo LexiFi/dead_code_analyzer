@@ -1,5 +1,6 @@
+module PP = Pretty_print
+
 module Path = struct
-  type t = string
 
   (* Convert windows and unix style separator (resp. '\\' and '/') to
      the system's separator, remove any intermediate reference to
@@ -31,189 +32,11 @@ module Path = struct
 
 end
 
-
-module Section : sig
-  (* The results are organized by section in the dead_code_analyzer's output. *)
-  type t =
-    | Constr_and_fields
-    | Methods
-    | Opt_always
-    | Opt_never
-    | Style
-    | Threshold of int * t
-    | Values
-
-  val to_string : t -> string
-
-  val compare : t -> t -> int
-
-  (* The test suite files have extensions corresponding to the sections of
-     the expected results they contain. *)
-  val to_extension : t -> string
-
-  (* The test suite files have extensions corresponding to the sections of
-     the expected results they contain. *)
-  val of_extension : string -> t option
-
-  (* The sections are preceded by headers to help identify them.
-     Returns the corresponding section if the given string is header.
-     Returns None otherwise. *)
-  val of_header : string -> t option
-
-  (* Folowing the header's title is a separator to indicate the start of the
-     report for that section *)
-  val is_start : string -> bool
-
-  (* There is a footer at the end of each section to indicate the reporting for
-     that section is done *)
-  val is_end : string -> bool
-
-end = struct
-
-  type t =
-    | Constr_and_fields
-    | Methods
-    | Opt_always
-    | Opt_never
-    | Style
-    | Threshold of int * t
-    | Values
-
-  let rec to_string = function
-    | Constr_and_fields -> "Constr_and_fields"
-    | Methods -> "Methods"
-    | Opt_always -> "Opt_always"
-    | Opt_never -> "Opt_never"
-    | Style -> "Style"
-    | Values -> "Values"
-    | Threshold (n, t) ->
-      let sub_string = to_string t in
-      Printf.sprintf "Threshold(%d, %s)" n sub_string
-
-  let compare = compare
-
-  let rec to_extension = function
-    | Constr_and_fields -> ".mlit"
-    | Methods -> ".mlio"
-    | Opt_always -> ".mlopta"
-    | Opt_never -> ".mloptn"
-    | Style -> ".mlstyle"
-    | Values -> ".mli"
-    | Threshold (n, base) -> to_extension base ^ string_of_int n
-
-  let rec of_extension = function
-    | ".mlit" -> Some Constr_and_fields
-    | ".mlio" -> Some Methods
-    | ".mlopta" -> Some Opt_always
-    | ".mloptn" -> Some Opt_never
-    | ".mlstyle" -> Some Style
-    | ".mli" -> Some Values
-    | ext ->
-      let try_threshold prefix =
-        if String.starts_with ~prefix ext then
-          let fmt = Scanf.format_from_string (prefix ^ "%d") "%d" in
-          try
-            let n = Scanf.sscanf ext fmt Fun.id in
-            of_extension prefix
-            |> Option.map (fun constr -> Threshold (n, constr))
-          with Scanf.Scan_failure _ -> None
-        else None
-      in
-      let exts = [".mlit"; ".mlio"; ".mlopta"; ".mloptn"; ".mlstyle"; ".mli"] in
-      List.find_map try_threshold exts
-
-
-  let is_start s =
-    String.for_all (( = ) '=') s (* = is used for main sections *)
-    || String.for_all (( = ) '~') s (* ~ is used for subsections *)
-
-  let is_end s =
-    s = "Nothing else to report in this section" (* main sections ending *)
-    || String.for_all (( = ) '-') s (* subsections ending *)
-
-  let of_header = function
-    | ".> UNUSED CONSTRUCTORS/RECORD FIELDS:" -> Some Constr_and_fields
-    | ".> UNUSED METHODS:" -> Some Methods
-    | ".> OPTIONAL ARGUMENTS: ALWAYS:" -> Some Opt_always
-    | ".> OPTIONAL ARGUMENTS: NEVER:" -> Some Opt_never
-    | ".> CODING STYLE:" -> Some Style
-    | ".> UNUSED EXPORTED VALUES:" -> Some Values
-    | header ->
-      let get_threshold prefix constr =
-        if String.starts_with ~prefix header then
-          let fmt = Scanf.format_from_string (prefix ^ " %d time(s)") "%d" in
-          let n = Scanf.sscanf header fmt Fun.id in
-          Some (Threshold (n, constr))
-        else None
-      in
-      let get_threshold_constr_and_fields () =
-        let prefix = ".>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called" in
-        get_threshold prefix Constr_and_fields
-      in
-      let get_threshold_methods () =
-        let prefix = ".>->  ALMOST UNUSED METHODS: Called" in
-        get_threshold prefix Methods
-      in
-      let get_threshold_opt_always () =
-        let prefix = ".>->  OPTIONAL ARGUMENTS: ALMOST ALWAYS: Except" in
-        get_threshold prefix Opt_always
-      in
-      let get_threshold_opt_never () =
-        let prefix = ".>->  OPTIONAL ARGUMENTS: ALMOST NEVER: Except" in
-        get_threshold prefix Opt_never
-      in
-      let get_threshold_values () =
-        let prefix = ".>->  ALMOST UNUSED EXPORTED VALUES: Called" in
-        get_threshold prefix Values
-      in
-      let getters = [
-        get_threshold_constr_and_fields;
-        get_threshold_methods;
-        get_threshold_opt_always;
-        get_threshold_opt_never;
-        get_threshold_values
-      ]
-      in
-      List.find_map (fun f -> f ()) getters
-
-end
-
-
-module PP = struct
-
-  let red = "\x1b[31m"
-  let green = "\x1b[32m"
-  let yellow = "\x1b[33m"
-  let blue = "\x1b[34m"
-  let white = "\x1b[37m"
-  let bg_red = "\x1b[41m"
-  let style_reset = "\x1b[0m"
-
-  let error ~err ~ctx () =
-    Printf.eprintf "%s%s: %s%s%s%s\n%!" red ctx white bg_red err style_reset
-
-end
-
 module StringSet = Set.Make(String)
-
 module SectionMap = Map.Make(Section)
 
-module State = struct
-
-  type results = {
-    success : int;
-    fp : int;
-    fn : int
-  }
-
-  let results_to_string results =
-    Printf.sprintf
-      "{success = %d; fp = %d; fn = %d}"
-      results.success results.fp results.fn
-
-  let empty_results = {success = 0; fp = 0; fn = 0}
-
-  type expected_reports = {
+module Reports = struct
+  type t = {
     current_filepath : string option; (* file containg current expected reports *)
     remaining_content : string list; (* expected reports in filename not
                                         observed yet *)
@@ -224,65 +47,20 @@ module State = struct
                                             sections *)
   }
 
-  let expected_reports_to_string expected_reports =
-    let current_filepath =
-      Option.value ~default:"None" expected_reports.current_filepath
-    in
-    let remaining_content =
-      if List.is_empty expected_reports.remaining_content
-      then "[]"
-      else "[..]"
-    in
-    let files_map =
-      Printf.sprintf "{ %s\n  }" (
-        SectionMap.bindings expected_reports.files_map
-        |> List.map (fun (sec, files) ->
-            Printf.sprintf "%s ->{%s}"
-              (Section.to_string sec)
-              (String.concat "; " @@ StringSet.to_list files)
-          )
-        |> String.concat ";\n    "
-      )
-        (*
-      if SectionMap.is_empty expected_reports.files_map
-      then "{}"
-      else "{..}"
-           *)
-    in
-    Printf.sprintf
-      "{ current_filepath = %s;\n remaining_content = %s;\n root = %s;\n files_map =\n  %s\n}"
-      current_filepath remaining_content expected_reports.root files_map
-
-  let empty_expected_reports ={
+  let empty ={
     current_filepath = None;
     remaining_content = [];
     root = ".";
     files_map = SectionMap.empty
   }
 
-  type t = {
-    line : string; (* line observed in dca's report *)
-    filepath : string option;
-    section : Section.t option; (* current section *)
-    expected_reports : expected_reports;
-    results : results
-  }
-
-  let empty = {
-    line = "";
-    filepath = None;
-    section = None;
-    expected_reports = empty_expected_reports;
-    results = empty_results
-  }
-
   (* Find all files in root that correspond to test files containing
      expected reports. This files are identified using their extension.
      See module Section above for more info. *)
-  let init_expected_reports root =
+  let init root =
     let rec on_directory files_map path =
       Sys.readdir path
-      |> Array.map (fun filename -> path ^ Filename.dir_sep ^ filename)
+      |> Array.map (fun filename -> Filename.concat path filename)
       |> Array.fold_left (fun init path -> Path.fold ~init ~on_directory ~on_file path) files_map
     and on_file files_map path =
       let ext = Filename.extension path in
@@ -297,34 +75,76 @@ module State = struct
     in
     let init = SectionMap.empty in
     let files_map = Path.fold ~init ~on_directory ~on_file root in
-    {empty_expected_reports with files_map; root}
+    {empty with files_map; root}
+
+  (* useful for debug *)
+  let[@warning "-32"] to_string ?(show_content=true) expected_reports =
+    if not show_content then
+      if SectionMap.is_empty expected_reports.files_map then "{}"
+      else "{..}"
+    else
+      let current_filepath =
+        Option.value ~default:"None" expected_reports.current_filepath
+      in
+      let remaining_content =
+        if List.is_empty expected_reports.remaining_content
+        then "[]"
+        else "[..]"
+      in
+      let files_map =
+        Printf.sprintf "{ %s\n  }" (
+          SectionMap.bindings expected_reports.files_map
+          |> List.map (fun (sec, files) ->
+              Printf.sprintf "%s ->{%s}"
+                (Section.to_string sec)
+                (String.concat "; " @@ StringSet.to_list files)
+            )
+          |> String.concat ";\n    "
+        )
+      in
+      Printf.sprintf
+        "{ current_filepath = %s;\n remaining_content = %s;\n root = %s;\n files_map =\n  %s\n}"
+        current_filepath remaining_content expected_reports.root files_map
+end
+
+module State = struct
+  type t = {
+    filepath : string option;
+    section : Section.t option; (* current section *)
+    expected_reports : Reports.t;
+    scores : Scores.t
+  }
+
+  let empty = {
+    filepath = None;
+    section = None;
+    expected_reports = Reports.empty;
+    scores = Scores.init
+  }
 
   let init exp_root =
-    let expected_reports = init_expected_reports exp_root in
+    let expected_reports = Reports.init exp_root in
     {empty with expected_reports}
 
   let incr_fn state =
-    let fn = state.results.fn + 1 in
-    let results = {state.results with fn} in
-    {state with results}
+    let scores = Scores.incr_fn state.scores in
+    {state with scores}
 
   let report_fn exp_line state =
     PP.error ~err:"Not detected" ~ctx:exp_line ();
     incr_fn state
 
   let incr_fp state =
-    let fp = state.results.fp + 1 in
-    let results = {state.results with fp} in
-    {state with results}
+    let scores = Scores.incr_fp state.scores in
+    {state with scores}
 
   let report_fp res_line state =
     PP.error ~err:"Should not be detected" ~ctx:res_line ();
     incr_fp state
 
   let incr_success state =
-    let success = state.results.success + 1 in
-    let results = {state.results with success} in
-    {state with results}
+    let scores = Scores.incr_success state.scores in
+    {state with scores}
 
   let report_success res_line state =
     print_endline res_line;
@@ -350,7 +170,7 @@ module State = struct
       in
       let files_map = Option.value files_map ~default:er.files_map in
       let expected_reports =
-        {empty_expected_reports with files_map; root = er.root}
+        {Reports.empty with files_map; root = er.root}
       in
       {state with expected_reports}
     in
@@ -378,7 +198,7 @@ module State = struct
         let exp_filepath =
           if internal then exp_filepath
           else
-            state.expected_reports.root ^ Filename.dir_sep ^ exp_filepath
+            Filename.concat state.expected_reports.root exp_filepath
             |> Path.normalize
         in
         match SectionMap.find_opt sec state.expected_reports.files_map with
@@ -446,20 +266,6 @@ module State = struct
     in
     {state with section}
 
-
-  let print_results {results; _} =
-    let total = results.success + results.fp + results.fn in
-    let errors = results.fp + results.fn in
-    Printf.printf "Total: %s%d%s\n" PP.blue total PP.style_reset;
-    Printf.printf "Success: %s%d%s\n" PP.green results.success PP.style_reset;
-    Printf.printf "Failed: %s%d%s\n" PP.red errors PP.style_reset;
-    let ratio = 100. *. float_of_int results.success /. float_of_int total in
-    let color =
-      if ratio < 50. then PP.red
-      else if ratio < 80. then PP.yellow
-      else PP.green
-    in
-    Printf.printf "Ratio: %s%F%%%s\n%!" color ratio PP.style_reset
 
 end
 
@@ -575,10 +381,5 @@ let () =
   let res_file = get_res_filename () in
   let input_lines = In_channel.with_open_text res_file In_channel.input_lines in
   let init_state = State.init (get_expected_reports_root ()) in
-  let state =
-    List.fold_left
-      process
-      init_state
-      input_lines
-  in
-  State.print_results state
+  let state = List.fold_left process init_state input_lines in
+  Scores.pp state.scores
