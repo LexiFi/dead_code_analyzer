@@ -18,7 +18,7 @@ module Path = struct
   (* Paths read in res.out points to files in <project_root>/examples/
      relatively from <project_root>/check : '../examples/<rest/of/path>'
      We want to relocate them as relative to the <expected_reports_root>
-     directory whjich contains its own examples subdirectory with report files
+     directory whhich contains its own examples subdirectory with report files
      organized similarly to <project_root>/examples. :
      './examples/<rest/of/path>'. Therefore, removing the first '.' does the
      trick *)
