@@ -1,97 +1,127 @@
-let total = ref 0
-let err = ref 0
-let unified_res = Hashtbl.create 256
-let sec_res = Hashtbl.create 256
+module PP = Pretty_print
+module StringSet = Set.Make(String)
 
 let print_title title =
-  print_string "\x1b[1;37m";
-  print_endline title;
-  print_endline (String.make (String.length title) '~');
-  print_endline "\x1b[0m"
+  let underline = String.make (String.length title) '~' in
+  Printf.printf "%s%s\n%s%s\n" PP.bold title underline PP.style_reset
 
-let update ~total_fmt ~failed_fmt line =
-  let unique_line =
-    let rec make_unique_to_sec n =
+let print_title_box title =
+  let title_len = String.length title in
+  let underline = String.make title_len '~' in
+  let filler = String.make (title_len - 2) ' ' in
+  (* print_title_box *)
+  Printf.printf "%s%s\n|%s|\n%s\n|%s|\n%s%s\n"
+    PP.bold underline filler title filler underline PP.style_reset
+
+let print_res title scores =
+  print_title_box title;
+  Scores.pp scores
+
+module State = struct
+  type t = {
+    scores : Scores.t;
+    unique_success_lines : StringSet.t;
+    unique_failure_lines : StringSet.t
+  }
+
+  let init = {
+    scores = Scores.init;
+    unique_success_lines = StringSet.empty;
+    unique_failure_lines = StringSet.empty
+  }
+
+  let set_scores total failed state =
+    let scores =
+      Scores.set_failures failed state.scores
+      |> Scores.set_success (total - failed)
+    in
+    {state with scores}
+
+  let join state1 state2 =
+    let unique_success_lines =
+      StringSet.union state1.unique_success_lines state2.unique_success_lines
+    in
+    let unique_failure_lines =
+      StringSet.union state1.unique_failure_lines state2.unique_failure_lines
+    in
+    let total = Scores.total state1.scores + Scores.total state2.scores in
+    let failed = Scores.failed state1.scores + Scores.failed state2.scores in
+    set_scores total failed
+      {init with unique_success_lines; unique_failure_lines}
+
+end
+
+let update state line =
+  let add_unique_line set =
+    let rec make_unique_to_set n =
       let new_line = line ^ string_of_int n in
-      if Hashtbl.mem sec_res new_line then make_unique_to_sec (n + 1)
+      if StringSet.mem new_line set then make_unique_to_set (n + 1)
       else new_line
     in
-    let res = make_unique_to_sec 0 in
-    Hashtbl.add sec_res res ();
-    res
+    let line = make_unique_to_set 0 in
+    StringSet.add line set
   in
-  if not (Hashtbl.mem unified_res unique_line) then (
+  let state =
+    let end_of_fp = "Should not be detected" ^ PP.style_reset in
+    let end_of_fn = "Not detected" ^ PP.style_reset in
     if String.starts_with ~prefix:"./examples" line then
-      Hashtbl.add unified_res unique_line true
+      let unique_success_lines =
+        add_unique_line state.State.unique_success_lines
+      in
+      {state with unique_success_lines}
     else if
-      String.ends_with ~suffix:"Should not be detected\x1b[0m" line
-      || String.ends_with ~suffix:"Not detected\x1b[0m" line
+      String.ends_with ~suffix:end_of_fp line
+      || String.ends_with ~suffix:end_of_fn line
     then
-      Hashtbl.add unified_res unique_line false
-  );
-  let update_count fmt value =
-    try
-      let fmt = Scanf.format_from_string fmt "%d%d%s" in
-      let tot = Scanf.sscanf line fmt (fun _ x _ -> x) in
-      print_endline line;
-      value := tot + !value
-    with _ -> ()
+      let unique_failure_lines =
+        add_unique_line state.State.unique_failure_lines
+      in
+      {state with unique_failure_lines}
+    else state
   in
-  update_count total_fmt total;
-  update_count failed_fmt err
+  let get ~default extract_from =
+    Option.value ~default (extract_from line)
+  in
+  let total =
+    get ~default:(Scores.total state.scores) Scores.extract_total
+  in
+  let failed =
+    get ~default:(Scores.failed state.scores) Scores.extract_failed
+  in
+  State.set_scores total failed state
 
-let process filepath =
+let process state filepath =
   let input_lines =
     In_channel.with_open_text filepath In_channel.input_lines
   in
   print_title (Filename.remove_extension filepath);
-
-  let total_fmt = "Total: \x1b[%dm%d%s" in
-  let failed_fmt = "Failed: \x1b[%dm%d%s" in
-  List.iter (update ~total_fmt ~failed_fmt) input_lines;
-  Hashtbl.clear sec_res;
-  print_endline "\n"
-
-let print_res title total err =
-  print_title title;
-  print_string "Total: \x1b[0;34m";
-  print_int total;
-  print_string "\x1b[0m\nFailed: \x1b[0;31m";
-  print_int err;
-  let ratio = ( -. ) 100. @@ ( *. ) 100. @@ (float_of_int total |> ( /. ) @@ float_of_int err) in
-  print_string @@ "\x1b[0m\nRatio: \x1b[0;3"
-                  ^ (if ratio < 50. then "1m" else if ratio < 80. then "3m" else "2m");
-  print_float ratio;
-  print_endline "%\x1b[0m"
+  let local_state = List.fold_left update State.init input_lines in
+  Scores.pp local_state.scores;
+  Printf.printf "\n";
+  State.join local_state state
 
 let () =
   let filepaths =
     let argv_len = Array.length Sys.argv in
     Array.sub Sys.argv 1 (argv_len - 1)
   in
-  Array.iter process filepaths;
-  print_endline "...............................................\n\n\x1b[1;37m";
+  let state = Array.fold_left process State.init filepaths in
 
-  print_endline "~~~~~~~~~~~~~~~~~~~~~~";
-  print_endline "|                    |";
-  print_endline "+-  Summed Results  -+";
-  print_res     "|                    |" !total !err;
+  Printf.printf "%s\n\n" (String.make 16 '.');
 
-  let total, err = Hashtbl.fold
-      (fun _ valid (total, err) ->
-         if valid then (total + 1, err)
-         else (total + 1, err + 1))
-      unified_res
-      (0, 0)
+  print_res "+-  Summed Results  -+" state.scores;
+
+  let unified_failed = StringSet.cardinal state.unique_failure_lines in
+  let unified_success = StringSet.cardinal state.unique_success_lines in
+  let unified_scores =
+    Scores.set_success unified_success Scores.init
+    |> Scores.set_failures unified_failed
   in
 
-  print_endline "\n\n\x1b[1;37m";
+  Printf.printf "\n";
 
-  print_endline "~~~~~~~~~~~~~~~~~~~~~~~";
-  print_endline "|                     |";
-  print_endline "[>  Unified Results  <]";
-  print_res     "|                     |" total err;
+  print_res "[>  Unified Results  <]" unified_scores;
 
-  if err > 0 then
+  if unified_failed > 0 then
     exit 1
 

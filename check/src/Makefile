@@ -4,7 +4,7 @@ OCAMLOPT=ocamlopt $(COMPFLAGS)
 
 API_SRC=pretty_print.ml section.ml scores.ml
 CHECK_SRC=$(API_SRC:.ml=.mli) $(API_SRC) check.mli check.ml
-AGGR_SRC=aggregate.mli aggregate.ml
+AGGR_SRC=$(API_SRC:.ml=.mli) $(API_SRC) aggregate.mli aggregate.ml
 
 check.byt$(EXE): $(CHECK_SRC)
 	$(OCAMLC) -o $@ $^
