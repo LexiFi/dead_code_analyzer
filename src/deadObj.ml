@@ -451,8 +451,8 @@ let report () =
     in cut_main (loop s 0)
   in
 
-  let folder nb_call = fun loc (fn, path) acc ->
-
+  let folder nb_call = fun loc (builddir, path) acc ->
+    let fn = Filename.concat builddir loc.Lexing.pos_fname in
     let exists =
       List.exists
         (fun (overr, meth) -> overr && get_method path = meth)

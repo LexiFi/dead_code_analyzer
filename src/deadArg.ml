@@ -25,7 +25,7 @@ let eom () =
   Hashtbl.reset met
 
 
-let add lab expr loc last_loc nb_occur =
+let add lab expr builddir loc last_loc nb_occur =
   let has_val = match expr.exp_desc with
     | Texp_construct (_, {cstr_name = "None"; _}, _) -> false
     | _ -> true
@@ -45,7 +45,15 @@ let add lab expr loc last_loc nb_occur =
     let loc = VdNode.find loc lab occur in
     if not (Hashtbl.mem met (last_loc, loc, lab)) then begin
       Hashtbl.add met (last_loc, loc, lab) ();
-      opt_args := (loc, lab, has_val, call_site) :: !opt_args
+      let opt_arg_use = {
+          builddir;
+          decl_loc = loc;
+          label = lab;
+          has_val;
+          use_loc = call_site;
+        }
+      in
+      opt_args := opt_arg_use :: !opt_args
     end
 
 
@@ -61,8 +69,12 @@ let rec process loc args =
   else begin                              (* else: `begin ... end' for aesthetics *)
     let nb_occur = Hashtbl.create 256 in
     let last_loc = !last_loc in
-      (* last_loc fixed to avoid side effects if added to later/last *)
-    let add lab expr = add lab expr loc last_loc nb_occur in
+    let builddir =
+      let state = State.get_current () in
+      State.File_infos.get_builddir state.file_infos
+    in
+    (* last_loc and builddir fixed to avoid side effects if added to later/last *)
+    let add lab expr = add lab expr builddir loc last_loc nb_occur in
     let add = function
       | (Asttypes.Optional lab, Some expr) ->
           if VdNode.is_end loc

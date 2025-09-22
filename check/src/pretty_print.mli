@@ -9,4 +9,4 @@ val bg_red : string
 val bold : string
 val style_reset : string
 
-val error : err:string -> ctx:string -> unit -> unit
+val error : err:string -> ctx:string -> unit

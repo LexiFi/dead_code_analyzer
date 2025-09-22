@@ -198,7 +198,15 @@ type opt_arg =
   }
 
 
-let opt_args : (Lexing.position * string * bool * Lexing.position) list ref = ref []
+type opt_arg_use = {
+  builddir : string;
+  decl_loc : Lexing.position;
+  label : string;
+  has_val : bool;
+  use_loc : Lexing.position;
+}
+
+let opt_args : opt_arg_use list ref = ref []
 
 
 
@@ -374,7 +382,9 @@ let export ?(sep = ".") path u stock id loc =
   if not loc.Location.loc_ghost
   && (u = unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore (Ident.name id) then
-    hashtbl_add_to_list stock loc.Location.loc_start (!current_src, value)
+    let state = State.get_current () in
+    let builddir = State.File_infos.get_builddir state.file_infos in
+    hashtbl_add_to_list stock loc.Location.loc_start (builddir, value)
 
 
 
@@ -435,7 +445,8 @@ let report s ~(opt: DeadFlag.opt) ?(extra = "Called") l continue nb_call pretty_
 let report_basic ?folder decs title (flag:DeadFlag.basic) =
   let folder = match folder with
     | Some folder -> folder
-    | None -> fun nb_call -> fun loc (fn, path) acc ->
+    | None -> fun nb_call -> fun loc (builddir, path) acc ->
+        let fn = Filename.concat builddir loc.Lexing.pos_fname in
         let rec cut_main s pos =
           if pos = String.length s then s
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
@@ -463,7 +474,11 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
     in
 
     let change =
-      let (fn, _, _, _) = try List.hd l with _ -> (_none, "", !last_loc, []) in
+      let fn =
+        match l with
+        | (fn, _, _, _)::_ -> fn
+        | _ -> _none
+      in
       dir fn
     in
     let pretty_print = fun (fn, path, loc, call_sites) ->
