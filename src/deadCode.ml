@@ -118,6 +118,7 @@ let value_binding super self x =
 
 
 let structure_item super self i =
+  let state = State.get_current () in
   let open Asttypes in
   begin match i.str_desc with
   | Tstr_type  (_, l) when !DeadFlag.typ.DeadFlag.print ->
@@ -129,8 +130,12 @@ let structure_item super self i =
   | Tstr_include i ->
       let collect_include signature =
         let prev_last_loc = !last_loc in
+        let module_id =
+          State.File_infos.get_modname state.file_infos
+          |> Ident.create_persistent
+        in
         List.iter
-          (collect_export ~mod_type:true [Ident.create_persistent (unit !current_src)] _include incl)
+          (collect_export ~mod_type:true [module_id] _include incl)
           signature;
         last_loc := prev_last_loc;
       in
@@ -333,7 +338,6 @@ let kind fn =
 
 let regabs state =
   let fn = State.File_infos.get_sourcepath state.State.file_infos in
-  current_src := fn;
   hashtbl_add_unique_to_list abspath (unit fn) fn;
   if !DeadCommon.declarations then
     hashtbl_add_unique_to_list main_files (unit fn) ()
@@ -359,18 +363,20 @@ let read_interface fn cmi_infos state = let open Cmi_format in
 
 (* Merge a location's references to another one's *)
 let assoc decs (loc1, loc2) =
+  let state = State.get_current () in
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
+  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
-    ||  ( unit fn = unit !current_src
+    ||  ( unit fn = sourceunit
           &&  try Sys.file_exists (find_abspath fn ^ "i")
               with Not_found -> false
         )
   in
   let is_iface fn loc =
-    Hashtbl.mem decs loc || unit fn <> unit !current_src
+    Hashtbl.mem decs loc || unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
@@ -387,15 +393,19 @@ let assoc decs (loc1, loc2) =
 
 
 let clean references loc =
+  let state = State.get_current () in
+  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = loc.Lexing.pos_fname in
-  if (fn.[String.length fn - 1] <> 'i' && unit fn = unit !current_src) then
+  if (fn.[String.length fn - 1] <> 'i' && unit fn = sourceunit) then
     LocHash.remove references loc
 
 let eom loc_dep =
+  let state = State.get_current () in
   DeadArg.eom();
   List.iter (assoc decs) loc_dep;
   List.iter (assoc DeadType.decs) !DeadType.dependencies;
-  if Sys.file_exists (!current_src ^ "i") then begin
+  let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
+  if Sys.file_exists (sourcepath ^ "i") then begin
     let clean =
       List.iter
         (fun (loc1, loc2) ->

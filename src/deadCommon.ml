@@ -53,7 +53,6 @@ let style : (string * Lexing.position * string) list ref = ref []
 
 (* helper to diagnose occurrences of Location.none in the typedtree *)
 let last_loc = ref Lexing.dummy_pos
-let current_src = ref ""
 
 (* module path *)
 let mods : string list ref = ref []
@@ -71,10 +70,13 @@ let _variant = ": variant :"
 
                 (********   HELPERS   ********)
 
-let unit fn = try Filename.chop_extension (Filename.basename fn) with Invalid_argument _ -> fn
+let unit fn = Filename.remove_extension (Filename.basename fn)
 
 let register_style loc msg =
-  style := (!current_src, loc, msg)::!style
+  let state = State.get_current() in
+  let builddir = State.File_infos.get_builddir state.file_infos in
+  let fn = Filename.concat builddir loc.Lexing.pos_fname in
+  style := (fn, loc, msg)::!style
 
 let is_ghost loc =
   loc.Lexing.pos_lnum <= 0 || loc.Lexing.pos_cnum - loc.Lexing.pos_bol < 0
@@ -133,14 +135,16 @@ let rec get_deep_desc typ =
 
 
 let exported (flag : DeadFlag.basic ref) loc =
+  let state = State.get_current () in
   let fn = loc.Lexing.pos_fname in
+  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   !flag.DeadFlag.print
   && LocHash.find_set references loc
      |> LocSet.cardinal <= !flag.DeadFlag.threshold
   && (flag == DeadFlag.typ
     || !DeadFlag.internal
     || fn.[String.length fn - 1] = 'i'
-    || unit !current_src <> unit fn
+    || sourceunit <> unit fn
     || try not (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> true)
 
 
@@ -315,6 +319,7 @@ module VdNode = struct
     in loop (func loc) lab occur
 
   let eom () =
+    let state = State.get_current () in
 
     let sons =
       LocHash.fold (fun loc _ acc -> loc :: acc) parents []
@@ -342,15 +347,16 @@ module VdNode = struct
     in
     List.iter delete sons;
 
+    let sourceunit = State.File_infos.get_sourceunit state.file_infos in
     let delete loc =
       let met = LocHash.create 64 in
       let rec loop worklist loc_list =
         if not (LocSet.is_empty worklist) then
           let loc = LocSet.choose worklist in
           let wl = LocSet.remove loc worklist in
-           if unit loc.Lexing.pos_fname <> unit !current_src then
+          if unit loc.Lexing.pos_fname <> sourceunit then
             List.iter (LocHash.remove parents) loc_list
-           else begin
+          else begin
             LocHash.replace met loc ();
             let my_parents = LocHash.find_set parents loc in
             let my_parents =
@@ -358,7 +364,7 @@ module VdNode = struct
             in
             let wl = LocSet.union my_parents wl in
             loop wl (loc :: loc_list)
-           end
+          end
       in loop (LocSet.singleton loc) []
     in
     List.iter delete sons

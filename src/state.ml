@@ -1,12 +1,18 @@
 module File_infos = struct
   type t = {
     cmti_file : string;
+    sourcepath : string;
+    builddir : string;
+    modname : string;
     cmi_infos : Cmi_format.cmi_infos option;
     cmt_infos : Cmt_format.cmt_infos option;
   }
 
   let empty = {
     cmti_file = "";
+    sourcepath = "!!UNKNOWN_SOURCEPATH!!";
+    builddir = "!!UNKNOWN_BUILDDIR!!";
+    modname = "!!UNKNOWN_MODNAME!!";
     cmi_infos = None;
     cmt_infos = None;
   }
@@ -16,9 +22,22 @@ module File_infos = struct
     else
       try
         let cmt_infos = Cmt_format.read_cmt cmt_file in
+        let builddir = cmt_infos.cmt_builddir in
+        let sourcepath =
+          match cmt_infos.cmt_sourcefile with
+          | Some sourcefile -> Filename.concat builddir sourcefile
+          | None ->
+            Printf.sprintf "!!UNKNOWN_SOURCEPATH_IN<%s>_FOR_<%s>!!"
+              builddir
+              cmt_file
+        in
+        let modname = cmt_infos.cmt_modname in
         Result.ok {
           empty with cmti_file = cmt_file;
-                     cmt_infos = Some cmt_infos
+                     builddir;
+                     sourcepath;
+                     modname;
+                     cmt_infos = Some cmt_infos;
         }
       with _ -> Result.error (cmt_file ^ ": cannot read cmt file")
 
@@ -27,9 +46,15 @@ module File_infos = struct
     else
       try
         let cmi_infos = Cmi_format.read_cmi cmi_file in
+        let builddir = "!!UNKNOWN_BUILDDIR_FOR<" ^ cmi_file ^ ">!!" in
+        let sourcepath = "!!UNKNOWN_SOURCEPATH_FOR<" ^ cmi_file ^ ">!!" in
+        let modname = cmi_infos.cmi_name in
         Result.ok {
           empty with cmti_file = cmi_file;
-                     cmi_infos = Some cmi_infos
+                     builddir;
+                     sourcepath;
+                     modname;
+                     cmi_infos = Some cmi_infos;
         }
       with _ -> Result.error (cmi_file ^ ": cannot read cmi file")
 
@@ -43,19 +68,17 @@ module File_infos = struct
     | Error _, ok -> ok
     | Ok with_cmt, Ok {cmi_infos; _} -> Result.ok {with_cmt with cmti_file; cmi_infos}
 
-  let get_builddir t =
-    match t.cmt_infos with
-    | None -> "!!UNKNOWN_BUILDDIR_FOR<" ^ t.cmti_file ^ ">!!"
-    | Some {cmt_builddir; _} -> cmt_builddir
+  let get_builddir t = t.builddir
 
-  let get_sourcepath t =
+  let get_sourcepath t = t.sourcepath
+
+  let get_sourceunit t =
     match t.cmt_infos with
-    | None -> "!!UNKNOWN_SOURCEPATH_FOR<" ^ t.cmti_file ^ ">!!"
-    | Some {cmt_sourcefile; _} ->
-      let builddir = get_builddir t in
-      match cmt_sourcefile with
-      | None -> "!!UNKNOWN_SOURCEPATH_IN<" ^ builddir ^ ">_FOR_<" ^ t.cmti_file ^ ">!!"
-      | Some sourcefile -> Filename.concat builddir sourcefile
+    | Some {cmt_sourcefile = Some _; _} ->
+      get_sourcepath t |> Filename.basename |> Filename.remove_extension
+    | _ -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cmti_file ^ ">!!"
+
+  let get_modname t = t.modname
 
 end
 
