@@ -20,5 +20,3 @@
 - The `OPTIONAL ARGUMENTS` sections may have both FN and FP.
   It may consume a lot of memory to compute.
 - The `CODING STYLE` section may have both FN and FP (none known).
-
-ratio: **100%** successful (over 255 unique expected results)
