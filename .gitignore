@@ -18,6 +18,7 @@
 *.opt
 *.out
 _build
+_opam
 
 # emacs
 *~
