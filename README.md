@@ -2,7 +2,7 @@
 Dead-code analyzer for OCaml
 
 
-[![Build Status](https://travis-ci.com/LexiFi/dead_code_analyzer.svg?branch=master)](https://travis-ci.com/LexiFi/dead_code_analyzer)
+[![Build Status](https://github.com/LexiFi/dead_code_analyzer/actions/workflows/workflow.yml/badge.svg?branch=master)](https://github.com/LexiFi/dead_code_analyzer/actions/workflows/workflow.yml)
 
 ## Overview
 
