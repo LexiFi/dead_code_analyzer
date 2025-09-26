@@ -63,7 +63,7 @@ For more information about the usage, use the *-help* option.
 ## Testing
 
 To run the tests use `make check`.
-For each subset of the tests a file `<subset>.out` is generated, containg the output
+For each subset of the tests a file `<subset>.out` is generated, containing the output
 of the execution on it.
 
 To run a subset of the tests call `make -C check <subset>`.
@@ -73,7 +73,7 @@ To run a subset of the tests call `make -C check <subset>`.
 
 You are welcome to clone this repository and send us back pull requests.
 
-Read `CONTRIBUTING.md` at the root of this directory for more informations on how to contribute.
+Read `CONTRIBUTING.md` at the root of this directory for more information on how to contribute.
 
 
 ## Status
