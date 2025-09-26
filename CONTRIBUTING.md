@@ -8,7 +8,7 @@ You should not:
 - use more than 100 columns. Less than 80 is even better;
 - leave trailing whitespace.
 
-Otherwise, try to keep constitent with surrounding code and avoid any super-weird construct
+Otherwise, try to keep consistent with surrounding code and avoid any super-weird construct
 (unless it is really useful, very well documented and maintainable).
 
 
