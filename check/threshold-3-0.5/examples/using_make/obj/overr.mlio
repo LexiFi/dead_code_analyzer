@@ -1,0 +1,4 @@
+./examples/using_make/obj/overr.mli:1: p1#g
+./examples/using_make/obj/overr.mli:1: p1#h
+./examples/using_make/obj/overr.mli:7: p2#g
+./examples/using_make/obj/overr.mli:7: p2#h

@@ -1,0 +1,3 @@
+./examples/using_make/dir/anonFn2.mli:1: ?a   (2/3 calls)
+./examples/using_make/dir/anonFn2.mli:2: ?a   (2/3 calls)
+./examples/using_make/dir/anonFn2.mli:2: ?b   (2/3 calls)

@@ -1,4 +1,0 @@
-./examples/dir/hidden_opt_use.ml:1: ?a
-./examples/dir/hidden_opt_use.ml:1: ?b
-./examples/dir/hidden_opt_use.ml:3: ?a
-./examples/dir/hidden_opt_use.ml:3: ?b

@@ -1,0 +1,2 @@
+./examples/using_make/baz.ml:1: ?d
+./examples/using_make/baz.ml:5: ?d

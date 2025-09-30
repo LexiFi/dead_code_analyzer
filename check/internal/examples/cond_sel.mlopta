@@ -1,8 +1,0 @@
-./examples/cond_sel.ml:1: ?a
-./examples/cond_sel.ml:1: ?b
-./examples/cond_sel.ml:3: ?a
-./examples/cond_sel.ml:3: ?b
-./examples/cond_sel.ml:9: ?a
-./examples/cond_sel.ml:9: ?b
-./examples/cond_sel.ml:11: ?a
-./examples/cond_sel.ml:11: ?b
