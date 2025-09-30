@@ -1,0 +1,5 @@
+./examples/using_dune/unwrapped_lib/values/values.mli:1: used_int
+./examples/using_dune/unwrapped_lib/values/values.mli:13: used_fun
+./examples/using_dune/unwrapped_lib/values/values.mli:19: used_alias_fun
+./examples/using_dune/unwrapped_lib/values/values.mli:24: used_closure
+

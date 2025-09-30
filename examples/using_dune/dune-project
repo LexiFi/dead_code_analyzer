@@ -1,0 +1,14 @@
+(lang dune 3.20)
+
+(name using_dune)
+
+(wrapped_executables false)
+
+(generate_opam_files false)
+
+(package
+ (name using_dune)
+ (allow_empty)
+)
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html

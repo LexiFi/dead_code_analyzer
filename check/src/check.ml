@@ -15,15 +15,32 @@ module Path = struct
     |> List.cons "."
     |> String.concat Filename.dir_sep
 
-  (* Paths read in res.out points to files in <project_root>/examples/
-     relatively from <project_root>/check : '../examples/<rest/of/path>'
+  (* Paths read in res.out points to files in '<project_root>/examples/'
+     relatively from that directory :
+       - for files in the 'using_make' subdirectory :
+         'using_make/<path/to/file>'
+       - for files in the 'using_dune' subdirectory :
+         'using_dune/_build/default/<path/to/file>'
      We want to relocate them as relative to the <expected_reports_root>
      directory whhich contains its own examples subdirectory with report files
-     organized similarly to <project_root>/examples. :
-     './examples/<rest/of/path>'. Therefore, removing the first '.' does the
-     trick *)
+     organized similarly to '<project_root>/examples':
+     './examples/using_<make|dune>/<rest/of/path>'. *)
   let relocate path =
-    String.sub path 1 (String.length path - 1)
+    let dune_build_prefix =
+      String.concat Filename.dir_sep ["using_dune"; "_build"; "default"]
+    in
+    let dune_build_prefix_len = String.length dune_build_prefix in
+    let path_len = String.length path in
+    let path =
+      if String.starts_with ~prefix:dune_build_prefix path then
+        let no_prefix =
+          (* remove the leading dune_build_prefix *)
+          String.sub path dune_build_prefix_len (path_len - dune_build_prefix_len)
+        in
+        "using_dune" ^ no_prefix
+      else path
+    in
+    String.concat Filename.dir_sep ["."; "examples"; path]
 
   let fold ~init ~on_file ~on_directory path =
     if not (Sys.file_exists path) then init
