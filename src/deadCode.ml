@@ -330,9 +330,9 @@ let kind fn =
     prerr_endline ("Warning: '" ^ fn ^ "' not found");
     `Ignore
   end else if DeadFlag.is_excluded fn then `Ignore
+  else if Sys.is_directory fn then `Dir
   else if Filename.check_suffix fn ".cmi" then `Cmi
   else if Filename.check_suffix fn ".cmt" then `Cmt
-  else if Sys.is_directory fn then `Dir
   else `Ignore
 
 
