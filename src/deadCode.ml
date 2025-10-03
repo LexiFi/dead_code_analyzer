@@ -370,10 +370,8 @@ let assoc decs (loc1, loc2) =
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
-    ||  ( unit fn = sourceunit
-          &&  try Sys.file_exists (find_abspath fn ^ "i")
-              with Not_found -> false
-        )
+    || ( unit fn = sourceunit
+      && DeadCommon.file_exists (fn ^ "i"))
   in
   let is_iface fn loc =
     Hashtbl.mem decs loc || unit fn <> sourceunit
@@ -405,7 +403,7 @@ let eom loc_dep =
   List.iter (assoc decs) loc_dep;
   List.iter (assoc DeadType.decs) !DeadType.dependencies;
   let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
-  if Sys.file_exists (sourcepath ^ "i") then begin
+  if DeadCommon.file_exists (sourcepath ^ "i") then begin
     let clean =
       List.iter
         (fun (loc1, loc2) ->

@@ -126,6 +126,11 @@ let find_path fn l =
 let find_abspath fn =
   find_path fn (hashtbl_find_list abspath (unit fn))
 
+let file_exists fn =
+  match find_abspath fn with
+  | exception _ -> Sys.file_exists fn
+  | _ -> true
+
 
 (* We often simply traverse a Tlink to process the linked type *)
 let rec get_deep_desc typ =
@@ -145,7 +150,7 @@ let exported (flag : DeadFlag.basic ref) loc =
     || !DeadFlag.internal
     || fn.[String.length fn - 1] = 'i'
     || sourceunit <> unit fn
-    || try not (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> true)
+    || not (file_exists (fn ^ "i")))
 
 
 (* Section printer:

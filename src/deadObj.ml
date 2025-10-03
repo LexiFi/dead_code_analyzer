@@ -199,6 +199,9 @@ let collect_export path u stock ~obj ~cltyp loc =
   let save id =
     let state = State.get_current () in
     let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
+    (* TODO: resolve the builddir ('/workspace_root') in the case of dune
+       compiled projects. Without it, looking up for an existing csml below will
+       always fail and can lead to false positive *)
     if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then
       export ~sep:"#" path u stock (Ident.create_persistent id) loc;
   in
