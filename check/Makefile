@@ -19,22 +19,22 @@ opt:
 
 classic: prepare check.$(EXT)$(EXE)
 	make -C ../examples run_dca DEADFLAGS="-A" \
-		| tail -n +2 | head -n -1 > $(TARGET)
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./classic $(TARGET)
 
 internal: prepare check.$(EXT)$(EXE)
 	make -C ../examples run_dca DEADFLAGS="-A --internal" \
-		| tail -n +2 | head -n -1 > $(TARGET)
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./internal $(TARGET)
 
 threshold-1: prepare check.$(EXT)$(EXE)
 	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:1 -M threshold:1 -T threshold:1" \
-		| tail -n +2 | head -n -1 > $(TARGET)
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
 
 threshold-3-0.5: prepare check.$(EXT)$(EXE)
 	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3" \
-		| tail -n +2 | head -n -1 > $(TARGET)
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
 
 prepare:
