@@ -1,0 +1,2 @@
+./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:4: Exported.internally_used_int
+./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:5: Exported.externally_used_int
