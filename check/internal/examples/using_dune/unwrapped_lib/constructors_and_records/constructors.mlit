@@ -1,0 +1,15 @@
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:1: unused_single_no_param.Unused_single_no_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:2: unused_single_unit.Unused_single_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:3: unused_single_param.Unused_single_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:5: unused_mix.Unused_no_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:6: unused_mix.Unused_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:7: unused_mix.Unused_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:9: matched_single_no_param.Matched_single_no_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:10: matched_single_unit.Matched_single_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:11: matched_single_param.Matched_single_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:13: matched_mix.Matched_no_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:14: matched_mix.Matched_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:15: matched_mix.Matched_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:42: partially_used_mix_1.Partially_used_no_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:48: partially_used_mix_2.Partially_used_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
