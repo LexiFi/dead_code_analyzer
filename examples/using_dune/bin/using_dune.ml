@@ -6,3 +6,4 @@ let () =
 
 let () =
   Use_constructors.mark_used ();
+  Use_records.mark_used ()

@@ -1,0 +1,8 @@
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:22: internally_used_single_unit.internally_used_single_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:23: internally_used_single_param.internally_used_single_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:25: internally_used_mix.internally_used_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:26: internally_used_mix.internally_used_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:29: externally_used_single_unit.externally_used_single_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:30: externally_used_single_param.externally_used_single_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:32: externally_used_mix.externally_used_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:33: externally_used_mix.externally_used_param
