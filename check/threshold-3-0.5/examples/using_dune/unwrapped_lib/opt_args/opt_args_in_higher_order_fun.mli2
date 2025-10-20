@@ -1,0 +1,8 @@
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:1: partially_applied_with_never_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:3: partially_applied_with_always_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:7: shadowing_never_used_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:8: shadowing_always_used_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:10: expect_fun_with_never_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:11: expect_fun_with_always_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:13: expect_fun_with_never_used_opt_arg_with_sig
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:15: expect_fun_with_always_used_opt_arg_with_sig

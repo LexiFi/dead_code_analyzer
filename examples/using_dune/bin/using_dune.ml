@@ -7,3 +7,8 @@ let () =
 let () =
   Use_constructors.mark_used ();
   Use_records.mark_used ()
+
+let () =
+  Use_opt_args.mark_used ();
+  Use_mixed_args.mark_used ();
+  Use_opt_args_in_higher_order_fun.mark_used ()

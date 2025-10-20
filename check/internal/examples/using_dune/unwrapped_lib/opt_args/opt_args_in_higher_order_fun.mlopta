@@ -1,0 +1,10 @@
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:4: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:12: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:15: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:17: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:22: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:27: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:30: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:3: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:8: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:17: ?type_used
