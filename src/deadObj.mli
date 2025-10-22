@@ -32,6 +32,10 @@ val collect_references :
   -> unit
 
 
+val add_equal :
+  Lexing.position -> Lexing.position -> unit
+
+
 val tstr :
   class_declaration * string list -> unit
 

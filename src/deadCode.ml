@@ -450,6 +450,7 @@ let rec load_file fn =
           let prepare = function
             | {Types.val_loc = {Location.loc_start = loc1; loc_ghost = false; _}; _},
               {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false; _}; _} ->
+                DeadObj.add_equal loc1 loc2;
                 VdNode.merge_locs ~force:true loc2 loc1
             | _ -> ()
           in
