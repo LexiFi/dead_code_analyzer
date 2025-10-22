@@ -1,0 +1,2 @@
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#used
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#used
