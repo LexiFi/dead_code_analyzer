@@ -16,3 +16,6 @@ let () =
 let () =
   Use_without_class.mark_used ();
   Use_with_class.mark_used ()
+
+let () =
+  Use_style.mark_used ()
