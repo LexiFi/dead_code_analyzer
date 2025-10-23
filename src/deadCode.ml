@@ -420,19 +420,23 @@ let eom loc_dep =
 
 
 (* Starting point *)
-let rec load_file fn =
-  let init_and_continue fn f =
-    match State.init fn with
-    | Error msg -> Printf.eprintf "%s\n!" msg
+let rec load_file state fn =
+  let init_and_continue state fn f =
+    match State.change_file state fn with
+    | Error msg ->
+      Printf.eprintf "%s\n!" msg;
+      state
     | Ok state ->
         State.update state;
-        f state
+        f state;
+        (* TODO: stateful computations should take and return the state when possible *)
+        state
   in
   match kind fn with
   | `Cmi when !DeadCommon.declarations ->
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue fn (fun state ->
+      init_and_continue state fn (fun state ->
       match state.file_infos.cmi_infos with
       | None -> () (* TODO error handling ? *) 
       | Some cmi_infos -> read_interface fn cmi_infos state
@@ -442,7 +446,7 @@ let rec load_file fn =
       let open Cmt_format in
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue fn (fun state ->
+      init_and_continue state fn (fun state ->
       regabs state;
       match state.file_infos.cmt_infos with
       | None -> bad_files := fn :: !bad_files
@@ -474,12 +478,13 @@ let rec load_file fn =
   | `Dir ->
       let next = Sys.readdir fn in
       Array.sort compare next;
-      Array.iter
-        (fun s -> load_file (fn ^ "/" ^ s))
+      Array.fold_left
+        (fun state s -> load_file state (fn ^ "/" ^ s))
+        state
         next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 
-  | _ -> ()
+  | _ -> state
 
 
                 (********   REPORTING   ********)
@@ -614,6 +619,12 @@ let parse () =
     update_opt optn print)
   in
 
+  let load_file filename =
+    let state = State.get_current () in
+    let state = load_file state filename in
+    State.update state
+  in
+
   (* any extra argument can be accepted by any option using some
    * although it doesn't necessary affects the results (e.g. -O 3+4) *)
   Arg.(parse
@@ -682,19 +693,22 @@ let parse () =
 
     ]
     (Printf.eprintf "Scanning files...\n%!";
-    load_file)
+     load_file)
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <path>\nOptions are:"))
 
 
 let () =
 try
     parse ();
-    DeadCommon.declarations := false;
-
-    let oldstyle = !DeadFlag.style in
-    DeadFlag.update_style "-all";
-    List.iter load_file !DeadFlag.directories;
-    DeadFlag.style := oldstyle;
+    let run_on_references_only state =
+      DeadCommon.declarations := false;
+      let oldstyle = !DeadFlag.style in
+      DeadFlag.update_style "-all";
+      List.fold_left load_file state !DeadFlag.directories
+      |> ignore;
+      DeadFlag.style := oldstyle
+    in
+    run_on_references_only (State.get_current ());
 
     Printf.eprintf " [DONE]\n\n%!";
 

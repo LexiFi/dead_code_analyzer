@@ -103,6 +103,21 @@ module File_infos = struct
       init_from_cmt cmti_file |> Result.map with_cmi_infos
     | _ -> Result.error (cmti_file ^ ": not a .cmi or .cmt file")
 
+  let change_file file_infos cmti_file =
+    let no_ext = Filename.remove_extension cmti_file in
+    assert(no_ext = Filename.remove_extension file_infos.cmti_file);
+    match Filename.extension cmti_file, file_infos with
+    | ".cmi", {cmi_infos=Some cmi_infos; _} ->
+      let res = init_from_cmi_infos ~with_cmt:file_infos cmi_infos cmti_file in
+      Result.ok res
+    | ".cmt", {cmt_infos = Some cmt_infos; cmi_infos; _} ->
+      let res = init_from_cmt_infos cmt_infos cmti_file in
+      Result.ok {res with cmi_infos}
+    | ".cmi", _
+    | ".cmt", _ -> (* corresponding info is None *)
+      init cmti_file
+    | _ -> Result.error (cmti_file ^ ": not a .cmi or .cmt file")
+
   let get_builddir t = t.builddir
 
   let get_sourcepath t = t.sourcepath
@@ -126,6 +141,22 @@ let empty = {file_infos = File_infos.empty}
 let init cmti_file =
   let file_infos = File_infos.init cmti_file in
   Result.map (fun file_infos -> {file_infos}) file_infos
+
+let change_file state cmti_file =
+  let file_infos = state.file_infos in
+  let equal_no_ext filename1 filename2 =
+    let no_ext1 = Filename.remove_extension filename1 in
+    let no_ext2 = Filename.remove_extension filename2 in
+    no_ext1 = no_ext2
+  in
+  if file_infos.cmti_file = cmti_file then
+    Result.ok state
+  else if equal_no_ext file_infos.cmti_file cmti_file then
+    let file_infos = File_infos.change_file file_infos cmti_file in
+    Result.map (fun file_infos -> {file_infos}) file_infos
+  else
+    init cmti_file
+
 
 let current = ref empty
 
