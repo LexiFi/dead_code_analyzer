@@ -1,0 +1,9 @@
+./examples/using_make/dir/fn_arg.ml:1: ?a
+./examples/using_make/dir/fn_arg.ml:1: ?b
+./examples/using_make/dir/fn_arg.ml:3: ?b
+./examples/using_make/dir/fn_arg.ml:7: ?a
+./examples/using_make/dir/fn_arg.ml:7: ?b
+./examples/using_make/dir/fn_arg.ml:9: ?c
+./examples/using_make/dir/fn_arg.ml:9: ?b
+./examples/using_make/dir/fn_arg.ml:11: ?b
+./examples/using_make/dir/fn_arg.ml:11: ?b

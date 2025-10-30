@@ -135,13 +135,16 @@ let collect_references loc exp_loc =
 
 (* Look for bad style typing *)
 let rec check_style t loc =
+  let state = State.get_current() in
   if !DeadFlag.style.DeadFlag.opt_arg then
     match get_deep_desc t with
       | Tarrow (lab, _, t, _) -> begin
           match lab with
             | Optional lab when check_underscore lab ->
+                let builddir = State.File_infos.get_builddir state.file_infos in
+                let fn = Filename.concat builddir loc.Lexing.pos_fname in
                 style :=
-                  (!current_src, loc,
+                  (fn, loc,
                    "val f: ... -> (... -> ?_:_ -> ...) -> ...")
                   :: !style
             | _ -> check_style t loc end
@@ -149,30 +152,34 @@ let rec check_style t loc =
 
 
 let tstr typ =
-
+  let state = State.get_current() in
+  let modname = State.File_infos.get_modname state.file_infos in
   let assoc name loc =
-    let path = String.concat "." @@ List.rev @@
-      name.Asttypes.txt
-      :: typ.typ_name.Asttypes.txt :: !mods
-      @ (String.capitalize_ascii (unit !current_src):: [])
+    let path =
+      let partial_path_rev =
+        name.Asttypes.txt :: typ.typ_name.Asttypes.txt :: !mods
+      in
+      modname :: List.rev partial_path_rev
+      |> String.concat "."
     in
-    begin try match typ.typ_manifest with
+    match Hashtbl.find_opt fields path with
+    | None -> Hashtbl.add fields path loc
+    | Some path_loc ->
+      (match typ.typ_manifest with
+      (* TODO : describe what this pattern is for *)
       | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
-          let loc1 = Hashtbl.find fields
-            (String.concat "." @@
-              String.capitalize_ascii (unit !current_src)
-              :: Longident.flatten txt
-              @ (name.Asttypes.txt :: []))
-          in
-          let loc2 = Hashtbl.find fields path in
-          dependencies :=
-          (loc2, loc1) :: (loc1, loc) :: !dependencies;
+        let constr_typ_path =
+          modname :: Longident.flatten txt @ (name.Asttypes.txt :: [])
+          |> String.concat "."
+        in
+        (match Hashtbl.find_opt fields constr_typ_path with
+        | None -> ()
+        | Some constr_loc ->
+          dependencies := (path_loc, constr_loc) :: (constr_loc, loc) :: !dependencies
+        )
       | _ -> ()
-    with _ -> () end;
-    try
-      let loc1 = Hashtbl.find fields path in
-      dependencies := (loc1, loc) :: !dependencies
-    with Not_found -> Hashtbl.add fields path loc
+      );
+      dependencies := (path_loc, loc) :: !dependencies
   in
 
   let assoc name loc ctyp =

@@ -1,0 +1,3 @@
+./examples/using_make/record.mli:3: t0.unused
+./examples/using_make/record.mli:4: t0.f
+./examples/using_make/record.mli:10: X.t.unused

@@ -15,15 +15,69 @@ module Path = struct
     |> List.cons "."
     |> String.concat Filename.dir_sep
 
-  (* Paths read in res.out points to files in <project_root>/examples/
-     relatively from <project_root>/check : '../examples/<rest/of/path>'
+  (* Paths read in res.out points to files in '<project_root>/examples/'
+     relatively from that directory :
+       - for files in the 'using_make' subdirectory :
+         '<project_root>/examples/using_make<path/to/file>' with
+         '<project_root>' an absolute path.
+       - for files in the 'using_dune' subdirectory :
+         '/worspace_root/<path/to/file>' on unix;
+         '<project_root>/examples/using_dune/_build/default/<path/to/file>' on windows
      We want to relocate them as relative to the <expected_reports_root>
-     directory whhich contains its own examples subdirectory with report files
-     organized similarly to <project_root>/examples. :
-     './examples/<rest/of/path>'. Therefore, removing the first '.' does the
-     trick *)
+     directory which contains its own examples subdirectory with report files
+     organized similarly to '<project_root>/examples/' :
+     './examples/<rest/of/path>'.
+     - For files in 'using_make': there is no 'using_make' file or directory in
+       '<project_root>/examples/using_make'. Therefore, taking everything in the
+       path from the last 'using_make' filename provides the common part for the
+       relocation. Then, adding an extra './' completes the path as found in the
+       expected reports
+     - For files in 'using_dune' on unix: replacing '/workspace_root' with
+       './examples/using_dune' is sufficient
+     - For files in 'using_dune' on windows: the same startegy as for files in
+       'using_make' can be applied with the removal of '_build/default' on the
+       way. because those directory names are unique, we can actually share the
+       same logic for both 'using_make' and 'using_dune' on windows. *)
   let relocate path =
-    String.sub path 1 (String.length path - 1)
+    let dune_build_prefix =
+      String.concat Filename.dir_sep [""; "workspace_root"; ""]
+    in
+    let origin =
+      if String.starts_with ~prefix:dune_build_prefix path then
+        `Using_dune (Sys.unix)
+      else `Using_make
+    in
+    let relative_path = (* ["using<make|dune>"; <path/to/file>...] *)
+      match origin with
+      | `Using_dune true ->
+        let prefix_len = String.length dune_build_prefix in
+        let path_len = String.length path in
+        let no_prefix =
+          (* remove the leading dune_build_prefix *)
+          String.sub path prefix_len (path_len - prefix_len)
+        in
+        "using_dune"::no_prefix::[]
+      | `Using_dune false | `Using_make ->
+        (* retrieve the subpath starting from the last occurence of
+           "using_<make|dune>" if it exists, and remove "_build" and "default"
+           directories from the path *)
+        let rec extract_subpath acc dirpath =
+          let basename = Filename.basename dirpath in
+          if basename = "using_make" || basename = "using_dune" then
+            basename::acc
+          else if basename = dirpath (* fixpoint *) then
+            path::[] (* TODO: error handling *)
+          else
+            let acc =
+              match basename with
+              | "_build" | "default" -> acc
+              | basename -> basename::acc
+            in
+            extract_subpath acc (Filename.dirname dirpath)
+        in
+        extract_subpath [] path
+    in
+    String.concat Filename.dir_sep ("."::"examples"::relative_path)
 
   let fold ~init ~on_file ~on_directory path =
     if not (Sys.file_exists path) then init
@@ -51,19 +105,15 @@ module Reports = struct
      the direct report of dca (is_res_line), the filepath will be relocated
      to correspond to filepaths coming from expected reports *)
   let report_info_of_line ~is_res_line line =
-    let report_line_format = "filepath:line_nb:value" in
-    match String.split_on_char ':' line with
-    | [] | _::[] | _::_::[] ->
-      let err =
-        Printf.sprintf
-          "Unrecognized report line format. Expected : '%s'"
-          report_line_format
-      in
-      PP.error ~err ~ctx:line ();
+    let fmt_error ~ctx ~fmt =
+      let report_line_format = "filepath:line_nb:value" in
+      let err = Printf.sprintf fmt report_line_format in
+      PP.error ~err ~ctx;
       None
-    | filepath::line_number::value ->
+    in
+    let report_info_of_raw_data filepath line_nb value =
       try
-        let line_nb = int_of_string line_number in
+        let line_nb = int_of_string line_nb in
         let filepath = (* relocate to match expected paths *)
           if is_res_line then Path.relocate filepath
           else filepath
@@ -72,13 +122,20 @@ module Reports = struct
         let value = String.concat ":" value in
         Some {filepath; line_nb; value}
       with Failure _int_of_string ->
-        let err =
-          Printf.sprintf
-            "Is not an int. Expected report line format is : '%s'"
-            report_line_format
-        in
-        PP.error ~err ~ctx:line_number ();
-        None
+        fmt_error ~ctx:line_nb
+                  ~fmt:"Is not an int. Expected report line format is : '%s'"
+    in
+    match String.split_on_char ':' line with
+    | [] | _::[] | _::_::[] ->
+      (* Missing elements : format not matched *)
+      fmt_error ~ctx:line
+                ~fmt:"Unrecognized report line format. Expected : '%s'"
+    | filepath::line_nb::value when Sys.unix || not is_res_line ->
+      report_info_of_raw_data filepath line_nb value
+    | drive::filepath::line_nb::value ->
+      (* On Windows, paths start with '<drive>:', and get a split on ':' *)
+      let filepath = Printf.sprintf "%s:%s" drive filepath in
+      report_info_of_raw_data filepath line_nb value
 
   type t = {
     current_filepath : string option; (* file containg current expected reports *)
@@ -176,7 +233,7 @@ module State = struct
 
   let report_fn ri state =
     let ctx = Reports.line_of_report_info ri in
-    PP.error ~err:"Not detected" ~ctx ();
+    PP.error ~err:"Not detected" ~ctx;
     incr_fn state
 
   let incr_fp state =
@@ -185,7 +242,7 @@ module State = struct
 
   let report_fp ri state =
     let ctx = Reports.line_of_report_info ri in
-    PP.error ~err:"Should not be detected" ~ctx ();
+    PP.error ~err:"Should not be detected" ~ctx;
     incr_fp state
 
   let incr_success state =
@@ -229,7 +286,7 @@ module State = struct
       match state.section with
       | None ->
         let err = "Trying to open a file outside a section" in
-        PP.error ~err ~ctx:filepath ();
+        PP.error ~err ~ctx:filepath;
         state
       | Some sec ->
         let ext = Section.to_extension sec in
@@ -237,7 +294,7 @@ module State = struct
           try Filename.chop_extension filepath
           with Invalid_argument _ ->
             let err = "Input file without extension" in
-            PP.error ~err ~ctx:filepath ();
+            PP.error ~err ~ctx:filepath;
             filepath
         in
         let exp_filepath = no_ext ^ ext in
@@ -263,7 +320,7 @@ module State = struct
           {state with expected_reports; filepath}
         | _ ->
           let err = "Expected report not found" in
-          PP.error ~err ~ctx:exp_filepath ();
+          PP.error ~err ~ctx:exp_filepath;
           state (* TODO: report empty section?*)
     in
     empty_current_file state
@@ -309,7 +366,7 @@ module State = struct
       | Some sec ->
         let err = "Missing end of section delimiter" in
         let ctx = Section.to_string sec in
-        PP.error ~err ~ctx ();
+        PP.error ~err ~ctx;
         empty_current_section state
     in
     {state with section}

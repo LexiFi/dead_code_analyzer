@@ -1,0 +1,4 @@
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:14: externally_used_fun_with_single_never_used_opt_arg
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:16: externally_used_fun_with_single_always_used_opt_arg

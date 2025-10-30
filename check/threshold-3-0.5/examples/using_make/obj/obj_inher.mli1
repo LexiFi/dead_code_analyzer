@@ -1,0 +1,5 @@
+./examples/using_make/obj/obj_inher.ml:7: o
+./examples/using_make/obj/obj_inher.ml:12: o4
+./examples/using_make/obj/obj_inher.ml:17: o2
+./examples/using_make/obj/obj_inher.ml:19: o3
+./examples/using_make/obj/obj_inher.ml:24: f

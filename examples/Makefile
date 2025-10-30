@@ -1,26 +1,32 @@
-COMPFLAGS=-w +A -I +compiler-libs -bin-annot -keep-locs
-OCAMLC=ocamlc $(COMPFLAGS)
-OCAMLOPT=ocamlopt $(COMPFLAGS)
-SRC=foo.mli foo.ml bar.ml baz.mli baz.ml qux.ml ifelse.ml match.ml matchopt.ml\
-	opt_in_opt.ml useless_opt.ml unused_fn.ml fooFn.mli fooFn.ml bar_fn.ml\
-	letIn.mli letIn.ml let_test.ml let_in.ml cond_sel.ml if_end.ml\
-	mod_alias.mli mod_alias.ml functor.mli functor.ml partial_opt.ml\
-	record.mli record.ml variant.mli variant.ml exported.mli exported.ml
+.PHONY: clean run_dca build_dca build_dune build_make build dune_only make_only
 
-all: build
-	dune build ..
-	../_build/install/default/bin/dead_code_analyzer $(DEADFLAGS) .
+CMTI_ROOT_MAKE=using_make
+CMTI_ROOT_DUNE=using_dune/_build/default/
+CMTI_ROOT?=$(CMTI_ROOT_MAKE) $(CMTI_ROOT_DUNE)
 
-build:
-	$(OCAMLC) -c $(SRC)
-	make -C dir
-	make -C obj
-	make -C opt
-	make -C advanced
+all: build build_dca run_dca
+
+make_only: build_make build_dca
+	make run_dca CMTI_ROOT=$(CMTI_ROOT_MAKE)
+
+dune_only: build_dune build_dca
+	make run_dca CMTI_ROOT=$(CMTI_ROOT_DUNE)
+
+build: build_make build_dune
+
+build_make:
+	make -C using_make
+
+build_dune:
+	dune build --root=using_dune @check
+
+build_dca:
+	make -C .. dca
+
+run_dca:
+	../_build/install/default/bin/dead_code_analyzer $(DEADFLAGS) $(CMTI_ROOT)
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
-	make -C dir clean
-	make -C obj clean
-	make -C opt clean
-	make -C advanced clean
+	make -C using_make clean
+	dune clean --root=using_dune

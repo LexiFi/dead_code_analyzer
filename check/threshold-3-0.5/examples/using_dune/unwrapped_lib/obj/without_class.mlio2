@@ -1,0 +1,4 @@
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#used_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#used_int

@@ -1,0 +1,7 @@
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#externally_used_fun
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#externally_used_int
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#internally_used_fun
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#internally_used_int
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#sometimes_used_fun
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#sometimes_used_int
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:25: fun_class#used

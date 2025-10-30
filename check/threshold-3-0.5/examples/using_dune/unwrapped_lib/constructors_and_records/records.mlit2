@@ -1,0 +1,7 @@
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:15: used_single_unit.used_single_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:16: used_single_param.used_single_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:18: used_mix.used_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:19: used_mix.used_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:38: partially_used_mix_1.partially_used_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:42: partially_used_mix_2.partially_used_unit
+./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:48: partially_used_in_match.partially_used_in_match_param

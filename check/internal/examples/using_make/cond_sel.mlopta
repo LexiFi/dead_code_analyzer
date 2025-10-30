@@ -1,0 +1,8 @@
+./examples/using_make/cond_sel.ml:1: ?a
+./examples/using_make/cond_sel.ml:1: ?b
+./examples/using_make/cond_sel.ml:3: ?a
+./examples/using_make/cond_sel.ml:3: ?b
+./examples/using_make/cond_sel.ml:9: ?a
+./examples/using_make/cond_sel.ml:9: ?b
+./examples/using_make/cond_sel.ml:11: ?a
+./examples/using_make/cond_sel.ml:11: ?b

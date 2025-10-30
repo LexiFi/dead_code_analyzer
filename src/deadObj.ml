@@ -197,7 +197,12 @@ let collect_export path u stock ~obj ~cltyp loc =
 
 
   let save id =
-    if not (Sys.file_exists (Filename.chop_extension !current_src ^ ".csml")) then
+    let state = State.get_current () in
+    let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
+    (* TODO: resolve the builddir ('/workspace_root') in the case of dune
+       compiled projects. Without it, looking up for an existing csml below will
+       always fail and can lead to false positive *)
+    if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then
       export ~sep:"#" path u stock (Ident.create_persistent id) loc;
   in
 
@@ -222,14 +227,15 @@ let collect_references ~meth ~call_site expr =
 
 
 let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; _}, _) =
-
+  let state = State.get_current () in
   let loc = loc.Location.loc_start in
   last_class := loc;
   let short =
     (List.rev !mods |> String.concat ".")
     ^ (if !mods <> [] then "." else "") ^ name
   in
-  let path = String.capitalize_ascii (unit !current_src) ^ "." ^ short in
+  let modname = State.File_infos.get_modname state.file_infos in
+  let path = modname ^ "." ^ short in
   if not (Hashtbl.mem defined short) then
     Hashtbl.add defined short path
   else
@@ -451,8 +457,8 @@ let report () =
     in cut_main (loop s 0)
   in
 
-  let folder nb_call = fun loc (fn, path) acc ->
-
+  let folder nb_call = fun loc (builddir, path) acc ->
+    let fn = Filename.concat builddir loc.Lexing.pos_fname in
     let exists =
       List.exists
         (fun (overr, meth) -> overr && get_method path = meth)

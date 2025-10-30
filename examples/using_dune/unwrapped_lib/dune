@@ -1,0 +1,6 @@
+(library
+ (name unwrapped_lib)
+ (flags (:standard -warn-error -A))
+ (wrapped false))
+
+(include_subdirs unqualified)

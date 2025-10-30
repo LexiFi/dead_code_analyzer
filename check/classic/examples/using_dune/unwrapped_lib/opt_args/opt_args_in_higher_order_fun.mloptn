@@ -1,0 +1,6 @@
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:1: ?never
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:10: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:20: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:25: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:1: ?never
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:7: ?duplicate

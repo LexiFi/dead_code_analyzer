@@ -53,7 +53,6 @@ let style : (string * Lexing.position * string) list ref = ref []
 
 (* helper to diagnose occurrences of Location.none in the typedtree *)
 let last_loc = ref Lexing.dummy_pos
-let current_src = ref ""
 
 (* module path *)
 let mods : string list ref = ref []
@@ -71,10 +70,13 @@ let _variant = ": variant :"
 
                 (********   HELPERS   ********)
 
-let unit fn = try Filename.chop_extension (Filename.basename fn) with Invalid_argument _ -> fn
+let unit fn = Filename.remove_extension (Filename.basename fn)
 
 let register_style loc msg =
-  style := (!current_src, loc, msg)::!style
+  let state = State.get_current() in
+  let builddir = State.File_infos.get_builddir state.file_infos in
+  let fn = Filename.concat builddir loc.Lexing.pos_fname in
+  style := (fn, loc, msg)::!style
 
 let is_ghost loc =
   loc.Lexing.pos_lnum <= 0 || loc.Lexing.pos_cnum - loc.Lexing.pos_bol < 0
@@ -124,6 +126,11 @@ let find_path fn l =
 let find_abspath fn =
   find_path fn (hashtbl_find_list abspath (unit fn))
 
+let file_exists fn =
+  match find_abspath fn with
+  | exception _ -> Sys.file_exists fn
+  | _ -> true
+
 
 (* We often simply traverse a Tlink to process the linked type *)
 let rec get_deep_desc typ =
@@ -133,15 +140,17 @@ let rec get_deep_desc typ =
 
 
 let exported (flag : DeadFlag.basic ref) loc =
+  let state = State.get_current () in
   let fn = loc.Lexing.pos_fname in
+  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   !flag.DeadFlag.print
   && LocHash.find_set references loc
      |> LocSet.cardinal <= !flag.DeadFlag.threshold
   && (flag == DeadFlag.typ
     || !DeadFlag.internal
     || fn.[String.length fn - 1] = 'i'
-    || unit !current_src <> unit fn
-    || try not (Sys.file_exists (find_abspath fn ^ "i")) with Not_found -> true)
+    || sourceunit <> unit fn
+    || not (file_exists (fn ^ "i")))
 
 
 (* Section printer:
@@ -198,7 +207,15 @@ type opt_arg =
   }
 
 
-let opt_args : (Lexing.position * string * bool * Lexing.position) list ref = ref []
+type opt_arg_use = {
+  builddir : string;
+  decl_loc : Lexing.position;
+  label : string;
+  has_val : bool;
+  use_loc : Lexing.position;
+}
+
+let opt_args : opt_arg_use list ref = ref []
 
 
 
@@ -307,6 +324,7 @@ module VdNode = struct
     in loop (func loc) lab occur
 
   let eom () =
+    let state = State.get_current () in
 
     let sons =
       LocHash.fold (fun loc _ acc -> loc :: acc) parents []
@@ -334,15 +352,16 @@ module VdNode = struct
     in
     List.iter delete sons;
 
+    let sourceunit = State.File_infos.get_sourceunit state.file_infos in
     let delete loc =
       let met = LocHash.create 64 in
       let rec loop worklist loc_list =
         if not (LocSet.is_empty worklist) then
           let loc = LocSet.choose worklist in
           let wl = LocSet.remove loc worklist in
-           if unit loc.Lexing.pos_fname <> unit !current_src then
+          if unit loc.Lexing.pos_fname <> sourceunit then
             List.iter (LocHash.remove parents) loc_list
-           else begin
+          else begin
             LocHash.replace met loc ();
             let my_parents = LocHash.find_set parents loc in
             let my_parents =
@@ -350,7 +369,7 @@ module VdNode = struct
             in
             let wl = LocSet.union my_parents wl in
             loop wl (loc :: loc_list)
-           end
+          end
       in loop (LocSet.singleton loc) []
     in
     List.iter delete sons
@@ -374,7 +393,9 @@ let export ?(sep = ".") path u stock id loc =
   if not loc.Location.loc_ghost
   && (u = unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore (Ident.name id) then
-    hashtbl_add_to_list stock loc.Location.loc_start (!current_src, value)
+    let state = State.get_current () in
+    let builddir = State.File_infos.get_builddir state.file_infos in
+    hashtbl_add_to_list stock loc.Location.loc_start (builddir, value)
 
 
 
@@ -435,7 +456,8 @@ let report s ~(opt: DeadFlag.opt) ?(extra = "Called") l continue nb_call pretty_
 let report_basic ?folder decs title (flag:DeadFlag.basic) =
   let folder = match folder with
     | Some folder -> folder
-    | None -> fun nb_call -> fun loc (fn, path) acc ->
+    | None -> fun nb_call -> fun loc (builddir, path) acc ->
+        let fn = Filename.concat builddir loc.Lexing.pos_fname in
         let rec cut_main s pos =
           if pos = String.length s then s
           else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
@@ -463,7 +485,11 @@ let report_basic ?folder decs title (flag:DeadFlag.basic) =
     in
 
     let change =
-      let (fn, _, _, _) = try List.hd l with _ -> (_none, "", !last_loc, []) in
+      let fn =
+        match l with
+        | (fn, _, _, _)::_ -> fn
+        | _ -> _none
+      in
       dir fn
     in
     let pretty_print = fun (fn, path, loc, call_sites) ->

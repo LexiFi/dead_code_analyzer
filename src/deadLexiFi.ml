@@ -73,10 +73,14 @@ let () =
 
   DeadLexiFi.tstr_type :=
     (fun typ ctype ->
+      let state = State.get_current () in
+      let modname = State.File_infos.get_modname state.file_infos in
       let path =
-        String.concat "." @@ List.rev @@
-        typ.typ_name.Asttypes.txt :: !mods
-        @ (String.capitalize_ascii (unit !current_src):: [])
+        let partial_path_rev =
+          typ.typ_name.Asttypes.txt :: !mods
+        in
+        modname :: List.rev partial_path_rev
+        |> String.concat "."
       in
       let is_user_defined s =
         let l = [_variant; "bool"; "float"; "int"; "string"; "unit"] in
@@ -98,8 +102,11 @@ let () =
 
   DeadLexiFi.ttype_of :=
     (fun e ->
-      let name = String.concat "." @@ List.rev @@
-        !mods @ (String.capitalize_ascii (unit !current_src):: [])
+      let state = State.get_current () in
+      let modname = State.File_infos.get_modname state.file_infos in
+      let name =
+        List.rev (modname :: !mods)
+        |> String.concat "."
       in
       let call_site =
         if e.exp_loc.Location.loc_ghost then !last_loc

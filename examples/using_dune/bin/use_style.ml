@@ -1,0 +1,5 @@
+let () = ignore Style.all
+
+let is_used = ref false
+let mark_used () =
+  is_used := true

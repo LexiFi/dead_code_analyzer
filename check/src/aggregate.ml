@@ -124,4 +124,7 @@ let () =
 
   if unified_failed > 0 then
     exit 1
+  else if unified_success = 0 then
+    (* no test run ? *)
+    exit 2
 

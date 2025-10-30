@@ -1,3 +1,4 @@
+.PHONY: clean prepare threshold-3-0.5 threshold-1 internal classic opt
 
 TARGET=res.out
 EXT=byt
@@ -16,20 +17,24 @@ all: aggregate.$(EXT)$(EXE)
 opt:
 	make EXT=opt
 
-internal: prepare check.$(EXT)$(EXE)
-	../_build/install/default/bin/dead_code_analyzer -A --internal ../examples > $(TARGET)
-	./src/check.$(EXT)$(EXE) ./internal $(TARGET)
-
 classic: prepare check.$(EXT)$(EXE)
-	../_build/install/default/bin/dead_code_analyzer -A ../examples > $(TARGET)
+	make -C ../examples run_dca DEADFLAGS="-A" \
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./classic $(TARGET)
 
+internal: prepare check.$(EXT)$(EXE)
+	make -C ../examples run_dca DEADFLAGS="-A --internal" \
+		| tail -n +2 | sed '$$d' > $(TARGET)
+	./src/check.$(EXT)$(EXE) ./internal $(TARGET)
+
 threshold-1: prepare check.$(EXT)$(EXE)
-	../_build/install/default/bin/dead_code_analyzer -A --internal -E threshold:1 -M threshold:1 -T threshold:1 ../examples > $(TARGET)
+	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:1 -M threshold:1 -T threshold:1" \
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
 
 threshold-3-0.5: prepare check.$(EXT)$(EXE)
-	../_build/install/default/bin/dead_code_analyzer -A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3 ../examples > $(TARGET)
+	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3" \
+		| tail -n +2 | sed '$$d' > $(TARGET)
 	./src/check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
 
 prepare:

@@ -17,6 +17,7 @@
 *.o
 *.opt
 *.out
+*.install
 _build
 _opam
 

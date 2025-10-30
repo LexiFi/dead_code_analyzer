@@ -118,6 +118,7 @@ let value_binding super self x =
 
 
 let structure_item super self i =
+  let state = State.get_current () in
   let open Asttypes in
   begin match i.str_desc with
   | Tstr_type  (_, l) when !DeadFlag.typ.DeadFlag.print ->
@@ -129,8 +130,12 @@ let structure_item super self i =
   | Tstr_include i ->
       let collect_include signature =
         let prev_last_loc = !last_loc in
+        let module_id =
+          State.File_infos.get_modname state.file_infos
+          |> Ident.create_persistent
+        in
         List.iter
-          (collect_export ~mod_type:true [Ident.create_persistent (unit !current_src)] _include incl)
+          (collect_export ~mod_type:true [module_id] _include incl)
           signature;
         last_loc := prev_last_loc;
       in
@@ -319,111 +324,28 @@ let collect_references =                          (* Tast_mapper *)
                 type_declaration
               }
 
-let starts_with prefix s =
-  let len = String.length prefix in
-  if len > String.length s then false
-  else String.sub s 0 len = prefix
-
-let ends_with suffix s =
-  let len = String.length suffix in
-  let s_len = String.length s in
-  if len > s_len then false
-  else String.sub s (s_len - len) len = suffix
-
-let remove_wrap name =
-  let n = String.length name in
-  let rec loop i =
-    if i > 2 then
-      if name.[i-1] == '_' && name.[i-2] == '_' then
-        String.uncapitalize_ascii (String.sub name i (n - i))
-      else loop (i - 1)
-    else name
-  in loop (n - 1)
-
 (* Checks the nature of the file *)
 let kind fn =
   if not (Sys.file_exists fn) then begin
     prerr_endline ("Warning: '" ^ fn ^ "' not found");
     `Ignore
-  end else if not (DeadFlag.is_excluded fn) then begin
-    (* When searching source files according to *.cmi or *.cmt files, *)
-    (* we should consider dune (formerly known as jbuilder) puts the *)
-    (* cmi/cmt files in a separate folder named either: *)
-    (* ".<name>.objs" or ".<name>.eobjs" *)
-    let good_exts base exts =
-      let open DeadFlag in
-      let good_ext base ext =
-        let fn = base ^ ext in
-        Sys.file_exists fn && not (is_excluded fn)
-      in
-      (* normalize_path would append a slash, use it only on the dirname *)
-      let base =
-        Filename.(concat (normalize_path (dirname base)) (basename base))
-      in
-      let get_upper_base base =
-        let split_upper_curr path =
-          Filename.dirname path, Filename.basename path
-        in
-        let is_objs_dir dir =
-          starts_with "." dir
-          && (ends_with ".objs" dir || ends_with ".eobjs" dir)
-        in
-        let upper_d, cur_dir = split_upper_curr (Filename.dirname base) in
-        if is_objs_dir cur_dir then
-          let f = remove_wrap (Filename.basename base) in
-          Some (Filename.concat upper_d f)
-        else (
-          (* Try again on upper_d because there might be "byte" and *)
-          (* "native" subdirs in the objs dir *)
-          let upper_d, cur_dir = split_upper_curr upper_d in
-          if is_objs_dir cur_dir then
-            let f = remove_wrap (Filename.basename base) in
-            Some (Filename.concat upper_d f)
-          else None
-        )
-      in
-      let rec find_source base = function
-        | [] -> None
-        | ext :: tl ->
-          if good_ext base ext then Some (base ^ ext)
-          else find_source base tl
-      in
-      match find_source base exts with
-      | Some _ as src -> src
-      | None ->
-        let (let*) = Option.bind in
-        let* base = get_upper_base base in
-        find_source base exts
-    in
-    if Filename.check_suffix fn ".cmi" then
-      let base = Filename.chop_suffix fn ".cmi" in
-      match good_exts base [".mli"; ".mfi"; ".ml"; ".mf"; ".mll"; ".mfl"] with
-      | None ->
-        if !DeadFlag.verbose then Printf.eprintf "Ignoring %s (no source?)\n%!" base;
-        `Ignore
-      | Some src -> `Iface src
-    else if Filename.check_suffix fn ".cmt" then
-      let base = Filename.chop_suffix fn ".cmt" in
-      match good_exts base [".ml"; ".mf"; ".mll"; ".mfl"] with
-      | None ->
-        if !DeadFlag.verbose then Printf.eprintf "Ignoring %s (no source?)\n%!" base;
-        `Ignore
-      | Some src -> `Implem src
-    else if Sys.is_directory fn       then  `Dir
-    else            (* default *)           `Ignore
-  end else          (* default *)           `Ignore
+  end else if DeadFlag.is_excluded fn then `Ignore
+  else if Sys.is_directory fn then `Dir
+  else if Filename.check_suffix fn ".cmi" then `Cmi
+  else if Filename.check_suffix fn ".cmt" then `Cmt
+  else `Ignore
 
 
-let regabs fn =
-  current_src := fn;
+let regabs state =
+  let fn = State.File_infos.get_sourcepath state.State.file_infos in
   hashtbl_add_unique_to_list abspath (unit fn) fn;
   if !DeadCommon.declarations then
     hashtbl_add_unique_to_list main_files (unit fn) ()
 
 
-let read_interface fn src = let open Cmi_format in
+let read_interface fn cmi_infos state = let open Cmi_format in
   try
-    regabs src;
+    regabs state;
     let u = unit fn in
     if !DeadFlag.exported.DeadFlag.print
        || !DeadFlag.obj.DeadFlag.print
@@ -432,7 +354,7 @@ let read_interface fn src = let open Cmi_format in
       let f =
         collect_export [Ident.create_persistent (String.capitalize_ascii u)] u decs
       in
-      List.iter f (read_cmi fn).cmi_sign;
+      List.iter f cmi_infos.cmi_sign;
       last_loc := Lexing.dummy_pos
   with Cmi_format.Error (Wrong_version_interface _) ->
     (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
@@ -441,18 +363,18 @@ let read_interface fn src = let open Cmi_format in
 
 (* Merge a location's references to another one's *)
 let assoc decs (loc1, loc2) =
+  let state = State.get_current () in
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
+  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
-    ||  ( unit fn = unit !current_src
-          &&  try Sys.file_exists (find_abspath fn ^ "i")
-              with Not_found -> false
-        )
+    || ( unit fn = sourceunit
+      && DeadCommon.file_exists (fn ^ "i"))
   in
   let is_iface fn loc =
-    Hashtbl.mem decs loc || unit fn <> unit !current_src
+    Hashtbl.mem decs loc || unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
@@ -469,15 +391,19 @@ let assoc decs (loc1, loc2) =
 
 
 let clean references loc =
+  let state = State.get_current () in
+  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = loc.Lexing.pos_fname in
-  if (fn.[String.length fn - 1] <> 'i' && unit fn = unit !current_src) then
+  if (fn.[String.length fn - 1] <> 'i' && unit fn = sourceunit) then
     LocHash.remove references loc
 
 let eom loc_dep =
+  let state = State.get_current () in
   DeadArg.eom();
   List.iter (assoc decs) loc_dep;
   List.iter (assoc DeadType.decs) !DeadType.dependencies;
-  if Sys.file_exists (!current_src ^ "i") then begin
+  let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
+  if DeadCommon.file_exists (sourcepath ^ "i") then begin
     let clean =
       List.iter
         (fun (loc1, loc2) ->
@@ -494,28 +420,41 @@ let eom loc_dep =
 
 
 (* Starting point *)
-let rec load_file fn =
+let rec load_file state fn =
+  let init_and_continue state fn f =
+    match State.change_file state fn with
+    | Error msg ->
+      Printf.eprintf "%s\n!" msg;
+      state
+    | Ok state ->
+        State.update state;
+        f state;
+        (* TODO: stateful computations should take and return the state when possible *)
+        state
+  in
   match kind fn with
-  | `Iface src when !DeadCommon.declarations ->
+  | `Cmi when !DeadCommon.declarations ->
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      read_interface fn src
+      init_and_continue state fn (fun state ->
+      match state.file_infos.cmi_infos with
+      | None -> () (* TODO error handling ? *) 
+      | Some cmi_infos -> read_interface fn cmi_infos state
+      )
 
-  | `Implem src ->
+  | `Cmt ->
       let open Cmt_format in
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      regabs src;
-      let cmt =
-        try Some (read_cmt fn)
-        with _ -> bad_files := fn :: !bad_files; None
-      in
-
-      begin match cmt with
+      init_and_continue state fn (fun state ->
+      regabs state;
+      match state.file_infos.cmt_infos with
+      | None -> bad_files := fn :: !bad_files
       | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
           let prepare = function
             | {Types.val_loc = {Location.loc_start = loc1; loc_ghost = false; _}; _},
               {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false; _}; _} ->
+                DeadObj.add_equal loc1 loc2;
                 VdNode.merge_locs ~force:true loc2 loc1
             | _ -> ()
           in
@@ -533,19 +472,19 @@ let rec load_file fn =
             else []
           in
           eom loc_dep
-
-      | _ -> ()  (* todo: support partial_implementation? *)
-      end
+      | _ -> () (* todo: support partial_implementation? *)
+      )
 
   | `Dir ->
       let next = Sys.readdir fn in
       Array.sort compare next;
-      Array.iter
-        (fun s -> load_file (fn ^ "/" ^ s))
+      Array.fold_left
+        (fun state s -> load_file state (fn ^ "/" ^ s))
+        state
         next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
 
-  | _ -> ()
+  | _ -> state
 
 
                 (********   REPORTING   ********)
@@ -557,24 +496,28 @@ let analyze_opt_args () =
   let tbl = Hashtbl.create 256 in
   let dec_loc loc = Hashtbl.mem main_files (unit loc.Lexing.pos_fname) in
 
-  let analyze = fun (loc, lab, has_val, call_site) ->
+  let analyze = fun opt_arg_use ->
+    let builddir = opt_arg_use.builddir in
+    let loc = opt_arg_use.decl_loc in
+    let lab = opt_arg_use.label in
     let slot =
       try Hashtbl.find tbl (loc, lab)
       with Not_found ->
         let r = {with_val = []; without_val = []} in
         if dec_loc loc then begin
-          all := (loc, lab, r) :: !all;
+          all := (builddir, loc, lab, r) :: !all;
           Hashtbl.add tbl (loc, lab) r
         end;
         r
     in
-    if has_val then slot.with_val <- call_site :: slot.with_val
+    let call_site = opt_arg_use.use_loc in
+    if opt_arg_use.has_val then slot.with_val <- call_site :: slot.with_val
     else slot.without_val <- call_site :: slot.without_val
   in
 
   List.iter analyze !opt_args;
   List.iter                   (* Remove call sites accounted more than once for the same element *)
-    (fun (_, _, slot) ->
+    (fun (_, _, _, slot) ->
       slot.with_val     <- List.sort_uniq compare slot.with_val;
       slot.without_val  <- List.sort_uniq compare slot.without_val)
     !all;
@@ -590,30 +533,35 @@ let report_opt_args s l =
   let rec report_opt_args nb_call =
     let open DeadFlag in
     let l = List.filter
-        (fun (_, _, slot, ratio, _) -> let ratio = 1. -. ratio in
+        (fun (_, _, _, slot, ratio, _) -> let ratio = 1. -. ratio in
           if opt.threshold.optional = `Both then
             ratio >= opt.threshold.percentage && check_length nb_call slot
           else ratio >= percent nb_call
             && (opt.threshold.percentage >= 1. || ratio < (percent (nb_call - 1))))
       @@ List.map
-        (fun (loc, lab, slot) ->
+        (fun (builddir, loc, lab, slot) ->
           let l = if s = "NEVER" then slot.with_val else slot.without_val in
           let total = List.length slot.with_val + List.length slot.without_val in
           let ratio = float_of_int (List.length l) /. float_of_int total
-          in (loc, lab, l, ratio, total))
+          in (builddir, loc, lab, l, ratio, total))
         l
-      |> List.fast_sort (fun (loc1, lab1, slot1, _, _) (loc2, lab2, slot2, _, _) ->
+      |> List.fast_sort (fun (_, loc1, lab1, slot1, _, _) (_, loc2, lab2, slot2, _, _) ->
           compare (DeadCommon.abs loc1, loc1, lab1, slot1) (DeadCommon.abs loc2, loc2, lab2, slot2))
     in
 
     let change =
-      let (loc, _, _, _, _) = try List.hd l with _ -> (!last_loc, _none, [], 0., 0) in
+      let loc =
+        match l with
+        | (_, loc, _, _, _, _)::_ -> loc
+        | _ -> !last_loc
+      in
       dir (DeadCommon.abs loc)
     in
 
-    let pretty_print = fun (loc, lab, slot, ratio, total) ->
+    let pretty_print = fun (builddir, loc, lab, slot, ratio, total) ->
       if change (DeadCommon.abs loc) then print_newline ();
-      prloc loc; print_string ("?" ^ lab);
+      let fn = Filename.concat builddir loc.Lexing.pos_fname in
+      prloc ~fn loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
         if opt.call_sites then print_string "  Exceptions:"
@@ -669,6 +617,12 @@ let parse () =
     update_basic "-T" typ print;
     update_opt opta print;
     update_opt optn print)
+  in
+
+  let load_file filename =
+    let state = State.get_current () in
+    let state = load_file state filename in
+    State.update state
   in
 
   (* any extra argument can be accepted by any option using some
@@ -739,19 +693,22 @@ let parse () =
 
     ]
     (Printf.eprintf "Scanning files...\n%!";
-    load_file)
+     load_file)
     ("Usage: " ^ Sys.argv.(0) ^ " <options> <path>\nOptions are:"))
 
 
 let () =
 try
     parse ();
-    DeadCommon.declarations := false;
-
-    let oldstyle = !DeadFlag.style in
-    DeadFlag.update_style "-all";
-    List.iter load_file !DeadFlag.directories;
-    DeadFlag.style := oldstyle;
+    let run_on_references_only state =
+      DeadCommon.declarations := false;
+      let oldstyle = !DeadFlag.style in
+      DeadFlag.update_style "-all";
+      List.fold_left load_file state !DeadFlag.directories
+      |> ignore;
+      DeadFlag.style := oldstyle
+    in
+    run_on_references_only (State.get_current ());
 
     Printf.eprintf " [DONE]\n\n%!";
 
