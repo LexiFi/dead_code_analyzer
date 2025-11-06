@@ -3,6 +3,7 @@
 CMTI_ROOT_MAKE=using_make
 CMTI_ROOT_DUNE=using_dune/_build/default/
 CMTI_ROOT?=$(CMTI_ROOT_MAKE) $(CMTI_ROOT_DUNE)
+REDIRECT?="" # Used by ../check/Makefile
 
 all: build build_dca run_dca
 
@@ -24,7 +25,7 @@ build_dca:
 	make -C .. dca
 
 run_dca:
-	../_build/install/default/bin/dead_code_analyzer $(DEADFLAGS) $(CMTI_ROOT)
+	../_build/install/default/bin/dead_code_analyzer $(DEADFLAGS) $(CMTI_ROOT) $(REDIRECT)
 
 clean:
 	rm -f *~ *.cm* *.o *.obj

@@ -18,7 +18,30 @@ let rec to_string = function
     let sub_string = to_string t in
     Printf.sprintf "Threshold(%d, %s)" n sub_string
 
-let compare = compare
+let rec hash = function
+  | Values -> 1
+  | Methods -> 2
+  | Constr_and_fields -> 3
+  | Opt_always -> 4
+  | Opt_never -> 5
+  | Style -> 6
+  | Threshold (n, sec) -> n * 10 + hash sec
+
+let rec compare sec1 sec2 =
+  match sec1, sec2 with
+  | Threshold (n1, sec1), Threshold (n2, sec2) ->
+    let comp = compare sec1 sec2 in
+    if comp = 0 then n1 - n2
+    else comp
+  | Threshold(n, sec1), sec2 ->
+    let comp = compare sec1 sec2 in
+    if comp = 0 then -n
+    else comp
+  | _, Threshold _ -> - (compare sec2 sec1)
+  | sec1, sec2 ->
+    let hash1 = hash sec1 in
+    let hash2 = hash sec2 in
+    hash1 - hash2
 
 let rec to_extension = function
   | Constr_and_fields -> ".mlit"
@@ -50,14 +73,15 @@ let rec of_extension = function
     let exts = [".mlit"; ".mlio"; ".mlopta"; ".mloptn"; ".mlstyle"; ".mli"] in
     List.find_map try_threshold exts
 
-
+let is_sub_start s = String.for_all (( = ) '~') s (* subsections start *)
 let is_start s =
-  String.for_all (( = ) '=') s (* = is used for main sections *)
-  || String.for_all (( = ) '~') s (* ~ is used for subsections *)
+  String.for_all (( = ) '=') s (* main sections start *)
+  || is_sub_start s
 
+let is_sub_end s = String.for_all (( = ) '-') s (* subsections ending *)
 let is_end s =
   s = "Nothing else to report in this section" (* main sections ending *)
-  || String.for_all (( = ) '-') s (* subsections ending *)
+  || is_sub_end s
 
 let of_header = function
   | ".> UNUSED CONSTRUCTORS/RECORD FIELDS:" -> Some Constr_and_fields
