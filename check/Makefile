@@ -1,6 +1,5 @@
 .PHONY: clean prepare threshold-3-0.5 threshold-1 internal classic opt
 
-TARGET?=res.out
 EXT?=byt
 SCENARIOS=threshold-3-0.5 threshold-1 internal classic
 REDIRECT_SCENARIO?=""
@@ -10,7 +9,7 @@ all: aggregate.$(EXT)$(EXE)
 	@# The 2nd echo in the loop below overlaps the 1st one for aesthetics purpose
 	@for scenario in $(SCENARIOS); do \
 		echo -n "$$scenario : In progress"; \
-		make $$scenario REDIRECT_SCENARIO="> $$scenario.out 2> $$scenario.err" EXT=$(EXT) > /dev/null 2>&1; \
+		make "$$scenario" REDIRECT_SCENARIO="> \"$$scenario.out\" 2> \"$$scenario.err\"" EXT="$(EXT)" > /dev/null 2>&1; \
 		echo \\r"$$scenario : Done       "; \
 	done
 	./src/aggregate.$(EXT)$(EXE) $(SCENARIOS:=.out)
@@ -18,25 +17,31 @@ all: aggregate.$(EXT)$(EXE)
 opt:
 	make EXT=opt
 
-classic: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A" REDIRECT="> $(TARGET)"
-	mv ../examples/$(TARGET) .
-	./src/check.$(EXT)$(EXE) ./classic/classic.exp $(TARGET) $(REDIRECT_SCENARIO)
+.ONESHELL:
+scenario: prepare check.$(EXT)$(EXE)
+ifndef SCENARIO
+	echo "Error: Please provide a SCENARIO name"
+else
+	TARGET="$(shell pwd)/$(SCENARIO)/$(SCENARIO).got"
+	echo "$$TARGET"
+	make -C ../examples run_dca DEADFLAGS="$(DEADFLAGS)" REDIRECT="> \"$$TARGET\""
+	./src/check.$(EXT)$(EXE) ./"$(SCENARIO)"/"$(SCENARIO)".exp "$$TARGET" $(REDIRECT_SCENARIO)
+ifndef DEADFLAGS
+		echo "WARNING: No DEADFLAGS was provided"
+endif
+endif
 
-internal: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A --internal" REDIRECT="> $(TARGET)"
-	mv ../examples/$(TARGET) .
-	./src/check.$(EXT)$(EXE) ./internal/internal.exp $(TARGET) $(REDIRECT_SCENARIO)
+classic:
+	make scenario SCENARIO=$@ DEADFLAGS="-A"
 
-threshold-1: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:1 -M threshold:1 -T threshold:1" REDIRECT="> $(TARGET)"
-	mv ../examples/$(TARGET) .
-	./src/check.$(EXT)$(EXE) ./threshold-1/threshold-1.exp $(TARGET) $(REDIRECT_SCENARIO)
+internal:
+	make scenario SCENARIO=$@ DEADFLAGS="-A --internal"
 
-threshold-3-0.5: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3" REDIRECT="> $(TARGET)"
-	mv ../examples/$(TARGET) .
-	./src/check.$(EXT)$(EXE) ./threshold-3-0.5/threshold-3-0.5.exp $(TARGET) $(REDIRECT_SCENARIO)
+threshold-1:
+	make scenario SCENARIO=$@ DEADFLAGS="-A --internal -E threshold:1 -M threshold:1 -T threshold:1"
+
+threshold-3-0.5:
+	make scenario SCENARIO=$@ DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3"
 
 prepare:
 	dune build ..
@@ -49,5 +54,5 @@ aggregate.$(EXT)$(EXE):
 	make -C src $@
 
 clean:
-	rm -f *~ *.cm* *.a *.lib *.o *.obj *.byt$(EXE) *.opt$(EXE) **.out **.err
+	rm -f *~ *.cm* *.a *.lib *.o *.obj *.byt$(EXE) *.opt$(EXE) **.out **.err */*.got
 	make -C src clean

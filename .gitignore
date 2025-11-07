@@ -16,11 +16,13 @@
 *.html
 *.o
 *.opt
-*.out
-*.err
 *.install
 _build
 _opam
+# tests output
+*.out
+*.err
+*.got
 
 # emacs
 *~

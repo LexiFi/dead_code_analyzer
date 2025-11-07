@@ -6,14 +6,21 @@ module Path = struct
      the system's separator, remove any intermediate reference to
      the current directory ("."), and reduce multiple consecutive separators
      into 1.
-     WARNING: This assumes `path` is a relative path and will ad "./" at
-     the beginning of it after the above manipulation *)
+     WARNING: If `path` is a relative path, it will ad "./" at the beginning
+     after the above manipulation *)
   let normalize path =
-    String.split_on_char '\\' path
-    |> List.concat_map (String.split_on_char '/')
-    |> List.filter (fun s -> s <> "" && s <> ".")
-    |> List.cons "."
-    |> String.concat Filename.dir_sep
+    let splitted_path =
+      String.split_on_char '\\' path
+      |> List.concat_map (String.split_on_char '/')
+    in
+    match splitted_path with
+    | ""::_ -> (* do not relocate aboslute paths *)
+      String.concat Filename.dir_sep splitted_path
+    | _ ->
+      splitted_path
+      |> List.filter (fun s -> s <> "" && s <> ".")
+      |> List.cons "."
+      |> String.concat Filename.dir_sep
 
   (* Paths read in res.out points to files in '<project_root>/examples/'
      relatively from that directory :
@@ -289,11 +296,13 @@ and process_mismatch state exp_lines got_lines =
 
 
 let get_expected_reports_filename () =
-  if (Array.length Sys.argv) < 2 then failwith "Missing expected reports file"
+  if (Array.length Sys.argv) < 2 then
+    failwith "Missing expected reports file (ext=.exp)"
   else Path.normalize Sys.argv.(1)
 
 let get_res_filename () =
-  if (Array.length Sys.argv) < 3 then "res.out"
+  if (Array.length Sys.argv) < 3 then
+    failwith "Missing result file (ext=.got)"
   else Path.normalize Sys.argv.(2)
 
 let normalized_lines_of ~is_res_file filename =
