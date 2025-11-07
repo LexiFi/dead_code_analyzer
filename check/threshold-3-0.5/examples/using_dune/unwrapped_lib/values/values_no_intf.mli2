@@ -1,5 +1,0 @@
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:1: used_int
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:14: used_fun
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:21: used_alias_fun
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:26: used_closure
-

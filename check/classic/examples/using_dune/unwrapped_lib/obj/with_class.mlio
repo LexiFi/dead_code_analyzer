@@ -1,7 +1,0 @@
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_int
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:23: unused_fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:25: fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused

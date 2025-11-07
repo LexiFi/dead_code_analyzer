@@ -1,5 +1,0 @@
-./examples/using_dune/unwrapped_lib/style/style.ml:2: let () = ... in ... (=> use sequence)
-./examples/using_dune/unwrapped_lib/style/style.ml:2: unit pattern unit_binding
-./examples/using_dune/unwrapped_lib/style/style.ml:3: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_dune/unwrapped_lib/style/style.ml:4: let () = ... in ... (=> use sequence)
-./examples/using_dune/unwrapped_lib/style/style.ml:5: let x = ... in x (=> useless binding)

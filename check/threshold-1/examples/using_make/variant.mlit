@@ -1,3 +1,0 @@
-./examples/using_make/variant.mli:1: v.Unused
-./examples/using_make/variant.mli:3: v2.Float
-./examples/using_make/variant.mli:3: v2.Nothing
