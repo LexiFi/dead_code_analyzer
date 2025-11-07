@@ -2,34 +2,38 @@
 
 EXT?=byt
 SCENARIOS=threshold-3-0.5 threshold-1 internal classic
-REDIRECT_SCENARIO?=""
+REDIRECTED_SCENARIOS=$(SCENARIOS:%=redirected_%) # rule names
+REDIRECT_SCENARIO?="" # used by the scenario rule and set in the redirected_scenario rule
+TARGET=$(CURDIR)/$(SCENARIO)/$(SCENARIO).got # used by the scenario rule
 
-all: aggregate.$(EXT)$(EXE)
-	@echo "Running scenarios:"
-	@# The 2nd echo in the loop below overlaps the 1st one for aesthetics purpose
-	@for scenario in $(SCENARIOS); do \
-		echo -n "$$scenario : In progress"; \
-		make "$$scenario" REDIRECT_SCENARIO="> \"$$scenario.out\" 2> \"$$scenario.err\"" EXT="$(EXT)" > /dev/null 2>&1; \
-		echo \\r"$$scenario : Done       "; \
-	done
+all: $(REDIRECTED_SCENARIOS) aggregate.$(EXT)$(EXE)
 	./src/aggregate.$(EXT)$(EXE) $(SCENARIOS:=.out)
 
 opt:
 	make EXT=opt
 
-.ONESHELL:
 scenario: prepare check.$(EXT)$(EXE)
 ifndef SCENARIO
 	echo "Error: Please provide a SCENARIO name"
 else
-	TARGET="$(shell pwd)/$(SCENARIO)/$(SCENARIO).got"
-	echo "$$TARGET"
-	make -C ../examples run_dca DEADFLAGS="$(DEADFLAGS)" REDIRECT="> \"$$TARGET\""
-	./src/check.$(EXT)$(EXE) ./"$(SCENARIO)"/"$(SCENARIO)".exp "$$TARGET" $(REDIRECT_SCENARIO)
+	echo "$(TARGET)"
+	make -C ../examples run_dca DEADFLAGS="$(DEADFLAGS)" REDIRECT="> $(TARGET)"
+	echo $(CURDIR)
+	./src/check.$(EXT)$(EXE) "./$(SCENARIO)/$(SCENARIO).exp" $(TARGET) $(REDIRECT_SCENARIO)
 ifndef DEADFLAGS
 		echo "WARNING: No DEADFLAGS was provided"
 endif
 endif
+
+redirected_scenario:
+ifndef SCENARIO
+	echo "Error: Please provide a SCENARIO name"
+else
+	make "$(SCENARIO)" REDIRECT_SCENARIO="> \"$(SCENARIO).out\" 2> \"$(SCENARIO).err\"" EXT="$(EXT)" > /dev/null 2>&1
+endif
+
+$(REDIRECTED_SCENARIOS):
+	make redirected_scenario SCENARIO=$(@:redirected_%=%)
 
 classic:
 	make scenario SCENARIO=$@ DEADFLAGS="-A"

@@ -13,14 +13,31 @@ module Path = struct
       String.split_on_char '\\' path
       |> List.concat_map (String.split_on_char '/')
     in
-    match splitted_path with
-    | ""::_ -> (* do not relocate aboslute paths *)
-      String.concat Filename.dir_sep splitted_path
-    | _ ->
-      splitted_path
-      |> List.filter (fun s -> s <> "" && s <> ".")
-      |> List.cons "."
-      |> String.concat Filename.dir_sep
+    let is_drive_name drive =
+      String.length drive = 2
+      && drive.[0] >= 'A' && drive.[0] <= 'Z'
+      && drive.[1] = ':'
+    in
+    let head, splitted_path =
+      match splitted_path with
+      | ""::splitted_path when Sys.unix->
+        (* do not change Unix aboslute paths *)
+        "", splitted_path
+      | drive::splitted_path when Sys.win32 && is_drive_name drive ->
+        (* do not change Windows absolute paths *)
+        drive, splitted_path
+      | ""::"cygdrive"::drive::splitted_path when Sys.win32 ->
+        (* convert "/cygdrive/D/..." cygwin path into "D:\..." Windows path *)
+        let drive = String.uppercase_ascii drive ^ ":" in
+        drive, splitted_path
+      | _ ->
+        (* normalize relative path to start with "./" *)
+        ".", splitted_path
+    in
+    splitted_path
+    |> List.filter (fun s -> s <> "" && s <> ".") (* remove redundancies *)
+    |> List.cons head
+    |> String.concat Filename.dir_sep
 
   (* Paths read in res.out points to files in '<project_root>/examples/'
      relatively from that directory :
