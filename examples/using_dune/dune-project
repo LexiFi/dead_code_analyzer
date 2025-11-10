@@ -4,6 +4,8 @@
 
 (wrapped_executables false)
 
+(map_workspace_root false)
+
 (generate_opam_files false)
 
 (package

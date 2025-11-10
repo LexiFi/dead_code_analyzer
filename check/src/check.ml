@@ -28,7 +28,6 @@ module Path = struct
          '<project_root>/examples/using_make<path/to/file>' with
          '<project_root>' an absolute path.
        - for files in the 'using_dune' subdirectory :
-         '/workspace_root/<path/to/file>' on unix;
          '<project_root>/examples/using_dune/_build/default/<path/to/file>' on windows
      We want to relocate them as relative to the <expected_reports_root>
      directory which contains its own examples subdirectory with report files
@@ -39,50 +38,30 @@ module Path = struct
        path from the last 'using_make' filename provides the common part for the
        relocation. Then, adding an extra './' completes the path as found in the
        expected reports
-     - For files in 'using_dune' on unix: replacing '/workspace_root' with
-       './examples/using_dune' is sufficient
-     - For files in 'using_dune' on windows: the same startegy as for files in
-       'using_make' can be applied with the removal of '_build/default' on the
-       way. because those directory names are unique, we can actually share the
-       same logic for both 'using_make' and 'using_dune' on windows. *)
+     - For files in 'using_dune': the same startegy as for files in 'using_make'
+       can be applied with the removal of '_build/default' on the way.
+       Because those directory names are unique, we can actually share the same
+       logic for both 'using_make' and 'using_dune'. *)
   let relocate path =
-    let dune_build_prefix =
-      String.concat Filename.dir_sep [""; "workspace_root"; ""]
-    in
-    let origin =
-      if String.starts_with ~prefix:dune_build_prefix path then
-        `Using_dune (Sys.unix)
-      else `Using_make
+    (* retrieve the subpath starting from the last occurence of
+       "using_<make|dune>" if it exists, and remove "_build" and "default"
+       directories from the path *)
+    let rec extract_subpath acc dirpath =
+      let basename = Filename.basename dirpath in
+      if basename = "using_make" || basename = "using_dune" then
+        basename::acc
+      else if basename = dirpath (* fixpoint *) then
+        path::[] (* TODO: error handling *)
+      else
+        let acc =
+          match basename with
+          | "_build" | "default" -> acc
+          | basename -> basename::acc
+        in
+        extract_subpath acc (Filename.dirname dirpath)
     in
     let relative_path = (* ["using<make|dune>"; <path/to/file>...] *)
-      match origin with
-      | `Using_dune true ->
-        let prefix_len = String.length dune_build_prefix in
-        let path_len = String.length path in
-        let no_prefix =
-          (* remove the leading dune_build_prefix *)
-          String.sub path prefix_len (path_len - prefix_len)
-        in
-        "using_dune"::no_prefix::[]
-      | `Using_dune false | `Using_make ->
-        (* retrieve the subpath starting from the last occurence of
-           "using_<make|dune>" if it exists, and remove "_build" and "default"
-           directories from the path *)
-        let rec extract_subpath acc dirpath =
-          let basename = Filename.basename dirpath in
-          if basename = "using_make" || basename = "using_dune" then
-            basename::acc
-          else if basename = dirpath (* fixpoint *) then
-            path::[] (* TODO: error handling *)
-          else
-            let acc =
-              match basename with
-              | "_build" | "default" -> acc
-              | basename -> basename::acc
-            in
-            extract_subpath acc (Filename.dirname dirpath)
-        in
-        extract_subpath [] path
+      extract_subpath [] path
     in
     String.concat Filename.dir_sep ("."::"examples"::relative_path)
 

@@ -1,5 +1,18 @@
 .> UNUSED EXPORTED VALUES:
 =========================
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
+
+./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
+./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
+./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
+./examples/using_dune/unwrapped_lib/values/values.mli:25: unused_closure
+./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
+./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:13: unused_fun
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:25: unused_closure
+
 ./examples/using_make/advanced/inc_val.mli:1: x
 ./examples/using_make/advanced/inc_val.mli:2: y
 
@@ -37,75 +50,11 @@
 ./examples/using_make/unused_fn.ml:3: g
 ./examples/using_make/unused_fn.ml:5: var
 ./examples/using_make/useless_opt.ml:3: x
-
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
-
-./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
-./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
-./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
-./examples/using_dune/unwrapped_lib/values/values.mli:25: unused_closure
-./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
-./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:13: unused_fun
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:25: unused_closure
 --------
 
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_make/advanced/incl.ml:7: f
-./examples/using_make/advanced/mod.mli:1: f
-./examples/using_make/advanced/mod.mli:2: x
-./examples/using_make/advanced/val.mli:1: x
-./examples/using_make/advanced/val.mli:2: y
-
-./examples/using_make/baz.mli:2: t
-./examples/using_make/cond_sel.ml:9: f
-./examples/using_make/cond_sel.ml:11: g
-
-./examples/using_make/dir/alias_opt.ml:4: baz
-./examples/using_make/dir/alias_opt.ml:11: foo
-./examples/using_make/dir/alias_opt.ml:12: bar
-./examples/using_make/dir/fn_arg.ml:1: f
-./examples/using_make/dir/fn_arg.ml:3: g
-./examples/using_make/dir/fn_arg.ml:9: i
-./examples/using_make/dir/fn_arg.ml:11: j
-./examples/using_make/dir/hidden_opt_use.ml:1: f
-./examples/using_make/dir/hidden_opt_use.ml:3: apply
-./examples/using_make/dir/match_opt.ml:3: m
-./examples/using_make/dir/mod.mli:10: M.f
-./examples/using_make/dir/partial.ml:5: g
-./examples/using_make/dir/ref_fn.ml:5: g
-./examples/using_make/dir/ref_opt.ml:7: g
-
-./examples/using_make/foo.mli:1: x
-./examples/using_make/fooFn.mli:1: f
-./examples/using_make/functor.mli:2: M.f
-./examples/using_make/if_end.ml:1: f
-./examples/using_make/if_end.ml:3: g
-./examples/using_make/if_end.ml:5: h
-./examples/using_make/letIn.mli:1: f
-./examples/using_make/mod_alias.mli:2: M1.id
-./examples/using_make/mod_alias.mli:6: M2.id
-
-./examples/using_make/obj/class.mli:9: f
-./examples/using_make/obj/fun_class.ml:8: f
-./examples/using_make/obj/fun_obj_param.ml:7: app_m
-./examples/using_make/obj/inher.mli:13: f
-./examples/using_make/obj/obj_inher.ml:7: o
-./examples/using_make/obj/obj_inher.ml:12: o4
-./examples/using_make/obj/obj_inher.ml:17: o2
-./examples/using_make/obj/obj_inher.ml:19: o3
-./examples/using_make/obj/obj_inher.ml:24: f
-./examples/using_make/obj/object.ml:7: f
-
-./examples/using_make/opt_in_opt.ml:5: baz
-./examples/using_make/partial_opt.ml:1: f
-./examples/using_make/useless_opt.ml:1: foo
-./examples/using_make/variant.mli:5: f
-
 ./examples/using_dune/bin/use_constructors.mli:1: mark_used
 ./examples/using_dune/bin/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_opt_args.mli:1: mark_used
@@ -157,12 +106,79 @@
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:27: internally_used_closure
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:28: externally_used_closure
 
+./examples/using_make/advanced/incl.ml:7: f
+./examples/using_make/advanced/mod.mli:1: f
+./examples/using_make/advanced/mod.mli:2: x
+./examples/using_make/advanced/val.mli:1: x
+./examples/using_make/advanced/val.mli:2: y
+
+./examples/using_make/baz.mli:2: t
+./examples/using_make/cond_sel.ml:9: f
+./examples/using_make/cond_sel.ml:11: g
+
+./examples/using_make/dir/alias_opt.ml:4: baz
+./examples/using_make/dir/alias_opt.ml:11: foo
+./examples/using_make/dir/alias_opt.ml:12: bar
+./examples/using_make/dir/fn_arg.ml:1: f
+./examples/using_make/dir/fn_arg.ml:3: g
+./examples/using_make/dir/fn_arg.ml:9: i
+./examples/using_make/dir/fn_arg.ml:11: j
+./examples/using_make/dir/hidden_opt_use.ml:1: f
+./examples/using_make/dir/hidden_opt_use.ml:3: apply
+./examples/using_make/dir/match_opt.ml:3: m
+./examples/using_make/dir/mod.mli:10: M.f
+./examples/using_make/dir/partial.ml:5: g
+./examples/using_make/dir/ref_fn.ml:5: g
+./examples/using_make/dir/ref_opt.ml:7: g
+
+./examples/using_make/foo.mli:1: x
+./examples/using_make/fooFn.mli:1: f
+./examples/using_make/functor.mli:2: M.f
+./examples/using_make/if_end.ml:1: f
+./examples/using_make/if_end.ml:3: g
+./examples/using_make/if_end.ml:5: h
+./examples/using_make/letIn.mli:1: f
+./examples/using_make/mod_alias.mli:2: M1.id
+./examples/using_make/mod_alias.mli:6: M2.id
+
+./examples/using_make/obj/class.mli:9: f
+./examples/using_make/obj/fun_class.ml:8: f
+./examples/using_make/obj/fun_obj_param.ml:7: app_m
+./examples/using_make/obj/inher.mli:13: f
+./examples/using_make/obj/obj_inher.ml:7: o
+./examples/using_make/obj/obj_inher.ml:12: o4
+./examples/using_make/obj/obj_inher.ml:17: o2
+./examples/using_make/obj/obj_inher.ml:19: o3
+./examples/using_make/obj/obj_inher.ml:24: f
+./examples/using_make/obj/object.ml:7: f
+
+./examples/using_make/opt_in_opt.ml:5: baz
+./examples/using_make/partial_opt.ml:1: f
+./examples/using_make/useless_opt.ml:1: foo
+./examples/using_make/variant.mli:5: f
+
 Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
 .> UNUSED METHODS:
 =================
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_int
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:23: unused_fun_class#unused
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:25: fun_class#unused
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#unused
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
+
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/coerce.mli:6: p#f
@@ -183,27 +199,26 @@ Nothing else to report in this section
 ./examples/using_make/obj/overr.mli:1: p1#h
 ./examples/using_make/obj/overr.mli:7: p2#g
 ./examples/using_make/obj/overr.mli:7: p2#h
-
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_int
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:23: unused_fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:25: fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#unused
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
 --------
 
 
 .>->  ALMOST UNUSED METHODS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#used
+./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#used
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#externally_used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#externally_used_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#internally_used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#internally_used_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#externally_used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#externally_used_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#internally_used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#internally_used_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#used_int
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#used_fun
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#used_int
+
 ./examples/using_make/advanced/func.mli:3: M.c#f
 ./examples/using_make/advanced/mod.mli:4: p#f
 
@@ -231,34 +246,12 @@ Nothing else to report in this section
 ./examples/using_make/obj/overr.mli:1: p1#f
 ./examples/using_make/obj/overr.mli:12: c#g
 
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#used
-./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#used
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#externally_used_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#externally_used_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#internally_used_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#internally_used_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#externally_used_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#externally_used_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#internally_used_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#internally_used_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#used_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#used_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#used_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#used_int
-
 Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
-./examples/using_make/record.mli:3: t0.unused
-./examples/using_make/record.mli:4: t0.f
-./examples/using_make/record.mli:10: X.t.unused
-./examples/using_make/variant.mli:1: v.Unused
-./examples/using_make/variant.mli:3: v2.Float
-./examples/using_make/variant.mli:3: v2.Nothing
-
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:1: unused_single_no_param.Unused_single_no_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:2: unused_single_unit.Unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:3: unused_single_param.Unused_single_param
@@ -285,16 +278,18 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:37: partially_used_mix_1.partially_used_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:43: partially_used_mix_2.partially_used_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:47: partially_used_in_match.partially_used_in_match_unit
+
+./examples/using_make/record.mli:3: t0.unused
+./examples/using_make/record.mli:4: t0.f
+./examples/using_make/record.mli:10: X.t.unused
+./examples/using_make/variant.mli:1: v.Unused
+./examples/using_make/variant.mli:3: v2.Float
+./examples/using_make/variant.mli:3: v2.Nothing
 --------
 
 
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_make/record.mli:11: X.t.used
-./examples/using_make/record.mli:18: t2.r
-./examples/using_make/variant.mli:1: v.Used
-./examples/using_make/variant.mli:3: v2.Nan
-
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:25: internally_used_single_no_param.Internally_used_single_no_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:26: internally_used_single_unit.Internally_used_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:27: internally_used_single_param.Internally_used_single_param
@@ -322,12 +317,57 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:32: externally_used_mix.externally_used_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:33: externally_used_mix.externally_used_param
 
+./examples/using_make/record.mli:11: X.t.used
+./examples/using_make/record.mli:18: t2.r
+./examples/using_make/variant.mli:1: v.Used
+./examples/using_make/variant.mli:3: v2.Nan
+
 Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?always
+./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?always
+./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:15: ?always
+./examples/using_dune/unwrapped_lib/opt_args/mixed_args.mli:1: ?always
+./examples/using_dune/unwrapped_lib/opt_args/mixed_args.mli:3: ?always
+./examples/using_dune/unwrapped_lib/opt_args/mixed_args.mli:7: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:10: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:19: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:28: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:48: ?always1
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:48: ?always2
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:48: ?always3
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:58: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:63: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:68: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:73: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:78: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:83: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:5: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:16: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:22: ?always1
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:22: ?always2
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:22: ?always3
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:26: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:28: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:30: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:32: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:34: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:36: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:4: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:12: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:15: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:17: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:22: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:27: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:30: ?type_used
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:3: ?always
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:8: ?duplicate
+./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:17: ?type_used
+
 ./examples/using_make/baz.ml:1: ?d
 ./examples/using_make/baz.ml:5: ?d
 ./examples/using_make/cond_sel.ml:1: ?a
@@ -376,69 +416,12 @@ Nothing else to report in this section
 ./examples/using_make/record.ml:12: ?a
 ./examples/using_make/useless_opt.ml:1: ?a
 
-./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?always
-./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?always
-./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:15: ?always
-./examples/using_dune/unwrapped_lib/opt_args/mixed_args.mli:1: ?always
-./examples/using_dune/unwrapped_lib/opt_args/mixed_args.mli:3: ?always
-./examples/using_dune/unwrapped_lib/opt_args/mixed_args.mli:7: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:10: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:19: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:28: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:48: ?always1
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:48: ?always2
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:48: ?always3
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:58: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:63: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:68: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:73: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:78: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.ml:83: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:5: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:16: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:22: ?always1
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:22: ?always2
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:22: ?always3
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:26: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:28: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:30: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:32: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:34: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:36: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:4: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:12: ?duplicate
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:15: ?duplicate
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:17: ?duplicate
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:22: ?type_used
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:27: ?type_used
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:30: ?type_used
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:3: ?always
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:8: ?duplicate
-./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:17: ?type_used
-
 Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
-./examples/using_make/dir/alias_opt.ml:2: ?b
-./examples/using_make/dir/alias_opt.ml:11: ?a
-./examples/using_make/dir/alias_opt.ml:11: ?b
-./examples/using_make/dir/anonFn.mli:1: ?b
-./examples/using_make/dir/anonFn.mli:2: ?b
-./examples/using_make/dir/fn_arg.ml:3: ?b
-./examples/using_make/dir/hidden_opt_use.ml:3: ?a
-./examples/using_make/dir/match_opt.ml:3: ?b
-./examples/using_make/dir/partial.ml:1: ?c
-
-./examples/using_make/foo.ml:1: ?a
-./examples/using_make/letIn.mli:1: ?b
-./examples/using_make/let_in.ml:1: ?c
-./examples/using_make/opt_in_opt.ml:2: ?a
-./examples/using_make/opt_in_opt.ml:2: ?b
-./examples/using_make/record.ml:12: ?b
-
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?never
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?never
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:15: ?never
@@ -479,22 +462,29 @@ Nothing else to report in this section
 
 ./examples/using_dune/unwrapped_lib/style/style.ml:3: ?opt
 
+./examples/using_make/dir/alias_opt.ml:2: ?b
+./examples/using_make/dir/alias_opt.ml:11: ?a
+./examples/using_make/dir/alias_opt.ml:11: ?b
+./examples/using_make/dir/anonFn.mli:1: ?b
+./examples/using_make/dir/anonFn.mli:2: ?b
+./examples/using_make/dir/fn_arg.ml:3: ?b
+./examples/using_make/dir/hidden_opt_use.ml:3: ?a
+./examples/using_make/dir/match_opt.ml:3: ?b
+./examples/using_make/dir/partial.ml:1: ?c
+
+./examples/using_make/foo.ml:1: ?a
+./examples/using_make/letIn.mli:1: ?b
+./examples/using_make/let_in.ml:1: ?c
+./examples/using_make/opt_in_opt.ml:2: ?a
+./examples/using_make/opt_in_opt.ml:2: ?b
+./examples/using_make/record.ml:12: ?b
+
 Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
 .> CODING STYLE:
 ===============
-./examples/using_make/dir/fn_arg.ml:3: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_make/dir/fn_arg.ml:9: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_make/dir/fn_arg.ml:11: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_make/dir/hidden_opt_use.ml:3: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_make/dir/match_opt.ml:5: let () = ... in ... (=> use sequence)
-
-./examples/using_make/let_in.ml:8: let x = ... in x (=> useless binding)
-./examples/using_make/record.ml:20: unit pattern c
-./examples/using_make/record.ml:45: unit pattern c
-
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:20: val f: ... -> (... -> ?_:_ -> ...) -> ...
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:22: val f: ... -> (... -> ?_:_ -> ...) -> ...
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:25: val f: ... -> (... -> ?_:_ -> ...) -> ...
@@ -505,6 +495,16 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/style/style.ml:3: val f: ... -> (... -> ?_:_ -> ...) -> ...
 ./examples/using_dune/unwrapped_lib/style/style.ml:4: let () = ... in ... (=> use sequence)
 ./examples/using_dune/unwrapped_lib/style/style.ml:5: let x = ... in x (=> useless binding)
+
+./examples/using_make/dir/fn_arg.ml:3: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_make/dir/fn_arg.ml:9: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_make/dir/fn_arg.ml:11: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_make/dir/hidden_opt_use.ml:3: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_make/dir/match_opt.ml:5: let () = ... in ... (=> use sequence)
+
+./examples/using_make/let_in.ml:8: let x = ... in x (=> useless binding)
+./examples/using_make/record.ml:20: unit pattern c
+./examples/using_make/record.ml:45: unit pattern c
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
