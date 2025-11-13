@@ -8,4 +8,6 @@ let style_reset = "\x1b[0m"
 let bold = "\x1b[01m"
 
 let error ~err ~ctx =
-  Printf.eprintf "%s%s: %s%s%s%s\n%!" red ctx white bg_red err style_reset
+  if Out_channel.isatty Out_channel.stderr then
+    Printf.eprintf "%s%s: %s%s%s%s\n%!" red ctx white bg_red err style_reset
+  else Printf.eprintf "%s: %s\n%!" ctx err
