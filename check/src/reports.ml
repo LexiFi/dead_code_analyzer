@@ -16,7 +16,6 @@ let report_info_of_line line =
   let report_info_of_raw_data filepath line_nb value =
     try
       let line_nb = int_of_string line_nb in
-      let filepath = Path.normalize filepath in
       let value = String.concat ":" value in
       Ok {filepath; line_nb; value}
     with Failure _int_of_string ->

@@ -1,4 +1,4 @@
-let normalize path =
+let normalize ~sep path =
   let splitted_path =
     String.split_on_char '\\' path
     |> List.concat_map (String.split_on_char '/')
@@ -27,7 +27,13 @@ let normalize path =
   splitted_path
   |> List.filter (fun s -> s <> "" && s <> ".") (* remove redundancies *)
   |> List.cons head
-  |> String.concat Filename.dir_sep
+  |> String.concat sep
+
+let normalize_to_unix path =
+  normalize ~sep:"/" path
+
+let normalize path =
+  normalize ~sep:Filename.dir_sep path
 
  (* Relocate a `path` found in a `.got` file as a relative path from the
     project's root.

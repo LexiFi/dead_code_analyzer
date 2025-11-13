@@ -6,6 +6,9 @@
    after the above manipulation *)
 val normalize : string -> string
 
+(* Same as normalize but the result's separator is Unix's ('/') *)
+val normalize_to_unix : string -> string
+
 (* Paths read in `.got` files point to files in '<project_root>/examples/'
    using absolute paths :
      - for files in the 'using_make' subdirectory :

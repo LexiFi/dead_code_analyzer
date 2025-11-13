@@ -174,8 +174,8 @@ let normalized_lines_of ~is_res_file filename =
       Reports.transform_filepath_in_line line
         ~is_windows_path:(not Sys.unix && is_res_file)
         ~f:(fun line ->
-            if is_res_file then Path.relocate line |> Path.normalize
-            else Path.normalize line
+            if is_res_file then Path.relocate line |> Path.normalize_to_unix
+            else Path.normalize_to_unix line
         )
   in
   In_channel.with_open_text filename In_channel.input_lines
