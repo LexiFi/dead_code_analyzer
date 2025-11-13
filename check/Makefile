@@ -16,9 +16,7 @@ scenario: prepare check.$(EXT)$(EXE)
 ifndef SCENARIO
 	echo "Error: Please provide a SCENARIO name"
 else
-	echo "$(TARGET)"
 	make -C ../examples run_dca DEADFLAGS="$(DEADFLAGS)" REDIRECT="> $(TARGET)"
-	echo $(CURDIR)
 	./src/check.$(EXT)$(EXE) "./$(SCENARIO)/$(SCENARIO).exp" $(TARGET) $(REDIRECT_SCENARIO)
 ifndef DEADFLAGS
 		echo "WARNING: No DEADFLAGS was provided"
@@ -29,7 +27,7 @@ redirected_scenario:
 ifndef SCENARIO
 	echo "Error: Please provide a SCENARIO name"
 else
-	make "$(SCENARIO)" REDIRECT_SCENARIO="> \"$(SCENARIO).out\" 2> \"$(SCENARIO).err\"" EXT="$(EXT)" > /dev/null 2>&1
+	make "$(SCENARIO)" REDIRECT_SCENARIO="> \"$(SCENARIO).out\" 2>&1" EXT="$(EXT)"
 endif
 
 $(REDIRECTED_SCENARIOS):
