@@ -33,6 +33,8 @@ about suspicious code:
    let-binding of the form `let x = ... in x` (the binding is useless);
    optional argument in an argument's type: `val f: ... -> (... -> ?_:_ -> ...) -> ...`
 
+For more information, see [the documentation](docs/USER_DOC.md)
+
 
 ## Requirements
 
