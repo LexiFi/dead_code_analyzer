@@ -8,12 +8,12 @@
     + [Stylistic issues](#stylistic-issues)
 + [Advanced usage](#advanced-usage)
     + [Path-related options](#path-related-options)
-        + [`--exclude <path>`](#--exclude-<path>)
-        + [`--references <path>`](#--references-<path>)
+        + [`--exclude <path>`](#--exclude-path)
+        + [`--references <path>`](#--references-path)
     + [Value-related options](#value-related-options)
         + [`--underscore`](#--underscore)
         + [`--internal`](#--internal)
-    + [Missing reports](#missing-reports)
+    + [Missing or invalid reports](#missing-or-invalid-reports)
         + [`--verbose`](#--verbose)
     + [Thresholds](#thresholds)
         + [Thresholds on default reports](#thresholds-on-default-reports)
@@ -96,9 +96,11 @@ st be respected for the element to be reported
 To ease the usage of the tool to only focus on some kinds of reports, 2 options
 are available :
 - `--nothing` deactivates all the reports. One can then selectively activate the
-  ones they are interested in using the corresponding options (see the sections below)
+  ones they are interested in using the corresponding options (see the sections below).
+  This is equivalent to `-E nothing -M nothing -T nothing -On nothing -Oa nothing -S -all`.
 - `--all` activates all the reports. One can then selectively deactivate the
-  ones they are not interested in using the corresponding options (see the sections below)
+  ones they are not interested in using the corresponding options (see the sections below).
+  This is equivalent to `-E all -M all -T all -On all -Oa all -S +all`.
 
 Activating or deactivating a report section actually activates or deactivates
 some parts of the analysis. Therefore, it impacts the cost (memory and time)
@@ -136,6 +138,10 @@ they are interested in by using respectively `-E all`, `-M all`, or `-T all`.
 unused exported values.
 
 > [!Note]
+> `dead_code_analyzer <path>` is equivalent to
+> `dead_code_analyzer -E all -M all -T all <path>`.
+
+> [!Warning]
 > Analyzing unused methods can be memory intensive.
 
 ## Optional arguments
@@ -146,25 +152,26 @@ As discussed in [the introduction](USER_DOC.md#introduction), another important
 focus of the `dead_code_analyzer` is on the optional arguments never or always used.
 Analyzing and reporting on those can be turned on using respectively `-On all`, or
 `-Oa all`. Similarly with the previous options, turning these reports off is
-done usising the `nothing` argument instead of `all`: respectively `-On nothing`,
+done using the `nothing` argument instead of `all`: respectively `-On nothing`,
 or `-Oa nothing`. Using `--nothing` or `--all` also affects these sections.
 
 **Example :** `dead_code_analyzer --nothing -On all` will enable the analysis of
 optional arguments and only report those that are never used.
 
 > [!Note]
-> Enabling the reporting for either the optional arguments never or always
-> used activates the same analysis which can be memory intensive.
+> Reporting for either the optional arguments never or always used actually
+> relies on the same analysis which can be memory intensive.
 
 ## Stylistic issues
 
 **option :** `-S <warning>`
 
-Finally, as a bonus, on can activate some stylistic reports by using `-S +all`.
+Finally, as a bonus, one can activate some stylistic reports by using `-S +all`.
 Notice the extra `+` before `all`. The `-S` option expects slightly different
 arguments from the previous options. Rather than expecting `all` or `nothing`,
 it expects a description of the desired stylistic issues to report, with `+`
 indicating a category to activate and `-` one to deactivate.
+Using `--nothing` or `--all` also affects this section.
 
 **Example :** `dead_code_analyzer --nothing -S +all-bind` only reports stylistic issues,
 and reports all of them but the "useless binding" ones
@@ -199,20 +206,20 @@ src
 
 ### `--exclude <path>`
 
-`dead_code_analyzer --nothing -E all src` will analyze and find unused exported
-values in all of `src`. Some reported values may point to locations in
-`src/debug/debug.ml`, adding noise because this module is actually used
-occasionnaly but no reference to it should subsist in production code.
+`dead_code_analyzer src` will analyze and find unused elements of code in all
+of `src`. Some reports may point to locations in `src/debug/debug.ml`, adding
+noise because this module is actually used occasionnaly but no reference to it
+should subsist in production code.
 
 To ignore that module, both for declarations and uses, one can use the
 `--exclude <path>` option.
 
-`dead_code_analyzer --nothing -E all --exclude src/debug src` only reports
-values outside of `src/debug`.
+`dead_code_analyzer --exclude src/debug src` only reports locations outside of
+`src/debug`.
 
 ### `--references <path>`
 
-Using the previous command line, some reported values (e.g. located in
+Using the previous command line, some reported elements (e.g. located in
 `src/lib/lib.mli`) could be used by the `Debug` module. In this situation.
 In this case, completely excluding `src/debug` from the analysis leads to false
 positives (FP): invalid reports.
@@ -220,8 +227,8 @@ positives (FP): invalid reports.
 To fix the situation, one can use the `--references <path>` option. This option
 includes the `<path>` when observing uses.
 
-`dead_code_analyzer --nothing -E all --exclude src/debug --references src/debug src`
-only reports values outside of `src/debug` and does not report values used by
+As a result, `dead_code_analyzer --exclude src/debug --references src/debug src`
+only reports elements outside of `src/debug` and does not report elements used by
 code in `src/debug`.
 
 ## Value-related options
@@ -229,15 +236,21 @@ code in `src/debug`.
 ### `--underscore`
 
 The compiler ignores unused values when their names are prefixed with an
-underscore (e.g. `let _x = ...`). The `dead_code_analyzer` imitates that behavior. One can
-enable the analysis and reports on such names using the `--underscore` option.
+underscore (e.g. `let _x = ...`). The `dead_code_analyzer` imitates that
+behavior. One can enable the analysis and reports on such names using the
+`--underscore` option.
+
+> [!Note]
+> This behavior (ignoring names starting with underscore) is not only limited
+> to unused exported values but applied to all the report kinds. Thus, they are
+> all affected by the `--underscore` option.
 
 ### `--internal`
 
 The compiler already warns the user about unused values that are not exported.
 That is, values that are not exposed in the signature of a module. In case no
 interface is available, all the toplevel declaration are exported. Consequently,
-none of them can be reported unused by the compiler. In order to complement the
+none of them can be reported by the compiler. In order to complement the
 compiler well, and fit some coding habits, the `dead_code_analyzer` keeps track
 of internal uses in implementations (`.ml`) without corresponding interfaces (`.mli`).
 
@@ -275,15 +288,16 @@ all (can be removed from the codebase).
     (* foo.mli *)
     val f : 'a -> 'a
     ```
-   Using the `--internal` option, the `dead_code_analyzer` will not report `f`
+   By using the `--internal` option, the `dead_code_analyzer` will not report `f`
    as unused anymore.
 
-## Missing reports
+## Missing or invalid reports
 
 ### `--verbose`
 
-When using the `dead_code_analyzer`, on may encounter false negatives (FN):
-missing reports. In this case, chances are that some files were not analyzed.
+When using the `dead_code_analyzer`, one may encounter false negatives (FN):
+missing reports. Users may also encounter false positives (FP): invlaid reports.
+In both cases, chances are that some files were not analyzed.
 An easy way to see the list of analyzed files is by using the `--verbose` option.
 This will print out `Scanning <file_path>` for every file it tries to read.
 In case there is an issue reading the file, then it prints out a second line
@@ -305,7 +319,7 @@ welcome.
 
 In addition to activating/deactivating some reports, one can extend the details
 of the reports using thresholds. The idea with thresholds is to not only report
-unused elements of code but also reports almost unused ones, up to a desired
+unused elements of code but also report almost unused ones, up to a desired
 maximum amount: the threshold.
 
 For the 3 default reports (exported values, methods, and constructors and record
@@ -325,14 +339,14 @@ twice.
 
 The threshold argument has an ever more detailed variant : `calls:<int>`. This
 time, the subreports will not only indicate the elements used exactly `n` times
-but also display the locations where they are used.
+but also display the locations of their use.
 
-#### Thresholds on optional arguments
+### Thresholds on optional arguments
 
 **options :** `-On <display>`, `-Oa <display>`
 
-Optional arguments always/never used options also accept a `threshold` argument.
-However it looks a bit different from the one for the default reports.
+The options for optional arguments always/never used also accept a `threshold`
+argument. However it looks a bit different from the one for the default reports.
 Instead of using `threshold:<int>`, there are 2 different modes available:
 `percent:<float>` and `both:<int>,<float>` with `0.0 <= <float> <= 1.0` and
 `0 <= <int>`.
@@ -354,7 +368,7 @@ and at least the provided percent of the time.
 arguments always used, and those unused at most once but used at least 90% of
 the time.
 
-> [!Note]
+> [!Tip]
 > Using `0` for `<float>` provides the same effect as the `threshold:<int>`
 > argument for the default reports.
 >
