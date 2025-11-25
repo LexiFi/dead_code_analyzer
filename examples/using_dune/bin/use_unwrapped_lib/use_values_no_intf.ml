@@ -3,7 +3,7 @@ let () =
   let _ = Values_no_intf.used_int in
   Values_no_intf.used_fun ();
   Values_no_intf.used_alias_fun ();
-  let _closure = Values.partially_used_fun () in
+  let _closure = Values_no_intf.partially_used_fun () in
   let ((), ()) = Values_no_intf.used_closure () () in
   Values_no_intf._used_underscore_fun ()
 
