@@ -17,28 +17,33 @@ let to_string t =
 
 module PP = Pretty_print
 
-let make_fmt title color =
+let make_fmt ~isatty title color =
+  let color, style_reset =
+    if isatty then color, PP.style_reset
+    else "", ""
+  in
   let line =
-    Printf.sprintf "%s: %s%%d%s" title color PP.style_reset
+    Printf.sprintf "%s: %s%%d%s" title color style_reset
   in
   Scanf.format_from_string line "%d"
 
-let total_fmt () = make_fmt "Total" PP.blue
-let success_fmt () = make_fmt "Success" PP.green
-let failed_fmt () = make_fmt "Failed" PP.red
+let total_fmt ~isatty () = make_fmt ~isatty "Total" PP.blue
+let success_fmt ~isatty () = make_fmt ~isatty "Success" PP.green
+let failed_fmt ~isatty () = make_fmt ~isatty "Failed" PP.red
 
 let extract_from fmt s =
   try Scanf.sscanf s fmt Option.some
   with _ -> None
 
-let extract_total = extract_from (total_fmt ())
-let extract_success = extract_from (success_fmt ())
-let extract_failed = extract_from (failed_fmt ())
+let extract_total = extract_from (total_fmt ~isatty:false ())
+let extract_success = extract_from (success_fmt ~isatty:false ())
+let extract_failed = extract_from (failed_fmt ~isatty:false ())
 
 let pp t =
   let total = total t in
+  let isatty = Out_channel.isatty Out_channel.stdout in
   let print_line fmt value =
-    Printf.printf (fmt ()) value;
+    Printf.printf (fmt ~isatty ()) value;
     Printf.printf "\n"
   in
   print_line total_fmt total;
@@ -50,7 +55,11 @@ let pp t =
     else if ratio < 80. then PP.yellow
     else PP.green
   in
-  Printf.printf "Ratio: %s%F%%%s\n%!" color ratio PP.style_reset
+  let color, style_reset =
+    if isatty then color, PP.style_reset
+    else "", ""
+  in
+  Printf.printf "Ratio: %s%F%%%s\n%!" color ratio style_reset
 
 let init = {success = 0; fp = 0; fn = 0; other_failures = 0}
 

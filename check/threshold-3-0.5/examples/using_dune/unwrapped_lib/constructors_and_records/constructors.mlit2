@@ -1,6 +1,0 @@
-./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:17: used_single_no_param.Used_single_no_param
-./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:18: used_single_unit.Used_single_unit
-./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:19: used_single_param.Used_single_param
-./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:21: used_mix.Used_no_param
-./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:22: used_mix.Used_unit
-./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:23: used_mix.Used_param

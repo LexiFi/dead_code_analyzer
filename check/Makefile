@@ -1,41 +1,76 @@
-.PHONY: clean prepare threshold-3-0.5 threshold-1 internal classic opt
+# =(byt|opt) to select byte code or native compilation
+EXT?=byt
 
-TARGET=res.out
-EXT=byt
-SCENARIOS=threshold-3-0.5 threshold-1 internal classic
+SCENARIOS:=threshold-3-0.5 threshold-1 internal classic
+# rule names
+REDIRECTED_SCENARIOS:=$(SCENARIOS:%=redirected_%)
+DIFF_SCENARIOS:=$(SCENARIOS:%=diff_%)
+# used by the scenario rule
+TARGET=$(CURDIR)/$(SCENARIO)/$(SCENARIO).got
+# used by the scenario rule and set in the redirected_scenario rule
+REDIRECT_SCENARIO?=""
 
-all: aggregate.$(EXT)$(EXE)
-	@echo "Running scenarios:"
-	@# The 2nd echo in the loop below overlaps the 1st one for aesthetics purpose
-	@for scenario in $(SCENARIOS); do \
-		echo -n "$$scenario : In progress"; \
-		make $$scenario > $$scenario.out 2>&1 EXT=$(EXT); \
-		echo \\r"$$scenario : Done       "; \
-	done
+# Main rules
+
+.PHONY: all ci stats clean opt
+
+all: ci
+
+ci: $(DIFF_SCENARIOS)
+
+stats: $(REDIRECTED_SCENARIOS) aggregate.$(EXT)$(EXE)
 	./src/aggregate.$(EXT)$(EXE) $(SCENARIOS:=.out)
+
+clean:
+	rm -f *~ *.cm* *.a *.lib *.o *.obj *.byt$(EXE) *.opt$(EXE) **.out **.err */*.got
+	make -C src clean
 
 opt:
 	make EXT=opt
 
-classic: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A" \
-		| tail -n +2 | sed '$$d' > $(TARGET)
-	./src/check.$(EXT)$(EXE) ./classic $(TARGET)
+# Scenario rules
 
-internal: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A --internal" \
-		| tail -n +2 | sed '$$d' > $(TARGET)
-	./src/check.$(EXT)$(EXE) ./internal $(TARGET)
+.PHONY: $(SCENARIOS) $(REDIRECTED_SCENARIOS) $(DIFF_SCENARIOS)
 
-threshold-1: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:1 -M threshold:1 -T threshold:1" \
-		| tail -n +2 | sed '$$d' > $(TARGET)
-	./src/check.$(EXT)$(EXE) ./threshold-1 $(TARGET)
+classic:
+	make scenario EXT=$(EXT) SCENARIO=$@ DEADFLAGS="-A"
 
-threshold-3-0.5: prepare check.$(EXT)$(EXE)
-	make -C ../examples run_dca DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3" \
-		| tail -n +2 | sed '$$d' > $(TARGET)
-	./src/check.$(EXT)$(EXE) ./threshold-3-0.5 $(TARGET)
+internal:
+	make scenario EXT=$(EXT) SCENARIO=$@ DEADFLAGS="-A --internal"
+
+threshold-1:
+	make scenario EXT=$(EXT) SCENARIO=$@ DEADFLAGS="-A --internal -E threshold:1 -M threshold:1 -T threshold:1"
+
+threshold-3-0.5:
+	make scenario EXT=$(EXT) SCENARIO=$@ DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3"
+
+$(REDIRECTED_SCENARIOS):
+	SCENARIO=$(@:redirected_%=%); \
+	make "$$SCENARIO" REDIRECT_SCENARIO="> \"$$SCENARIO.out\" 2>&1" EXT=$(EXT)
+
+$(DIFF_SCENARIOS):
+	make $(@:diff_%=redirected_%) EXT=$(EXT)
+	SCENARIO=$(@:diff_%=%); \
+	diff -s "./$$SCENARIO/$$SCENARIO.ref" "$$SCENARIO.out"
+
+# Generic rule for scenarios. Require $(SCENARIO)
+
+.PHONY: scenario
+
+scenario: prepare check.$(EXT)$(EXE)
+ifndef SCENARIO
+	echo "Error: Please provide a SCENARIO name"
+else
+	make -C ../examples run_dca DEADFLAGS="$(DEADFLAGS)" REDIRECT="> $(TARGET)"
+	./src/check.$(EXT)$(EXE) "./$(SCENARIO)/$(SCENARIO).exp" $(TARGET) $(REDIRECT_SCENARIO)
+ifndef DEADFLAGS
+		echo "WARNING: No DEADFLAGS was provided"
+endif
+endif
+
+# Helpers. A user can call them by hand but it is unlikely to happen
+
+.PHONY: prepare
 
 prepare:
 	dune build ..
@@ -46,7 +81,3 @@ check.$(EXT)$(EXE):
 
 aggregate.$(EXT)$(EXE):
 	make -C src $@
-
-clean:
-	rm -f *~ *.cm* *.a *.lib *.o *.obj *.byt$(EXE) *.opt$(EXE) **.out
-	make -C src clean
