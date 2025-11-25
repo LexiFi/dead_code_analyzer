@@ -55,18 +55,19 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_dune/bin/use_constructors.mli:1: mark_used
-./examples/using_dune/bin/use_mixed_args.mli:1: mark_used
-./examples/using_dune/bin/use_opt_args.mli:1: mark_used
-./examples/using_dune/bin/use_opt_args_in_higher_order_fun.mli:1: mark_used
-./examples/using_dune/bin/use_records.mli:1: mark_used
-./examples/using_dune/bin/use_style.mli:1: mark_used
-./examples/using_dune/bin/use_values.mli:1: mark_used
-./examples/using_dune/bin/use_values_in_submodules.mli:1: mark_used
-./examples/using_dune/bin/use_values_in_submodules_no_intf.mli:1: mark_used
-./examples/using_dune/bin/use_values_no_intf.mli:1: mark_used
-./examples/using_dune/bin/use_with_class.mli:1: mark_used
-./examples/using_dune/bin/use_without_class.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_mixed_args.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_opt_args.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_opt_args_in_higher_order_fun.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_records.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_style.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_unwrapped_lib.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_values.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_values_in_submodules.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_values_in_submodules_no_intf.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_values_no_intf.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_with_class.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_without_class.mli:1: mark_used
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
@@ -729,7 +730,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 586
-Success: 586
+Total: 587
+Success: 587
 Failed: 0
 Ratio: 100.%
