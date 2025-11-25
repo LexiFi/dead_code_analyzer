@@ -1,3 +1,3 @@
 (executable
  (name using_dune)
- (libraries use_unwrapped_lib))
+ (libraries use_unwrapped_lib use_wrapped_lib))

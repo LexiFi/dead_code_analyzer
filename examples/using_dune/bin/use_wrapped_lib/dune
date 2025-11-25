@@ -1,0 +1,4 @@
+(library
+ (name use_wrapped_lib)
+ (libraries wrapped_lib)
+ (wrapped true))
