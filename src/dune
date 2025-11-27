@@ -2,3 +2,5 @@
  (public_name dead_code_analyzer)
  (name deadCode)
  (libraries compiler-libs.common))
+
+(include_subdirs unqualified)
