@@ -2,8 +2,8 @@
 
 type t = {
   cmti_file : string; (** The filepath currently analyzed *)
-  sourcepath : string; (** The path to the associated source file *)
-  builddir : string; (** The [cmt_builddir] *)
+  sourcepath : string option; (** The path to the associated source file *)
+  builddir : string option; (** The [cmt_builddir] *)
   modname : string; (** Either [cmi_name] or [cmt_modname] *)
   cmi_infos : Cmi_format.cmi_infos option;
   cmt_infos : Cmt_format.cmt_infos option;
@@ -25,6 +25,9 @@ val change_file : t -> string -> (t, string) result
     The returned value is either a simple update of [t] if the necessary
     [cmi_infos] or [cmt_infos] is available. Otherwise, it is the result of
     [init t] *)
+
+val has_builddir : t -> bool
+val has_sourcepath : t -> bool
 
 val get_builddir : t -> string
 val get_sourcepath : t -> string
