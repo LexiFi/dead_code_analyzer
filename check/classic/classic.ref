@@ -20,24 +20,26 @@
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:25: unused_closure
 
-./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg: Not detected
-./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg: Not detected
-./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg: Not detected
-./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:12: internally_used_fun_with_single_sometimes_used_opt_arg: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:3: internally_used_int: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:15: internally_used_fun: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:25: unused_closure: Not detected
-./examples/using_dune/wrapped_lib/values/values.mli:26: internally_used_closure: Not detected
-./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int: Not detected
-./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int: Not detected
-./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int: Not detected
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int: Not detected
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:13: unused_fun: Not detected
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:20: unused_alias_fun: Not detected
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:25: unused_closure: Not detected
+./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
+./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
+./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
+./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:12: internally_used_fun_with_single_sometimes_used_opt_arg
+
+./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int
+./examples/using_dune/wrapped_lib/values/values.mli:3: internally_used_int
+./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
+./examples/using_dune/wrapped_lib/values/values.mli:15: internally_used_fun
+./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
+./examples/using_dune/wrapped_lib/values/values.mli:25: unused_closure
+./examples/using_dune/wrapped_lib/values/values.mli:26: internally_used_closure
+./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
+./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
+./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:13: unused_fun
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:25: unused_closure
+
 ./examples/using_make/advanced/inc_val.mli:1: x
 ./examples/using_make/advanced/inc_val.mli:2: y
 
@@ -115,21 +117,22 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
 
-./examples/using_dune/wrapped_lib/obj/with_class.mli:1: unused#unused: Not detected
-./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_fun: Not detected
-./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_int: Not detected
-./examples/using_dune/wrapped_lib/obj/with_class.mli:23: unused_fun_class#unused: Not detected
-./examples/using_dune/wrapped_lib/obj/with_class.mli:25: fun_class#unused: Not detected
-./examples/using_dune/wrapped_lib/obj/with_class.mli:35: _self_used#unused: Not detected
-./examples/using_dune/wrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_fun: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_int: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_fun: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_int: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun: Not detected
-./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/with_class.mli:1: unused#unused
+./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_fun
+./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_int
+./examples/using_dune/wrapped_lib/obj/with_class.mli:23: unused_fun_class#unused
+./examples/using_dune/wrapped_lib/obj/with_class.mli:25: fun_class#unused
+./examples/using_dune/wrapped_lib/obj/with_class.mli:35: _self_used#unused
+./examples/using_dune/wrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
+./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_fun
+./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_int
+./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_fun
+./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_int
+./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
+./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
+./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
+./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
+
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/coerce.mli:6: p#f
@@ -184,32 +187,33 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:43: partially_used_mix_2.partially_used_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:47: partially_used_in_match.partially_used_in_match_unit
 
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:1: unused_single_no_param.Unused_single_no_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:2: unused_single_unit.Unused_single_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:3: unused_single_param.Unused_single_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:5: unused_mix.Unused_no_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:6: unused_mix.Unused_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:7: unused_mix.Unused_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:9: matched_single_no_param.Matched_single_no_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:10: matched_single_unit.Matched_single_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:11: matched_single_param.Matched_single_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:13: matched_mix.Matched_no_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:14: matched_mix.Matched_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:15: matched_mix.Matched_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:42: partially_used_mix_1.Partially_used_no_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:48: partially_used_mix_2.Partially_used_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:5: unused_mix.unused_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:8: written_single_unit.written_single_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:9: written_single_param.written_single_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:11: written_mix.written_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:12: written_mix.written_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:37: partially_used_mix_1.partially_used_unit: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:43: partially_used_mix_2.partially_used_param: Not detected
-./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:47: partially_used_in_match.partially_used_in_match_unit: Not detected
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:1: unused_single_no_param.Unused_single_no_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:2: unused_single_unit.Unused_single_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:3: unused_single_param.Unused_single_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:5: unused_mix.Unused_no_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:6: unused_mix.Unused_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:7: unused_mix.Unused_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:9: matched_single_no_param.Matched_single_no_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:10: matched_single_unit.Matched_single_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:11: matched_single_param.Matched_single_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:13: matched_mix.Matched_no_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:14: matched_mix.Matched_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:15: matched_mix.Matched_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:42: partially_used_mix_1.Partially_used_no_param
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:48: partially_used_mix_2.Partially_used_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:5: unused_mix.unused_param
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:8: written_single_unit.written_single_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:9: written_single_param.written_single_param
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:11: written_mix.written_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:12: written_mix.written_param
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:37: partially_used_mix_1.partially_used_unit
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:43: partially_used_mix_2.partially_used_param
+./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:47: partially_used_in_match.partially_used_in_match_unit
+
 ./examples/using_make/record.mli:3: t0.unused
 ./examples/using_make/record.mli:4: t0.f
 ./examples/using_make/record.mli:10: X.t.unused
@@ -497,6 +501,6 @@ Nothing else to report in this section
 
 
 Total: 433
-Success: 374
-Failed: 59
-Ratio: 86.3741339492%
+Success: 433
+Failed: 0
+Ratio: 100.%

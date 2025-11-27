@@ -346,13 +346,22 @@ let regabs state =
 let read_interface fn cmi_infos state = let open Cmi_format in
   try
     regabs state;
-    let u = unit fn in
     if !DeadFlag.exported.DeadFlag.print
        || !DeadFlag.obj.DeadFlag.print
        || !DeadFlag.typ.DeadFlag.print
     then
+      let u =
+        if State.File_infos.has_sourcepath state.file_infos then
+          State.File_infos.get_sourceunit state.file_infos
+        else
+        unit fn
+      in
+      let module_id =
+        State.File_infos.get_modname state.file_infos
+        |> Ident.create_persistent
+      in
       let f =
-        collect_export [Ident.create_persistent (String.capitalize_ascii u)] u decs
+        collect_export [module_id] u decs
       in
       List.iter f cmi_infos.cmi_sign;
       last_loc := Lexing.dummy_pos

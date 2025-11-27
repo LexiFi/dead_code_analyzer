@@ -1,7 +1,7 @@
 type t = {
   cmti_file : string;
-  sourcepath : string;
-  builddir : string;
+  sourcepath : string option;
+  builddir : string option;
   modname : string;
   cmi_infos : Cmi_format.cmi_infos option;
   cmt_infos : Cmt_format.cmt_infos option;
@@ -9,8 +9,8 @@ type t = {
 
 let empty = {
   cmti_file = "";
-  sourcepath = "!!UNKNOWN_SOURCEPATH!!";
-  builddir = "!!UNKNOWN_BUILDDIR!!";
+  sourcepath = None;
+  builddir = None;
   modname = "!!UNKNOWN_MODNAME!!";
   cmi_infos = None;
   cmt_infos = None;
@@ -23,16 +23,11 @@ let empty = {
 let init_from_cmt_infos cmt_infos cmt_file =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
   let sourcepath =
-    match cmt_infos.cmt_sourcefile with
-    | Some sourcefile -> Filename.concat builddir sourcefile
-    | None ->
-      Printf.sprintf "!!UNKNOWN_SOURCEPATH_IN<%s>_FOR_<%s>!!"
-        builddir
-        cmt_file
+    Option.map (Filename.concat builddir) cmt_infos.cmt_sourcefile
   in
   let modname = cmt_infos.cmt_modname in
   {empty with cmti_file = cmt_file;
-              builddir;
+              builddir = Some builddir;
               sourcepath;
               modname;
               cmt_infos = Some cmt_infos;
@@ -62,16 +57,10 @@ let init_from_cmt cmt_file =
     in the [cmi_infos] is read from [with_cmt]. Otherwise, default values are
     set for [builddir] and eventually [sourcepath]. *)
 let init_from_cmi_infos ?with_cmt cmi_infos cmi_file =
-  let builddir =
-    match with_cmt with
-    | None -> "!!UNKNOWN_BUILDDIR_FOR<" ^ cmi_file ^ ">!!"
-    | Some {builddir; _} -> builddir
-  in
+  let builddir = Option.bind with_cmt (fun {builddir; _} -> builddir) in
   let sourcepath =
     let unknown_sourcepath =
-      match with_cmt with
-      | None -> "!!UNKNOWN_SOURCEPATH_FOR<" ^ cmi_file ^ ">!!"
-      | Some {sourcepath; _} -> sourcepath
+      Option.bind with_cmt (fun {sourcepath; _} -> sourcepath)
     in
     match cmi_infos.Cmi_format.cmi_sign with
     | [] -> unknown_sourcepath
@@ -86,7 +75,15 @@ let init_from_cmi_infos ?with_cmt cmi_infos cmi_file =
       | Sig_class (_,  {Types.cty_loc = loc; _}, _, _)
       | Sig_class_type (_,  {Types.clty_loc = loc; _}, _, _) ->
         if loc.Location.loc_ghost then unknown_sourcepath
-        else Filename.concat builddir loc.Location.loc_start.pos_fname
+        else
+          let fname = loc.Location.loc_start.pos_fname in
+
+          let sourcepath =
+            match builddir with
+            | None -> fname
+            | Some builddir -> Filename.concat builddir fname
+          in
+          Some sourcepath
   in
   let modname = cmi_infos.cmi_name in
   {empty with cmti_file = cmi_file;
@@ -138,14 +135,29 @@ let change_file file_infos cmti_file =
   | _ -> (* corresponding info is None *)
     init cmti_file
 
-let get_builddir t = t.builddir
+let has_builddir file_infos = Option.is_some file_infos.builddir
 
-let get_sourcepath t = t.sourcepath
+let has_sourcepath file_infos = Option.is_some file_infos.sourcepath
+
+let get_builddir t =
+  match t.builddir with
+  | Some builddir -> builddir
+  | None -> "!!UNKNOWN_BUILDDIR_FOR<" ^ t.cmti_file ^ ">!!"
+
+let get_sourcepath t =
+  match t.sourcepath with
+  | Some sourcepath -> sourcepath
+  | None -> match t.builddir with
+    | Some builddir ->
+      Printf.sprintf "!!UNKNOWN_SOURCEPATH_IN<%s>_FOR_<%s>!!"
+        builddir
+        t.cmti_file
+    | None -> "!!UNKNOWN_SOURCEPATH_FOR<" ^ t.cmti_file ^ ">!!"
 
 let get_sourceunit t =
-  match t.cmt_infos with
-  | Some {cmt_sourcefile = Some _; _} ->
-    get_sourcepath t |> Filename.basename |> Filename.remove_extension
-  | _ -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cmti_file ^ ">!!"
+  match t.sourcepath with
+  | Some sourcepath ->
+    sourcepath |> Filename.basename |> Filename.remove_extension
+  | None -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cmti_file ^ ">!!"
 
 let get_modname t = t.modname
