@@ -62,14 +62,9 @@ let update state line =
     StringSet.add line set
   in
   let state =
-    let end_of_fp = "Should not be detected" ^ PP.style_reset in
-    let end_of_fn = "Not detected" ^ PP.style_reset in
-    if String.starts_with ~prefix:(Filename.concat "." "examples") line then
-      let unique_success_lines =
-        add_unique_line state.State.unique_success_lines
-      in
-      {state with unique_success_lines}
-    else if
+    let end_of_fp = "Should not be detected" in
+    let end_of_fn = "Not detected" in
+    if
       String.ends_with ~suffix:end_of_fp line
       || String.ends_with ~suffix:end_of_fn line
     then
@@ -77,6 +72,11 @@ let update state line =
         add_unique_line state.State.unique_failure_lines
       in
       {state with unique_failure_lines}
+    else if String.starts_with ~prefix:(Filename.concat "." "examples") line then
+      let unique_success_lines =
+        add_unique_line state.State.unique_success_lines
+      in
+      {state with unique_success_lines}
     else state
   in
   let get ~default extract_from =
