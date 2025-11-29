@@ -338,9 +338,9 @@ let kind fn =
 
 let regabs state =
   let fn = State.File_infos.get_sourcepath state.State.file_infos in
-  hashtbl_add_unique_to_list abspath (unit fn) fn;
+  hashtbl_add_unique_to_list abspath (Utils.unit fn) fn;
   if !DeadCommon.declarations then
-    hashtbl_add_unique_to_list main_files (unit fn) ()
+    hashtbl_add_unique_to_list main_files (Utils.unit fn) ()
 
 
 let read_interface fn cmi_infos state = let open Cmi_format in
@@ -354,7 +354,7 @@ let read_interface fn cmi_infos state = let open Cmi_format in
         if State.File_infos.has_sourcepath state.file_infos then
           State.File_infos.get_sourceunit state.file_infos
         else
-        unit fn
+        Utils.unit fn
       in
       let module_id =
         State.File_infos.get_modname state.file_infos
@@ -379,11 +379,11 @@ let assoc decs (loc1, loc2) =
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
-    || ( unit fn = sourceunit
+    || ( Utils.unit fn = sourceunit
       && DeadCommon.file_exists (fn ^ "i"))
   in
   let is_iface fn loc =
-    Hashtbl.mem decs loc || unit fn <> sourceunit
+    Hashtbl.mem decs loc || Utils.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
@@ -403,7 +403,7 @@ let clean references loc =
   let state = State.get_current () in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = loc.Lexing.pos_fname in
-  if (fn.[String.length fn - 1] <> 'i' && unit fn = sourceunit) then
+  if (fn.[String.length fn - 1] <> 'i' && Utils.unit fn = sourceunit) then
     LocHash.remove references loc
 
 let eom loc_dep =
@@ -503,7 +503,7 @@ let analyze_opt_args () =
   List.iter (fun f -> f ()) !DeadArg.last;
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
-  let dec_loc loc = Hashtbl.mem main_files (unit loc.Lexing.pos_fname) in
+  let dec_loc loc = Hashtbl.mem main_files (Utils.unit loc.Lexing.pos_fname) in
 
   let analyze = fun opt_arg_use ->
     let builddir = opt_arg_use.builddir in

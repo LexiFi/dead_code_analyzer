@@ -172,10 +172,9 @@
 ./examples/using_dune/wrapped_lib/values/values_no_intf.ml:27: internally_used_closure
 ./examples/using_dune/wrapped_lib/values/values_no_intf.ml:28: externally_used_closure
 
-./examples/using_make/advanced/incl.ml:7: f: Not detected
+./examples/using_make/advanced/incl.ml:7: f
 ./examples/using_make/advanced/mod.mli:1: f
 ./examples/using_make/advanced/mod.mli:2: x
-./examples/using_make/advanced/mod.mli:2: x: Should not be detected
 ./examples/using_make/advanced/val.mli:1: x
 ./examples/using_make/advanced/val.mli:2: y
 
@@ -421,7 +420,7 @@ Nothing else to report in this section
 
 ./examples/using_make/advanced/func.mli:3: M.c#f
 ./examples/using_make/advanced/mod.mli:4: p#f
-./examples/using_make/advanced/mod.mli:4: p#f: Should not be detected
+
 ./examples/using_make/obj/class.mli:1: c#f
 ./examples/using_make/obj/class.mli:1: c#g
 ./examples/using_make/obj/class_type.mli:7: p#f
@@ -1087,7 +1086,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 922
-Success: 919
-Failed: 3
-Ratio: 99.6746203905%
+Total: 920
+Success: 920
+Failed: 0
+Ratio: 100.%

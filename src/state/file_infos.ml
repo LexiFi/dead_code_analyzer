@@ -47,6 +47,58 @@ let init_from_cmt cmt_file =
       |> Result.ok
     with _ -> Result.error (cmt_file ^ ": cannot read cmt file")
 
+
+let sourcefname_of_cmi_infos cmi_unit cmi_infos =
+  let candidate_of_fname fname =
+    let src_unit = Utils.unit fname in
+    if String.equal src_unit cmi_unit then `Identical fname
+    else if String.ends_with ~suffix:src_unit cmi_unit then
+      `Suffix fname
+    else if String.starts_with ~prefix:src_unit cmi_unit then
+      `Prefix fname
+    else `Different fname
+  in
+  let fname_of_candidate = function
+    | `Default -> None
+    | `Identical fname
+    | `Suffix fname
+    | `Prefix fname
+    | `Different fname -> Some fname
+  in
+  let get_item_loc (sig_item : Types.signature_item) =
+    match sig_item with
+    | Sig_value (_, {val_loc = loc; _}, _)
+    | Sig_type (_, {type_loc = loc; _}, _, _)
+    | Sig_typext (_, {ext_loc = loc; _}, _, _)
+    | Sig_module (_, _, {md_loc = loc; _}, _, _)
+    | Sig_modtype (_,  {mtd_loc = loc; _}, _)
+    | Sig_class (_,  {cty_loc = loc; _}, _, _)
+    | Sig_class_type (_,  {clty_loc = loc; _}, _, _) ->
+      loc
+  in
+  let rec find_sourcename candidate = function
+  | [] -> fname_of_candidate candidate
+  | sig_item::items ->
+    let loc = get_item_loc sig_item in
+    if loc.Location.loc_ghost then find_sourcename candidate items
+    else
+      let fname = loc.Location.loc_start.pos_fname in
+      match candidate, candidate_of_fname fname with
+        | _, `Default -> assert false
+        | (`Identical _ as candidate), _
+        | _, (`Identical _ as candidate) ->
+          (* best candidate found *)
+          fname_of_candidate candidate
+        | `Default, candidate
+        | `Different _, candidate
+        | candidate, `Different _
+        | `Prefix _, (`Suffix _ as candidate)
+        | (`Suffix _ as candidate), `Prefix _
+        | _, candidate ->
+          find_sourcename candidate items
+  in
+  find_sourcename `Default cmi_infos.Cmi_format.cmi_sign
+
 (** [init_from_cmi_infos ?with_cmt cmi_infos cmi_file] creates a [t] with:
     - information from [cmt_infos];
     - [cmti_file = cmt_file];
@@ -62,28 +114,13 @@ let init_from_cmi_infos ?with_cmt cmi_infos cmi_file =
     let unknown_sourcepath =
       Option.bind with_cmt (fun {sourcepath; _} -> sourcepath)
     in
-    match cmi_infos.Cmi_format.cmi_sign with
-    | [] -> unknown_sourcepath
-    | sig_item::_ -> match sig_item with
-      (* assume that the first item's location points to the interface
-         file (.mli) if it is not a ghost location *)
-      | Sig_value (_, {Types.val_loc = loc; _}, _)
-      | Sig_type (_, {Types.type_loc = loc; _}, _, _)
-      | Sig_typext (_, {Types.ext_loc = loc; _}, _, _)
-      | Sig_module (_, _, {Types.md_loc = loc; _}, _, _)
-      | Sig_modtype (_,  {Types.mtd_loc = loc; _}, _)
-      | Sig_class (_,  {Types.cty_loc = loc; _}, _, _)
-      | Sig_class_type (_,  {Types.clty_loc = loc; _}, _, _) ->
-        if loc.Location.loc_ghost then unknown_sourcepath
-        else
-          let fname = loc.Location.loc_start.pos_fname in
+    let cmi_unit = Utils.unit cmi_file in
+    let sourcefname = sourcefname_of_cmi_infos cmi_unit cmi_infos in
+    match sourcefname, builddir with
+    | None, _ -> unknown_sourcepath
+    | Some _, None -> sourcefname
+    | Some fname, Some builddir -> Some (Filename.concat builddir fname)
 
-          let sourcepath =
-            match builddir with
-            | None -> fname
-            | Some builddir -> Filename.concat builddir fname
-          in
-          Some sourcepath
   in
   let modname = cmi_infos.cmi_name in
   {empty with cmti_file = cmi_file;
