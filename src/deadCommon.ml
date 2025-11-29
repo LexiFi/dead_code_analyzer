@@ -70,8 +70,6 @@ let _variant = ": variant :"
 
                 (********   HELPERS   ********)
 
-let unit fn = Filename.remove_extension (Filename.basename fn)
-
 let register_style loc msg =
   let state = State.get_current() in
   let builddir = State.File_infos.get_builddir state.file_infos in
@@ -124,7 +122,7 @@ let find_path fn l =
   List.find (is_sub_path ~sep fn) l
 
 let find_abspath fn =
-  find_path fn (hashtbl_find_list abspath (unit fn))
+  find_path fn (hashtbl_find_list abspath (Utils.unit fn))
 
 let file_exists fn =
   match find_abspath fn with
@@ -149,7 +147,7 @@ let exported (flag : DeadFlag.basic ref) loc =
   && (flag == DeadFlag.typ
     || !DeadFlag.internal
     || fn.[String.length fn - 1] = 'i'
-    || sourceunit <> unit fn
+    || sourceunit <> Utils.unit fn
     || not (file_exists (fn ^ "i")))
 
 
@@ -359,7 +357,7 @@ module VdNode = struct
         if not (LocSet.is_empty worklist) then
           let loc = LocSet.choose worklist in
           let wl = LocSet.remove loc worklist in
-          if unit loc.Lexing.pos_fname <> sourceunit then
+          if Utils.unit loc.Lexing.pos_fname <> sourceunit then
             List.iter (LocHash.remove parents) loc_list
           else begin
             LocHash.replace met loc ();
@@ -391,7 +389,7 @@ let export ?(sep = ".") path u stock id loc =
     will create value definitions whose location is in set.mli
   *)
   if not loc.Location.loc_ghost
-  && (u = unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
+  && (u = Utils.unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore (Ident.name id) then
     let state = State.get_current () in
     let builddir = State.File_infos.get_builddir state.file_infos in
