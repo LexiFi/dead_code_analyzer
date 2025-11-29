@@ -1,0 +1,6 @@
+(library
+ (name wrapped_lib)
+ (flags (:standard -warn-error -A))
+ (wrapped true))
+
+(include_subdirs unqualified)
