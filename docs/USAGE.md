@@ -220,8 +220,8 @@ To ignore that module, both for declarations and uses, one can use the
 ### `--references <path>`
 
 Using the previous command line, some reported elements (e.g. located in
-`src/lib/lib.mli`) could be used by the `Debug` module. In this situation.
-In this case, completely excluding `src/debug` from the analysis leads to false
+`src/lib/lib.mli`) could be used by the `Debug` module. In this situation,
+completely excluding `src/debug` from the analysis leads to false
 positives (FP): invalid reports.
 
 To fix the situation, one can use the `--references <path>` option. This option
