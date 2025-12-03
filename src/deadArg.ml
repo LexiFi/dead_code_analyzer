@@ -12,140 +12,156 @@ open Typedtree
 
 open DeadCommon
 
-
 let later = ref []
 let last = ref []
 
 let met = Hashtbl.create 512
-
 
 let eom () =
   List.iter (fun f -> f ()) !later;
   later := [];
   Hashtbl.reset met
 
+let increment_count label count_tbl =
+  let count = Hashtbl.find_opt count_tbl label |> Option.value ~default:0 in
+  let count = count + 1 in
+  Hashtbl.replace count_tbl label count;
+  count
 
-let add lab expr builddir loc last_loc nb_occur =
-  let has_val = match expr.exp_desc with
+let register_use label expr builddir loc last_loc count_tbl =
+  let has_val =
+    match expr.exp_desc with
     | Texp_construct (_, {cstr_name = "None"; _}, _) -> false
     | _ -> true
   in
-  let occur =
-    let occur =
-      if not (Hashtbl.mem nb_occur lab) then Hashtbl.add nb_occur lab 1
-      else Hashtbl.find nb_occur lab + 1 |> Hashtbl.replace nb_occur lab;
-      Hashtbl.find nb_occur lab
-    in ref occur
-  in
+  let count = increment_count label count_tbl in
   let call_site =
     if expr.exp_loc.Location.loc_ghost then last_loc
     else expr.exp_loc.Location.loc_start
   in
-  if check_underscore lab then
-    let loc = VdNode.find loc lab occur in
-    if not (Hashtbl.mem met (last_loc, loc, lab)) then begin
-      Hashtbl.add met (last_loc, loc, lab) ();
+  if check_underscore label then
+    let loc = VdNode.find loc label (ref count) in
+    if not (Hashtbl.mem met (last_loc, loc, label)) then (
+      Hashtbl.add met (last_loc, loc, label) ();
       let opt_arg_use = {
           builddir;
           decl_loc = loc;
-          label = lab;
+          label;
           has_val;
           use_loc = call_site;
-        }
+       }
       in
       opt_args := opt_arg_use :: !opt_args
-    end
+    )
 
+let deferrable_register_use label expr builddir loc last_loc count_tbl =
+  let register_use () = register_use label expr builddir loc last_loc count_tbl in
+  if VdNode.is_end loc then
+    let fn = loc.Lexing.pos_fname in
+    if fn.[String.length fn - 1] = 'i' then
+      (* TODO:
+       * What does it mean to have a loc in a signature ?
+       * When does it happen ? *)
+      last := register_use :: !last
+    else if !depth > 0 then later := register_use :: !later
+    else register_use ()
+  else register_use ()
 
-let rec process loc args =
-
-  List.iter       (* treat each arg's expression before all (even if ghost) *)
-    (function
-      | (_, Some e) -> check e
-      | _ -> ())
+let rec register_uses builddir loc args =
+  List.iter
+    (fun (_, e) -> Option.iter (register_higher_order_uses builddir) e)
     args;
-
-  if is_ghost loc then ()   (* Ghostbuster *)
-  else begin                              (* else: `begin ... end' for aesthetics *)
-    let nb_occur = Hashtbl.create 256 in
-    let last_loc = !last_loc in
-    let builddir =
-      let state = State.get_current () in
-      State.File_infos.get_builddir state.file_infos
-    in
-    (* last_loc and builddir fixed to avoid side effects if added to later/last *)
-    let add lab expr = add lab expr builddir loc last_loc nb_occur in
-    let add = function
-      | (Asttypes.Optional lab, Some expr) ->
-          if VdNode.is_end loc
-          && (let fn = loc.Lexing.pos_fname in fn.[String.length fn - 1] = 'i') then
-            last := (fun () -> add lab expr) :: !last
-          else if VdNode.is_end loc && !depth > 0 then
-            later := (fun () -> add lab expr) :: !later
-          else
-            add lab expr
+  if is_ghost loc then () (* Ghostbuster *)
+  else
+    let count_tbl = Hashtbl.create 8 in
+    let register_opt_arg_use = function
+      | (Asttypes.Optional label, Some expr) ->
+          deferrable_register_use label expr builddir loc !last_loc count_tbl
       | _ -> ()
     in
-    List.iter add args
-  end
-
+    List.iter register_opt_arg_use args
 
 (* Verify the nature of the argument to detect and treat function applications and uses *)
-and check e =
-  (* Optional arguments used to match a signature are considered used *)
-  let get_sig_args typ =
-    let rec loop args typ =
+and register_higher_order_uses builddir e =
+  (* Optional arguments expected by arrow-typed parameter are considered used
+   * because they are necessary to match the expected signature *)
+  let register_opt_args_uses loc typ =
+    let rec get_labels labels typ =
       match get_deep_desc typ with
-      | Tarrow (Asttypes.Optional _ as arg, _, t, _) ->
-          loop ((arg, Some {e with exp_desc = Texp_constant (Asttypes.Const_int 0)})::args) t
-      | Tarrow (_, _, t, _) -> loop args t
-      | _ -> args
-    in loop [] typ
+      | Tarrow (arg_label, _, t, _) ->
+          let labels =
+            match arg_label with
+            | Asttypes.Optional label -> label :: labels
+            | _ -> labels
+          in
+          get_labels labels t
+      | _ -> labels
+    in
+    let labels = get_labels [] typ in
+    let count_tbl = Hashtbl.create 8 in
+    let register_opt_arg_use label =
+      deferrable_register_use label e builddir loc !last_loc count_tbl
+    in
+    List.iter register_opt_arg_use labels
   in
-
   match e.exp_desc with
-  | Texp_ident (_, _, {val_loc = {Location.loc_start=loc; _}; _}) ->
-      process loc (get_sig_args e.exp_type)
-  | Texp_apply (exp, _) ->
-      begin match exp.exp_desc with
+  | Texp_ident (_, _, {val_loc = {Location.loc_start = loc; _}; _}) ->
+      register_opt_args_uses loc e.exp_type
+  | Texp_apply (exp, _) -> (
+      match exp.exp_desc with
       | Texp_ident (_, _, {val_loc = {Location.loc_start = loc; loc_ghost; _}; _})
       | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost; _}; _}) ->
-        process loc (get_sig_args e.exp_type);
-        if not loc_ghost then
-          last_loc := loc
+          register_opt_args_uses loc e.exp_type;
+          (* TODO: Why do we want to set last_loc here ? *)
+          if not loc_ghost then last_loc := loc
       | _ -> ()
-      end
-  | Texp_let (* Partial application as argument may cut in two parts:
-              * let _ = partial in implicit opt_args elimination *)
-      ( _,
-        [{vb_expr =
-            { exp_desc = Texp_apply (
-                {exp_desc = Texp_ident (_, _, {val_loc = {Location.loc_start = loc; _}; _}); _},
-                _) | Texp_ident(_, _, {val_loc = {Location.loc_start = loc; _}; _});
-              _};
-          _}],
-        { exp_desc = Texp_function (_, Tfunction_cases { cases =
-            [{c_lhs = {pat_desc = Tpat_var _; pat_loc = {loc_ghost = true; _}; _};
-              c_rhs = {exp_desc = Texp_apply (_, args); exp_loc = {loc_ghost = true; _}; _}; _}];
-            _ });
-          exp_loc = {loc_ghost = true; _};_}) ->
-      process loc args
+    )
+  | Texp_let (_, [binding], expr) -> (
+      (* Partial application as argument may be cut in two parts:
+       * [let _ = binding in expr] with [expr] discarding opt args *)
+      let ( let$ ) x f = Option.iter f x in
+      let$ ident_loc =
+        match binding.vb_expr.exp_desc with
+        | Texp_apply ({exp_desc = Texp_ident (_, _, val_desc); _}, _)
+        | Texp_ident (_, _, val_desc) ->
+            Some val_desc.val_loc.loc_start
+        | _ -> None
+      in
+      let$ (c_lhs, c_rhs) =
+        match expr.exp_desc with
+        | Texp_function (_, Tfunction_cases {cases = [case]; _}) ->
+            Some (case.c_lhs, case.c_rhs)
+        | _ -> None
+      in
+      match (c_lhs.pat_desc, c_rhs.exp_desc) with
+      | (Tpat_var _, Texp_apply (_, args)) ->
+          if c_lhs.pat_loc.loc_ghost && c_rhs.exp_loc.loc_ghost
+             && expr.exp_loc.loc_ghost
+          then register_uses builddir ident_loc args
+      | _ -> ()
+    )
   | _ -> ()
 
+(* redefine without the [builddir] parameter *)
+let register_uses val_loc args =
+  let builddir =
+    let state = State.get_current () in
+    State.File_infos.get_builddir state.file_infos
+  in
+  register_uses builddir val_loc args
 
-let node_build loc expr =
-  let rec loop loc expr =
-    match expr.exp_desc with
-    | Texp_function (fp, body) ->
+let rec bind loc expr =
+  match expr.exp_desc with
+  | Texp_function (params, body) -> (
       let check_param_style = function
         | Tparam_pat {pat_type; _}
         | Tparam_optional_default ({pat_type; _}, _) ->
-          DeadType.check_style pat_type expr.exp_loc.Location.loc_start
+            DeadType.check_style pat_type expr.exp_loc.Location.loc_start
       in
       let register_optional_param = function
-        | Asttypes.Optional s when !DeadFlag.optn.print || !DeadFlag.opta.print ->
-          let opts, next = VdNode.get loc in
-          VdNode.update loc (s :: opts, next)
+        | Asttypes.Optional s when DeadFlag.(!optn.print || !opta.print) ->
+            let (opts, next) = VdNode.get loc in
+            VdNode.update loc (s :: opts, next)
         | _ -> ()
       in
       List.iter
@@ -153,37 +169,32 @@ let node_build loc expr =
           check_param_style fp_kind;
           register_optional_param fp_arg_label
         )
-        fp;
-      begin match body with
-      | Tfunction_body exp -> loop loc exp
+        params;
+      match body with
+      | Tfunction_body exp -> bind loc exp
       | Tfunction_cases {cases = [{c_lhs = {pat_type; _}; c_rhs = exp; _}]; _} ->
-        DeadType.check_style pat_type expr.exp_loc.Location.loc_start;
-        loop loc exp
+          DeadType.check_style pat_type expr.exp_loc.Location.loc_start;
+          bind loc exp
       | _ -> ()
-      end
-    | Texp_apply (exp, _) ->
-        begin match exp.exp_desc with
-        | Texp_ident (_, _, {val_loc = {Location.loc_start = loc2; _}; _})
-        | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc2; _}; _})
-          when (!DeadFlag.optn.print || !DeadFlag.opta.print)
-          && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
-            VdNode.merge_locs loc loc2
-        | _ -> ()
-        end
-    | Texp_ident (_, _, {val_loc = {Location.loc_start = loc2; _}; _})
-      when !DeadFlag.optn.print || !DeadFlag.opta.print
-      && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
-        VdNode.merge_locs loc loc2
-    | _ -> ()
-  in loop loc expr
-
-
+    )
+  | exp_desc
+    when (!DeadFlag.optn.print || !DeadFlag.opta.print)
+         && DeadType.nb_args ~keep:`Opt expr.exp_type > 0 ->
+      let ( let$ ) x f = Option.iter f x in
+      let$ loc2 =
+        match exp_desc with
+        | Texp_apply ({exp_desc = Texp_ident (_, _, {val_loc = loc; _}); _}, _)
+        | Texp_apply ({exp_desc = Texp_field (_, _, {lbl_loc = loc; _}); _}, _)
+        | Texp_ident (_, _, {val_loc = loc; _}) ->
+            Some loc.loc_start
+        | _ -> None
+      in
+      VdNode.merge_locs loc loc2
+  | _ -> ()
 
                 (********   WRAPPING  ********)
-
 
 let wrap f x y =
   if DeadFlag.(!optn.print || !opta.print) then f x y else ()
 
-let process val_loc args =
-  wrap process val_loc args
+let register_uses val_loc args = wrap register_uses val_loc args

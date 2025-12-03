@@ -62,7 +62,7 @@ let rec treat_exp exp args =
 
   | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; _}; _})
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; _}; _}) ->
-      DeadArg.process loc args
+      DeadArg.register_uses loc args
 
   | Texp_match (_, l, _) ->
       List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
@@ -105,7 +105,7 @@ let value_binding super self x =
       vb_expr = exp;
       _
     } ->
-      DeadArg.node_build loc exp;
+      DeadArg.bind loc exp;
       DeadObj.add_var loc exp
   | _ -> ()
   end;
