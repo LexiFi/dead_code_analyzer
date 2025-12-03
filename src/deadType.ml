@@ -42,43 +42,9 @@ let nb_args ~keep typ =
   loop 0 (get_desc typ)
 
 
-let rec _TO_STRING_ typ = begin [@warning "-11"] match get_deep_desc typ with
-  | Tvar i -> begin match i with Some id -> id | None -> "'a" end
-  | Tarrow (_, t1, t2, _) ->
-      begin match get_deep_desc t1 with
-      | Tarrow _ -> "(" ^ _TO_STRING_ t1 ^ ")"
-      | _ -> _TO_STRING_ t1 end
-      ^ " -> " ^ _TO_STRING_ t2
-  | Ttuple l -> begin match l with
-      | e::l ->
-          List.fold_left (fun prev typ -> prev ^ " * " ^ _TO_STRING_ typ) (_TO_STRING_ e) l
-      | [] -> "*" end
-  | Tconstr (path, l, _) -> make_name path l
-  | Tobject (self, _) -> "< " ^ _TO_STRING_ self ^ " >"
-  | Tfield (s, k, _, t1) ->
-      if field_kind_repr k <> Fabsent then
-        s
-        ^ begin match get_deep_desc t1 with
-          | Tfield _ -> "; " ^ _TO_STRING_ t1
-          | _ -> "" end
-      else _TO_STRING_ t1
-  | Tnil -> "Tnil"
-  | Tlink t -> _TO_STRING_ t
-  | Tsubst _ -> "Tsubst _"
-  | Tvariant r -> _TO_STRING_ (row_more r)
-  | Tunivar _ -> "Tunivar _"
-  | Tpoly (t, _) -> _TO_STRING_ t
-  | Tpackage _ -> "Tpackage _"
-  | _ -> "Extension _" end
-
-
-and make_name path l =
-  let t = match l with
-    | [] -> ""
-    | _ -> List.fold_left (fun prev typ -> prev ^ _TO_STRING_ typ ^ " ") "" l;
-  in
-  let name = Path.name path in
-  t ^ name
+let to_string typ =
+  Printtyp.type_expr Format.str_formatter typ;
+  Format.flush_str_formatter ()
 
 
 let is_type s =
@@ -121,7 +87,7 @@ let collect_export path u stock t =
         List.iter
           (fun {Types.ld_id; ld_loc; ld_type; _} ->
             save ld_id ld_loc;
-            !DeadLexiFi.export_type ld_loc.Location.loc_start (_TO_STRING_ ld_type)
+            !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type)
           )
           l
     | Type_variant (l, _) ->
@@ -191,7 +157,7 @@ let tstr typ =
     | Ttype_record l ->
         List.iter
           (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
-            assoc ld_name ld_loc.Location.loc_start (_TO_STRING_ ld_type.ctyp_type)
+            assoc ld_name ld_loc.Location.loc_start (to_string ld_type.ctyp_type)
           )
           l
     | Ttype_variant l ->

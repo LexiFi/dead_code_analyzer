@@ -11,8 +11,8 @@ val decs : (Lexing.position, string * string) Hashtbl.t
 
 val dependencies : (Lexing.position * Lexing.position) list ref
 
-val _TO_STRING_ : Types.type_expr -> string
-  (** [_TO_STRING_ typ] converts [typ] to its string representation in the toplevel *)
+val to_string : Types.type_expr -> string
+  (** [to_string typ] converts [typ] to its string representation in the toplevel *)
 
 val check_style : Types.type_expr -> Lexing.position -> unit
   (** Look for bad style typing. (i.e. Argument expecting an optional argument) *)
