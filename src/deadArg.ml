@@ -43,7 +43,7 @@ let register_use label expr builddir loc last_loc count_tbl =
     else expr.exp_loc.Location.loc_start
   in
   if check_underscore label then
-    let loc = VdNode.find loc label (ref count) in
+    let loc = VdNode.find loc label count in
     if not (Hashtbl.mem met (last_loc, loc, label)) then (
       Hashtbl.add met (last_loc, loc, label) ();
       let opt_arg_use = {
