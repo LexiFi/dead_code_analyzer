@@ -298,7 +298,7 @@ module VdNode = struct
           update loc1 (opts, Some loc2);
         end
 
-
+  (* find the loc of the function declaring the nth occurence of the label *)
   let find loc lab occur =
     let met = LocHash.create 8 in
     let rec loop loc lab occur =
@@ -306,9 +306,9 @@ module VdNode = struct
         if is_end loc then 0
         else List.filter (( = ) lab) (get_opts loc) |> List.length
       in
-      if is_end loc || LocHash.mem met loc || count >= !occur then loc
-      else begin
-        occur := !occur - count;
+      if is_end loc || LocHash.mem met loc || count >= occur then loc
+      else (
+        let occur = occur - count in
         LocHash.replace met loc ();
         match get_next loc with
         | Some next -> loop (func next) lab occur
@@ -318,7 +318,7 @@ module VdNode = struct
               ^ (string_of_int loc.Lexing.pos_lnum)
             in
               failwith (loc ^ ": optional argument `" ^ lab ^ "' unlinked")
-      end
+      )
     in loop (func loc) lab occur
 
   let eof () =
