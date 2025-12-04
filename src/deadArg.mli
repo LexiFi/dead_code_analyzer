@@ -9,20 +9,24 @@
 
 open Typedtree
 
-val later : (unit -> unit) list ref
-(** Functions needing a location in the current file to be processed
-    before being executed.
-    It is known that this location will have been processed at the end of
-    the binding.
-    Needed because the Tast_mapper run through sequences from the end
-    because tuples are built from right to left*)
+val at_eof : (unit -> unit) list ref
+(** Functions deferred to run at the end of the current file's analysis.
+    They reaqire the analysis of future locations in the current file.
+    It is known that these locations will have been processed at the end
+    of the binding.
+    Needed because the Tast_mapper runs through sequences from the end
+    because tuples are built from right to left. *)
 
-val last : (unit -> unit) list ref
-(** Functions needing a location out of the current file to be processed
-    before being executed. *)
+val eof : unit -> unit
+(** To use at the end of a [.cmt]'s analysis:
+    apply [at_eof] functions + reset internal state *)
 
-val eom : unit -> unit
-(** Self cleaning *)
+val eocb : unit -> unit
+(** To use at the end of the codebase analysis:
+    apply remaining deferred functions which required the analysis of future
+    locations, their respective files.
+    [eocb] = end of code base. *)
+
 
 val register_uses :
   Lexing.position -> (Asttypes.arg_label * expression option) list -> unit

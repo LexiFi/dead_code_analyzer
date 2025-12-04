@@ -12,15 +12,18 @@ open Typedtree
 
 open DeadCommon
 
-let later = ref []
-let last = ref []
+let at_eof = ref []
+let at_eocb = ref []
 
 let met = Hashtbl.create 512
 
-let eom () =
-  List.iter (fun f -> f ()) !later;
-  later := [];
+let eof () =
+  List.iter (fun f -> f ()) !at_eof;
+  at_eof := [];
   Hashtbl.reset met
+
+let eocb () =
+  List.iter (fun f -> f ()) !at_eocb
 
 let increment_count label count_tbl =
   let count = Hashtbl.find_opt count_tbl label |> Option.value ~default:0 in
@@ -62,8 +65,8 @@ let deferrable_register_use label expr builddir loc last_loc count_tbl =
       (* TODO:
        * What does it mean to have a loc in a signature ?
        * When does it happen ? *)
-      last := register_use :: !last
-    else if !depth > 0 then later := register_use :: !later
+      at_eocb := register_use :: !at_eocb
+    else if !depth > 0 then at_eof := register_use :: !at_eof
     else register_use ()
   else register_use ()
 

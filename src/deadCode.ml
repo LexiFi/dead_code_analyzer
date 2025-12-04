@@ -78,8 +78,8 @@ let rec treat_exp exp args =
 
 
 let value_binding super self x =
-  let old_later = !DeadArg.later in
-  DeadArg.later := [];
+  let at_eof_saved = !DeadArg.at_eof in
+  DeadArg.at_eof := [];
   incr depth;
   let open Asttypes in
   begin match x with
@@ -111,8 +111,8 @@ let value_binding super self x =
   end;
 
   let r = super.Tast_mapper.value_binding self x in
-  List.iter (fun f -> f()) !DeadArg.later;
-  DeadArg.later := old_later;
+  List.iter (fun f -> f()) !DeadArg.at_eof;
+  DeadArg.at_eof := at_eof_saved;
   decr depth;
   r
 
@@ -406,9 +406,9 @@ let clean references loc =
   if (fn.[String.length fn - 1] <> 'i' && Utils.unit fn = sourceunit) then
     LocHash.remove references loc
 
-let eom loc_dep =
+let eof loc_dep =
   let state = State.get_current () in
-  DeadArg.eom();
+  DeadArg.eof();
   List.iter (assoc decs) loc_dep;
   List.iter (assoc DeadType.decs) !DeadType.dependencies;
   let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
@@ -422,8 +422,8 @@ let eom loc_dep =
     clean loc_dep;
     clean !DeadType.dependencies;
   end;
-  VdNode.eom ();
-  DeadObj.eom ();
+  VdNode.eof ();
+  DeadObj.eof ();
   DeadType.dependencies := [];
   Hashtbl.reset incl
 
@@ -480,7 +480,7 @@ let rec load_file state fn =
                 cmt_value_dependencies
             else []
           in
-          eom loc_dep
+          eof loc_dep
       | _ -> () (* todo: support partial_implementation? *)
       )
 
@@ -500,7 +500,7 @@ let rec load_file state fn =
 
 (* Prepare the list of opt_args for report *)
 let analyze_opt_args () =
-  List.iter (fun f -> f ()) !DeadArg.last;
+  DeadArg.eocb ();
   let all = ref [] in
   let tbl = Hashtbl.create 256 in
   let dec_loc loc = Hashtbl.mem main_files (Utils.unit loc.Lexing.pos_fname) in
