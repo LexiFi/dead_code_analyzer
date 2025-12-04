@@ -321,7 +321,7 @@ module VdNode = struct
       end
     in loop (func loc) lab occur
 
-  let eom () =
+  let eof () =
     let state = State.get_current () in
 
     let sons =

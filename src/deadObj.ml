@@ -28,7 +28,7 @@ let inheritances = Hashtbl.create 512               (* inheritance links loc-> l
 
 let equals = Hashtbl.create 64
 
-let later = ref []
+let at_eof = ref []
 
 let last_class = ref Lexing.dummy_pos            (* last class met *)
 
@@ -160,7 +160,7 @@ let locate expr =
   in repr_exp expr locate
 
 
-let eom () =
+let eof () =
   Hashtbl.reset defined;
   last_class := Lexing.dummy_pos
 
@@ -318,7 +318,7 @@ let class_field f =
         add_equal f.cf_loc.Location.loc_start cl_exp.cl_loc.Location.loc_start;
         let loc = get_loc path in
         let equal () = add_equal cl_exp.cl_loc.Location.loc_start (get_loc path) in  (* for uses inside class def *)
-        if loc == Lexing.dummy_pos then later := equal :: !later
+        if loc == Lexing.dummy_pos then at_eof := equal :: !at_eof
         else equal ()
       end;
       List.iter (fun (s, _) -> update_overr false s) l
@@ -376,7 +376,7 @@ let coerce expr typ =
 
 let prepare_report () =
 
-  List.iter (fun f -> f ()) !later;
+  List.iter (fun f -> f ()) !at_eof;
 
   let apply_self meth loc1 loc2 =
     let loc1 = repr_loc loc1

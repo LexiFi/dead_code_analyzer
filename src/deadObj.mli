@@ -60,8 +60,8 @@ val coerce:
   expression -> Types.type_expr -> unit
 
 
-val eom :
-  unit -> unit
+val eof : unit -> unit
+(** For use at the end of a [.cmt]'s analysis: reset internal state *)
 
 
 val report :
