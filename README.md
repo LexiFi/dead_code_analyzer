@@ -48,7 +48,7 @@ For more information, see the [User documentation](docs/USER_DOC.md)
 
 ## Requirements
 
-- Currently tested and working on **OCaml 5.2**
+- Currently tested and working on **OCaml 5.3**
 - **dune >= 3.20**
 
 

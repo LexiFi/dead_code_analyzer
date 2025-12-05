@@ -20,6 +20,7 @@
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
 
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:5: Original.used_by_requirement: Should not be detected
 ./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: Original.unused
 ./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:12: Alias_with_sig.used_by_requirement
 
@@ -63,11 +64,23 @@
 ./examples/using_dune/reduced_lib/reduced_lib.mli:19: Values_in_submodules.Exported.internally_used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:27: Values_in_submodules_no_intf.Exported.used_by_API
 ./examples/using_dune/reduced_lib/reduced_lib.mli:28: Values_in_submodules_no_intf.Exported.internally_used
+./examples/using_dune/reduced_lib/values.mli:1: used: Should not be detected
+./examples/using_dune/reduced_lib/values.mli:2: used_by_API: Should not be detected
+./examples/using_dune/reduced_lib/values.mli:3: internally_used: Should not be detected
+./examples/using_dune/reduced_lib/values.mli:4: externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values.mli:7: lib_internal_unused
 ./examples/using_dune/reduced_lib/values.mli:8: lib_internal_internally_used
+./examples/using_dune/reduced_lib/values_in_submodules.mli:2: Exported.used: Should not be detected
+./examples/using_dune/reduced_lib/values_in_submodules.mli:3: Exported.used_by_API: Should not be detected
+./examples/using_dune/reduced_lib/values_in_submodules.mli:4: Exported.internally_used: Should not be detected
+./examples/using_dune/reduced_lib/values_in_submodules.mli:5: Exported.externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values_in_submodules.mli:8: Exported.lib_internal_unused
 ./examples/using_dune/reduced_lib/values_in_submodules.mli:9: Exported.lib_internal_internally_used
+./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:3: Exported.used_by_API: Should not be detected
+./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:5: Exported.externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:8: Exported.lib_internal_unused
+./examples/using_dune/reduced_lib/values_no_intf.ml:2: used_by_API: Should not be detected
+./examples/using_dune/reduced_lib/values_no_intf.ml:4: externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values_no_intf.ml:11: lib_internal_unused
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
@@ -112,7 +125,8 @@
 
 ./examples/using_make/advanced/inc_val.mli:1: x
 ./examples/using_make/advanced/inc_val.mli:2: y
-
+./examples/using_make/advanced/val.mli:1: x: Should not be detected
+./examples/using_make/advanced/val.mli:2: y: Should not be detected
 ./examples/using_make/bar.ml:1: x
 ./examples/using_make/bar_fn.ml:3: h
 ./examples/using_make/baz.mli:1: z
@@ -174,27 +188,23 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
 
-./examples/docs/methods/code_constructs/coercion/coercion_lib.mli:2: obj#unused
-
+./examples/docs/methods/code_constructs/coercion/coercion_lib.mli:2: obj#unused: Not detected
 ./examples/docs/methods/code_constructs/constructor/constructor_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#reset
 
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory#unused_method
-./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#reset
-
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#reset: Not detected
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
-./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
-
+./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset: Not detected
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
 
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused: Not detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m: Not detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m
 
-./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
@@ -204,15 +214,14 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:25: fun_class#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
-
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_int: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_int: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int: Not detected
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_fun
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_int
@@ -220,15 +229,14 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:25: fun_class#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:35: _self_used#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
-./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_int
-./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_int
-./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
-./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
-
+./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int: Not detected
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/coerce.mli:6: p#f
@@ -488,6 +496,8 @@ Nothing else to report in this section
 ./examples/using_make/if_end.ml:5: ?b
 ./examples/using_make/letIn.mli:1: ?a
 ./examples/using_make/let_in.ml:1: ?a
+./examples/using_make/opt/sig_struct.ml:6: ?x: Should not be detected
+./examples/using_make/opt/sig_struct.ml:11: ?x: Should not be detected
 ./examples/using_make/opt_in_opt.ml:1: ?a
 ./examples/using_make/opt_in_opt.ml:5: ?a
 ./examples/using_make/partial_opt.ml:1: ?a
@@ -618,6 +628,7 @@ Nothing else to report in this section
 ./examples/using_make/foo.ml:1: ?a
 ./examples/using_make/letIn.mli:1: ?b
 ./examples/using_make/let_in.ml:1: ?c
+./examples/using_make/opt/sig_struct.ml:2: ?x: Should not be detected
 ./examples/using_make/opt_in_opt.ml:2: ?a
 ./examples/using_make/opt_in_opt.ml:2: ?b
 ./examples/using_make/record.ml:12: ?b
@@ -719,7 +730,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 593
-Success: 586
-Failed: 7
-Ratio: 98.8195615514%
+Total: 610
+Success: 565
+Failed: 45
+Ratio: 92.6229508197%

@@ -112,8 +112,12 @@ let rec treat_exp exp args =
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; _}; _}) ->
       DeadArg.register_uses loc args
 
-  | Texp_match (_, l, _) ->
-      List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
+  | Texp_match (_, comp_l, val_l, _) ->
+      let process_cases l =
+        List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
+      in
+      process_cases comp_l;
+      process_cases val_l
 
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
@@ -302,7 +306,7 @@ let expr super self e =
             "let () = ... in ... (=> use sequence)"
       end
 
-  | Texp_match (_, [{c_lhs; _}], _)
+  | Texp_match (_, [{c_lhs; _}], [], _)
     when DeadType.is_unit c_lhs.pat_type && sections.style.seq ->
       begin match c_lhs.pat_desc with
       | Tpat_value tpat_arg ->
@@ -502,15 +506,31 @@ let load_file fn state =
       regabs state;
       match state.file_infos.cmt_infos with
       | None -> bad_files := fn :: !bad_files
-      | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
-          let prepare = function
-            | {Types.val_loc = {Location.loc_start = loc1; loc_ghost = false; _}; _},
-              {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false; _}; _} ->
-                DeadObj.add_equal loc1 loc2;
-                VdNode.merge_locs ~force:true loc2 loc1
-            | _ -> ()
+      | Some ({cmt_annots = Implementation x; _} as cmt_infos) ->
+          let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
+            let ( let* ) x f = Option.bind x f in
+            let loc_opt_of_uid uid =
+              let* decl =
+                Uid.Tbl.find_opt cmt_infos.cmt_uid_to_decl uid
+              in
+              match decl with
+              | Value {val_loc = {loc_start; loc_ghost = false; _}; _} ->
+                  Some loc_start
+              | _ -> None
+            in
+            let* def_loc = loc_opt_of_uid uid_def in
+            let* decl_loc = loc_opt_of_uid uid_decl in
+            Some (def_loc, decl_loc)
           in
-          List.iter prepare cmt_value_dependencies;
+          let value_dep =
+            cmt_infos.cmt_declaration_dependencies
+            |> List.filter_map uid_decl_dep_to_loc_pair
+          in
+          let prepare (loc1, loc2) =
+            DeadObj.add_equal loc1 loc2;
+            VdNode.merge_locs ~force:true loc2 loc1
+          in
+          List.iter prepare value_dep;
 
           ignore (collect_references.Tast_mapper.structure collect_references x);
 
@@ -523,14 +543,12 @@ let load_file fn state =
                 String.equal (Utils.Filepath.unit pos.pos_fname) sourceunit
               in
               List.filter_map
-                (fun (vd1, vd2) ->
-                   let loc1 = vd1.Types.val_loc.Location.loc_start in
-                   let loc2 = vd2.Types.val_loc.Location.loc_start in
+                (fun (loc1, loc2) ->
                    if in_sourceunit loc1 || in_sourceunit loc2 then
                      Some (loc1, loc2)
                    else None
                 )
-                cmt_value_dependencies
+                value_dep
             else []
           in
           eof loc_dep
