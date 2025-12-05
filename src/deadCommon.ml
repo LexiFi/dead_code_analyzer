@@ -388,7 +388,7 @@ let export ?(sep = ".") path u stock id loc =
     ^ sep
     ^ (Ident.name id)
   in
-  (* a .cmi file can contain locations from other files.
+  (* a .cmti file can contain locations from other files.
     For instance:
         module M : Set.S with type elt = int
     will create value definitions whose location is in set.mli

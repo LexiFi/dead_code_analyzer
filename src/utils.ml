@@ -13,7 +13,7 @@ module Filepath = struct
     Unit_info.lax_modname_from_source filepath
 
   type kind =
-    | Cmi
+    | Cmti
     | Cmt
     | Dir
     | Ignore
@@ -26,7 +26,7 @@ module Filepath = struct
       Ignore
     )
     else if Sys.is_directory filepath then Dir
-    else if Filename.check_suffix filepath ".cmi" then Cmi
+    else if Filename.check_suffix filepath ".cmti" then Cmti
     else if Filename.check_suffix filepath ".cmt" then Cmt
     else Ignore
 end

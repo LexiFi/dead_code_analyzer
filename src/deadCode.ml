@@ -24,7 +24,7 @@ open DeadCommon
 
                 (********   ATTRIBUTES   ********)
 
-let bad_files = ref []                (* unreadable cmi/cmt files *)
+let bad_files = ref []                (* unreadable cmti/cmt files *)
 
 let main_files = Hashtbl.create 256   (* names -> paths *)
 
@@ -391,28 +391,24 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
-let read_interface fn cmi_infos state = let open Cmi_format in
-  try
-    regabs state;
-    if Config.must_report_main state.config then
-      let u =
-        if State.File_infos.has_sourcepath state.file_infos then
-          State.File_infos.get_sourceunit state.file_infos
-        else
-        Utils.Filepath.unit fn
-      in
-      let module_id =
-        State.File_infos.get_modname state.file_infos
-        |> Ident.create_persistent
-      in
-      let f =
-        collect_export ~context:Toplevel [module_id] u decs
-      in
-      List.iter f cmi_infos.cmi_sign;
-      last_loc := Lexing.dummy_pos
-  with Cmi_format.Error (Wrong_version_interface _) ->
-    (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
-    bad_files := fn :: !bad_files
+let read_interface fn signature state =
+  regabs state;
+  if Config.must_report_main state.config then
+    let u =
+      if State.File_infos.has_sourcepath state.file_infos then
+        State.File_infos.get_sourceunit state.file_infos
+      else
+      Utils.Filepath.unit fn
+    in
+    let module_id =
+      State.File_infos.get_modname state.file_infos
+      |> Ident.create_persistent
+    in
+    let f =
+      collect_export ~context:Toplevel [module_id] u decs
+    in
+    List.iter f signature.sig_type;
+    last_loc := Lexing.dummy_pos
 
 
 (* Merge a location's references to another one's *)
@@ -489,13 +485,16 @@ let load_file fn state =
   in
   let exclude filepath = Config.is_excluded filepath state.State.config in
   match Utils.Filepath.kind ~exclude fn with
-  | Cmi when !DeadCommon.declarations ->
+  | Cmti when !DeadCommon.declarations ->
+      let open Cmt_format in
       last_loc := Lexing.dummy_pos;
       if state.State.config.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       init_and_continue state fn (fun state ->
-      match state.file_infos.cmi_infos with
-      | None -> () (* TODO error handling ? *) 
-      | Some cmi_infos -> read_interface fn cmi_infos state
+      match state.file_infos.cmti_infos with
+      | None -> bad_files := fn :: !bad_files
+      | Some {cmt_annots = Interface signature; _} ->
+          read_interface fn signature state
+      | _ -> ()
       )
 
   | Cmt ->
@@ -558,7 +557,7 @@ let load_file fn state =
   | Dir ->
       (* TODO : better error handling *)
       failwith ("Internal error : Unexpected directory "
-                ^ fn ^ ". Only .cmi and .cmt are expected")
+                ^ fn ^ ". Only .cmti and .cmt are expected")
 
   | _ -> state
 
@@ -703,15 +702,16 @@ let report_style () =
 
 (* Option parsing and processing *)
 let run_analysis state =
-  let process_file filename state =
+  let process_file state filename =
     let state = load_file filename state in
     State.update state;
     state
   in
   Printf.eprintf "Scanning files...\n%!";
-  Utils.StringSet.fold
+  Utils.StringSet.elements state.State.config.paths_to_analyze
+  |> List.rev
+  |> List.fold_left
     process_file
-    state.State.config.paths_to_analyze
     state
 
 let () =
