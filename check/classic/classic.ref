@@ -46,7 +46,8 @@
 
 ./examples/using_make/advanced/inc_val.mli:1: x
 ./examples/using_make/advanced/inc_val.mli:2: y
-
+./examples/using_make/advanced/val.mli:1: x: Should not be detected
+./examples/using_make/advanced/val.mli:2: y: Should not be detected
 ./examples/using_make/bar.ml:1: x
 ./examples/using_make/bar_fn.ml:3: h
 ./examples/using_make/baz.mli:1: z
@@ -105,7 +106,7 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
-./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
@@ -115,15 +116,14 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:25: fun_class#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:35: _self_used#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
-./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
-
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:1: immediate#unused_int: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:11: factory#unused_int: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int: Not detected
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_fun
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_int
@@ -131,15 +131,14 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:25: fun_class#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:35: _self_used#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:41: _self_used_fun_class#unused
-./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_int
-./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_int
-./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int
-./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
-./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
-
+./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:1: immediate#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:11: factory#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun: Not detected
+./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int: Not detected
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/coerce.mli:6: p#f
@@ -242,6 +241,9 @@ Nothing else to report in this section
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
+./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?internally: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?always: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?externally: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?always
 
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?always
@@ -365,6 +367,8 @@ Nothing else to report in this section
 ./examples/using_make/if_end.ml:5: ?b
 ./examples/using_make/letIn.mli:1: ?a
 ./examples/using_make/let_in.ml:1: ?a
+./examples/using_make/opt/sig_struct.ml:6: ?x: Should not be detected
+./examples/using_make/opt/sig_struct.ml:11: ?x: Should not be detected
 ./examples/using_make/opt_in_opt.ml:1: ?a
 ./examples/using_make/opt_in_opt.ml:5: ?a
 ./examples/using_make/partial_opt.ml:1: ?a
@@ -378,8 +382,11 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:65: ?opt
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?internally: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?never: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:65: ?opt
 
@@ -476,6 +483,7 @@ Nothing else to report in this section
 ./examples/using_make/foo.ml:1: ?a
 ./examples/using_make/letIn.mli:1: ?b
 ./examples/using_make/let_in.ml:1: ?c
+./examples/using_make/opt/sig_struct.ml:2: ?x: Should not be detected
 ./examples/using_make/opt_in_opt.ml:2: ?a
 ./examples/using_make/opt_in_opt.ml:2: ?b
 ./examples/using_make/record.ml:12: ?b
@@ -533,7 +541,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 460
-Success: 460
-Failed: 0
-Ratio: 100.%
+Total: 471
+Success: 443
+Failed: 28
+Ratio: 94.0552016985%
