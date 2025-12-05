@@ -47,7 +47,8 @@ module Extension = struct
 
   let sig_value (value : Types.value_description) =
     let add strct = match strct.pstr_desc with
-      | Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _) ->
+      | Pstr_eval ({pexp_desc = Pexp_constant {pconst_desc= (Pconst_string (s, _, _)); _};
+                    _}, _) ->
           hashtbl_add_unique_to_list str s value.val_loc.loc_start
       | _ -> ()
     in
