@@ -14,7 +14,8 @@ module Filepath = struct
 
   type kind =
     | Cmti
-    | Cmt
+    | Cmt_without_mli
+    | Cmt_with_mli
     | Dir
     | Ignore
 
@@ -27,7 +28,10 @@ module Filepath = struct
     )
     else if Sys.is_directory filepath then Dir
     else if Filename.check_suffix filepath ".cmti" then Cmti
-    else if Filename.check_suffix filepath ".cmt" then Cmt
+  else if Filename.check_suffix filepath ".cmt" then
+    let cmti = Filename.remove_extension filepath ^ ".cmti" in
+    if Sys.file_exists cmti then Cmt_with_mli
+    else Cmt_without_mli
     else Ignore
 end
 

@@ -112,7 +112,7 @@ let normalize_path path =
 
 let rec add_filepaths acc path =
   match Utils.Filepath.kind ~exclude:(fun _ -> false) path with
-  | Cmti | Cmt -> Utils.StringSet.add path acc
+  | Cmti | Cmt_without_mli | Cmt_with_mli -> Utils.StringSet.add path acc
   | Dir ->
       Sys.readdir path
       |> Array.fold_left
