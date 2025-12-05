@@ -38,7 +38,7 @@ For more information, see [the documentation](docs/USER_DOC.md)
 
 ## Requirements
 
-- Currently tested and working on **OCaml 5.2**
+- Currently tested and working on **OCaml 5.3**
 
 
 ## Install
