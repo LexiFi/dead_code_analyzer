@@ -2,8 +2,7 @@
 =========================
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
-
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused: Not detected
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
@@ -18,12 +17,11 @@
 ./examples/using_dune/unwrapped_lib/values/values.mli:26: internally_used_closure
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
-./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:13: unused_fun
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
-./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:25: unused_closure
-
+./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int: Not detected
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int: Not detected
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:13: unused_fun: Not detected
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:20: unused_alias_fun: Not detected
+./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:25: unused_closure: Not detected
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
@@ -38,38 +36,35 @@
 ./examples/using_dune/wrapped_lib/values/values.mli:26: internally_used_closure
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
-./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:13: unused_fun
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
-./examples/using_dune/wrapped_lib/values/values_no_intf.ml:25: unused_closure
-
+./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int: Not detected
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int: Not detected
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:13: unused_fun: Not detected
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:20: unused_alias_fun: Not detected
+./examples/using_dune/wrapped_lib/values/values_no_intf.ml:25: unused_closure: Not detected
 ./examples/using_make/advanced/inc_val.mli:1: x
 ./examples/using_make/advanced/inc_val.mli:2: y
 ./examples/using_make/advanced/val.mli:1: x: Should not be detected
 ./examples/using_make/advanced/val.mli:2: y: Should not be detected
-./examples/using_make/bar.ml:1: x
-./examples/using_make/bar_fn.ml:3: h
+./examples/using_make/bar.ml:1: x: Not detected
+./examples/using_make/bar_fn.ml:3: h: Not detected
 ./examples/using_make/baz.mli:1: z
 ./examples/using_make/baz.mli:3: u
-./examples/using_make/cond_sel.ml:13: h
-
-./examples/using_make/dir/alias_opt.ml:7: y
-./examples/using_make/dir/alias_opt.ml:14: x
-./examples/using_make/dir/anon_call.ml:1: f
-./examples/using_make/dir/anon_call.ml:5: g
-./examples/using_make/dir/anon_call.ml:9: h
-./examples/using_make/dir/anon_call2.ml:1: f
-./examples/using_make/dir/anon_call2.ml:5: g
-./examples/using_make/dir/anon_call2.ml:9: h
-./examples/using_make/dir/match_opt.ml:8: l
-./examples/using_make/dir/matchopt.ml:5: w
+./examples/using_make/cond_sel.ml:13: h: Not detected
+./examples/using_make/dir/alias_opt.ml:7: y: Not detected
+./examples/using_make/dir/alias_opt.ml:14: x: Not detected
+./examples/using_make/dir/anon_call.ml:1: f: Not detected
+./examples/using_make/dir/anon_call.ml:5: g: Not detected
+./examples/using_make/dir/anon_call.ml:9: h: Not detected
+./examples/using_make/dir/anon_call2.ml:1: f: Not detected
+./examples/using_make/dir/anon_call2.ml:5: g: Not detected
+./examples/using_make/dir/anon_call2.ml:9: h: Not detected
+./examples/using_make/dir/match_opt.ml:8: l: Not detected
+./examples/using_make/dir/matchopt.ml:5: w: Not detected
 ./examples/using_make/dir/mod.mli:10: M.f
 ./examples/using_make/dir/mod.mli:11: M.g
 ./examples/using_make/dir/refFn.mli:3: x
-./examples/using_make/dir/ref_opt.ml:3: no
-./examples/using_make/dir/ref_opt.ml:11: x
-
+./examples/using_make/dir/ref_opt.ml:3: no: Not detected
+./examples/using_make/dir/ref_opt.ml:11: x: Not detected
 ./examples/using_make/exported.mli:6: M1.five
 ./examples/using_make/exported.mli:10: F.plus_five
 ./examples/using_make/exported.mli:11: F.times_five
@@ -82,9 +77,9 @@
 ./examples/using_make/functor.mli:3: M.none
 ./examples/using_make/functor.mli:7: F.g
 ./examples/using_make/functor.mli:11: N.g
-./examples/using_make/let_in.ml:3: parent
-./examples/using_make/let_test.ml:3: g
-./examples/using_make/matchopt.ml:5: w
+./examples/using_make/let_in.ml:3: parent: Not detected
+./examples/using_make/let_test.ml:3: g: Not detected
+./examples/using_make/matchopt.ml:5: w: Not detected
 ./examples/using_make/mod_alias.mli:2: M1.id
 ./examples/using_make/mod_alias.mli:6: M2.id
 
@@ -93,11 +88,11 @@
 ./examples/using_make/obj/inher.mli:11: o
 ./examples/using_make/obj/inher.mli:13: f
 
-./examples/using_make/opt_in_opt.ml:7: x
-./examples/using_make/qux.ml:1: z
-./examples/using_make/unused_fn.ml:3: g
-./examples/using_make/unused_fn.ml:5: var
-./examples/using_make/useless_opt.ml:3: x
+./examples/using_make/opt_in_opt.ml:7: x: Not detected
+./examples/using_make/qux.ml:1: z: Not detected
+./examples/using_make/unused_fn.ml:3: g: Not detected
+./examples/using_make/unused_fn.ml:5: var: Not detected
+./examples/using_make/useless_opt.ml:3: x: Not detected
 ./examples/using_make/variant.mli:5: f
 
 Nothing else to report in this section
@@ -107,8 +102,7 @@ Nothing else to report in this section
 .> UNUSED METHODS:
 =================
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
-
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused: Not detected
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_int
@@ -139,22 +133,23 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:22: _self_used_immediate#unused_int: Not detected
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun: Not detected
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int: Not detected
+./examples/using_make/advanced/mod.mli:4: p#f: Should not be detected
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/coerce.mli:6: p#f
 ./examples/using_make/obj/coerce.mli:6: p#h
-./examples/using_make/obj/constraint.ml:1: p#g
+./examples/using_make/obj/constraint.ml:1: p#g: Not detected
 ./examples/using_make/obj/fooCl.mli:1: p1#g
 ./examples/using_make/obj/fooCl.mli:1: p1#h
 ./examples/using_make/obj/fooCl.mli:7: p2#h
-./examples/using_make/obj/fun_class.ml:1: c#m3
-./examples/using_make/obj/fun_obj_param.ml:1: f#n
+./examples/using_make/obj/fun_class.ml:1: c#m3: Not detected
+./examples/using_make/obj/fun_obj_param.ml:1: f#n: Not detected
 ./examples/using_make/obj/inher.mli:1: p#h
 ./examples/using_make/obj/named.mli:10: c#g
-./examples/using_make/obj/obj_inher.ml:1: c#g
-./examples/using_make/obj/obj_inher.ml:1: c#h
-./examples/using_make/obj/obj_inher.ml:19: o3#k
-./examples/using_make/obj/object.ml:1: o#h
+./examples/using_make/obj/obj_inher.ml:1: c#g: Not detected
+./examples/using_make/obj/obj_inher.ml:1: c#h: Not detected
+./examples/using_make/obj/obj_inher.ml:19: o3#k: Not detected
+./examples/using_make/obj/object.ml:1: o#h: Not detected
 ./examples/using_make/obj/overr.mli:1: p1#g
 ./examples/using_make/obj/overr.mli:1: p1#h
 ./examples/using_make/obj/overr.mli:7: p2#g
@@ -166,13 +161,12 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
-./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
-./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
-./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:25: constructors.Unused
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: constr_with_eq.Unused
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:39: record.unused
-
+./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:25: constructors.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: constr_with_eq.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:39: record.unused: Not detected
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:1: unused_single_no_param.Unused_single_no_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:2: unused_single_unit.Unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:3: unused_single_param.Unused_single_param
@@ -541,7 +535,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 471
-Success: 443
-Failed: 28
-Ratio: 94.0552016985%
+Total: 472
+Success: 395
+Failed: 77
+Ratio: 83.686440678%
