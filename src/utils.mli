@@ -10,7 +10,7 @@ module Filepath : sig
   (** [unit filepath] estimates the compilation unit of [filepath] *)
 
   type kind =
-    | Cmi (** .cmi file *)
+    | Cmti (** .cmti file *)
     | Cmt (** .cmt file *)
     | Dir (** Directory *)
     | Ignore (** Irrelevant for the analyzer *)

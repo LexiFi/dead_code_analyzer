@@ -24,9 +24,9 @@
 Calling `dead_code_analyzer --help` provides the following output, describing
 the main command line aspect, different options available and their effects.
 
-The `<path>` argument is any number of directory, `.cmt` and `.cmi` files.
+The `<path>` argument is any number of directory, `.cmt` and `.cmti` files.
 These files can be produced using the compiler flags `-keep-locs` (on by default)
-for `.cmi` and `-bin-annot` for `.cmt`.
+for `.cmti` and `-bin-annot` for `.cmt`.
 The directories are traversed looking for such files.
 > [!TIP]
 > If you are using `dune` for your project, the files can be obtained via the
@@ -190,15 +190,15 @@ the development.
 ```
 src
 ├── debug
-│   ├── debug.cmi
+│   ├── debug.cmti
 │   ├── debug.cmt
 │   └── debug.ml
-├── foo.cmi
+├── foo.cmti
 ├── foo.cmt
 ├── foo.ml
 ├── foo.mli
 └── lib
-    ├── lib.cmi
+    ├── lib.cmti
     ├── lib.cmt
     ├── lib.ml
     └── lib.mli
@@ -306,9 +306,9 @@ the file and moves on.
 
 - If a file is ignored and it is not obvious why, then opening an issue is
 welcome.
-- If no file is ignored, check that no file is missing. There should be a `.cmi`
+- If no file is ignored, check that no file is missing. There should be a `.cmti`
   and a `.cmt` file for each expected `<file_path>`.
-- If no `.cmi` or `.cmt` file is missing then the false negatives must be due
+- If no `.cmti` or `.cmt` file is missing then the false negatives must be due
   to limitations of the tool and opening an issue is welcome.
 
 ## Thresholds
