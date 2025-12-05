@@ -5,8 +5,9 @@ type t = {
   sourcepath : string option; (** The path to the associated source file *)
   builddir : string; (** The [cmt_builddir] *)
   modname : string; (** Either [cmti_name] or [cmt_modname] *)
-  cmti_infos : Cmt_format.cmt_infos option;
+  cmi_infos : Cmi_format.cmi_infos option;
   cmt_infos : Cmt_format.cmt_infos option;
+  cmti_infos : Cmt_format.cmt_infos option;
 }
 
 val empty : t (** No file info *)
