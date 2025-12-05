@@ -335,7 +335,7 @@ let kind fn =
     `Ignore
   end else if DeadFlag.is_excluded fn then `Ignore
   else if Sys.is_directory fn then `Dir
-  else if Filename.check_suffix fn ".cmi" then `Cmi
+  else if Filename.check_suffix fn ".cmti" then `Cmti
   else if Filename.check_suffix fn ".cmt" then `Cmt
   else `Ignore
 
@@ -347,31 +347,27 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.unit fn) ()
 
 
-let read_interface fn cmi_infos state = let open Cmi_format in
-  try
-    regabs state;
-    if !DeadFlag.exported.DeadFlag.print
-       || !DeadFlag.obj.DeadFlag.print
-       || !DeadFlag.typ.DeadFlag.print
-    then
-      let u =
-        if State.File_infos.has_sourcepath state.file_infos then
-          State.File_infos.get_sourceunit state.file_infos
-        else
-        Utils.unit fn
-      in
-      let module_id =
-        State.File_infos.get_modname state.file_infos
-        |> Ident.create_persistent
-      in
-      let f =
-        collect_export [module_id] u decs
-      in
-      List.iter f cmi_infos.cmi_sign;
-      last_loc := Lexing.dummy_pos
-  with Cmi_format.Error (Wrong_version_interface _) ->
-    (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
-    bad_files := fn :: !bad_files
+let read_interface fn signature state =
+  regabs state;
+  if !DeadFlag.exported.DeadFlag.print
+     || !DeadFlag.obj.DeadFlag.print
+     || !DeadFlag.typ.DeadFlag.print
+  then
+    let u =
+      if State.File_infos.has_sourcepath state.file_infos then
+        State.File_infos.get_sourceunit state.file_infos
+      else
+      Utils.unit fn
+    in
+    let module_id =
+      State.File_infos.get_modname state.file_infos
+      |> Ident.create_persistent
+    in
+    let f =
+      collect_export [module_id] u decs
+    in
+    List.iter f signature.sig_type;
+    last_loc := Lexing.dummy_pos
 
 
 (* Merge a location's references to another one's *)
@@ -446,13 +442,16 @@ let rec load_file state fn =
         state
   in
   match kind fn with
-  | `Cmi when !DeadCommon.declarations ->
+  | `Cmti when !DeadCommon.declarations ->
+      let open Cmt_format in
       last_loc := Lexing.dummy_pos;
       if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       init_and_continue state fn (fun state ->
-      match state.file_infos.cmi_infos with
-      | None -> () (* TODO error handling ? *) 
-      | Some cmi_infos -> read_interface fn cmi_infos state
+      match state.file_infos.cmti_infos with
+      | None -> bad_files := fn :: !bad_files
+      | Some {cmt_annots = Interface signature; _} ->
+          read_interface fn signature state
+      | _ -> ()
       )
 
   | `Cmt ->
@@ -502,7 +501,7 @@ let rec load_file state fn =
 
   | `Dir ->
       let next = Sys.readdir fn in
-      Array.sort compare next;
+      Array.sort (fun f1 f2 -> compare f2 f1) next;
       Array.fold_left
         (fun state s -> load_file state (fn ^ "/" ^ s))
         state

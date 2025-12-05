@@ -7,7 +7,7 @@ Dead-code analyzer for OCaml
 ## Overview
 
 The tool assumes that **.mli** files are compiled with **-keep-locs** and **.ml**
-files with **-bin-annot**.  Exported values are collected by reading .cmi or .cmt
+files with **-bin-annot**.  Exported values are collected by reading .cmti or .cmt
 files (depending on the existence of an explicit .mli interface).
 References to such values are collected by reading typed trees from .cmt files
 
