@@ -336,7 +336,10 @@ let kind fn =
   end else if DeadFlag.is_excluded fn then `Ignore
   else if Sys.is_directory fn then `Dir
   else if Filename.check_suffix fn ".cmti" then `Cmti
-  else if Filename.check_suffix fn ".cmt" then `Cmt
+  else if Filename.check_suffix fn ".cmt" then
+    let cmti = Filename.remove_extension fn ^ ".cmti" in
+    if Sys.file_exists cmti then `Cmt_with_mli
+    else `Cmt_without_mli
   else `Ignore
 
 
@@ -366,7 +369,7 @@ let read_interface fn signature state =
     let f =
       collect_export [module_id] u decs
     in
-    List.iter f signature.sig_type;
+    List.iter f signature;
     last_loc := Lexing.dummy_pos
 
 
@@ -441,64 +444,64 @@ let rec load_file state fn =
         (* TODO: stateful computations should take and return the state when possible *)
         state
   in
-  match kind fn with
-  | `Cmti when !DeadCommon.declarations ->
-      let open Cmt_format in
-      last_loc := Lexing.dummy_pos;
-      if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue state fn (fun state ->
-      match state.file_infos.cmti_infos with
-      | None -> bad_files := fn :: !bad_files
-      | Some {cmt_annots = Interface signature; _} ->
-          read_interface fn signature state
-      | _ -> ()
-      )
-
-  | `Cmt ->
-      let open Cmt_format in
-      last_loc := Lexing.dummy_pos;
-      if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue state fn (fun state ->
-      regabs state;
-      match state.file_infos.cmt_infos with
-      | None -> bad_files := fn :: !bad_files
-      | Some ({cmt_annots = Implementation x; _} as cmt_infos) ->
-          let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
-            let ( let* ) x f = Option.bind x f in
-            let loc_opt_of_uid uid =
-              let* decl =
-                Uid.Tbl.find_opt cmt_infos.cmt_uid_to_decl uid
-              in
-              match decl with
-              | Value {val_loc = {loc_start; loc_ghost = false; _}; _} ->
-                  Some loc_start
-              | _ -> None
+  let process_interface fn =
+    last_loc := Lexing.dummy_pos;
+    if !DeadFlag.verbose then Printf.eprintf "Scanning interface from %s\n%!" fn;
+    init_and_continue state fn (fun state ->
+    match state.file_infos.cmi_infos with
+    | None -> bad_files := fn :: !bad_files
+    | Some {cmi_sign; _} ->
+        read_interface fn cmi_sign state
+    )
+  in
+  let process_implementation fn =
+    last_loc := Lexing.dummy_pos;
+    if !DeadFlag.verbose then Printf.eprintf "Scanning implementation %s\n%!" fn;
+    init_and_continue state fn (fun state ->
+    match state.file_infos.cmt_infos with
+    | None -> bad_files := fn :: !bad_files
+    | Some ({cmt_annots = Implementation x; _} as cmt_infos) ->
+        regabs state;
+        let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
+          let ( let* ) x f = Option.bind x f in
+          let loc_opt_of_uid uid =
+            let* decl =
+              Uid.Tbl.find_opt cmt_infos.cmt_uid_to_decl uid
             in
-            let* def_loc = loc_opt_of_uid uid_def in
-            let* decl_loc = loc_opt_of_uid uid_decl in
-            Some (def_loc, decl_loc)
+            match decl with
+            | Value {val_loc = {loc_start; loc_ghost = false; _}; _} ->
+                Some loc_start
+            | _ -> None
           in
-          let value_dep =
-            cmt_infos.cmt_declaration_dependencies
-            |> List.filter_map uid_decl_dep_to_loc_pair
-          in
-          let prepare (loc1, loc2) =
-            DeadObj.add_equal loc1 loc2;
-            VdNode.merge_locs ~force:true loc2 loc1
-          in
-          List.iter prepare value_dep;
-
-          ignore (collect_references.Tast_mapper.structure collect_references x);
-
-          let loc_dep =
-            if !DeadFlag.exported.DeadFlag.print then
-                value_dep
-            else []
-          in
-          eof loc_dep
-      | _ -> () (* todo: support partial_implementation? *)
-      )
-
+          let* def_loc = loc_opt_of_uid uid_def in
+          let* decl_loc = loc_opt_of_uid uid_decl in
+          Some (def_loc, decl_loc)
+        in
+        let value_dep =
+          cmt_infos.cmt_declaration_dependencies
+          |> List.filter_map uid_decl_dep_to_loc_pair
+        in
+        let prepare (loc1, loc2) =
+          DeadObj.add_equal loc1 loc2;
+          VdNode.merge_locs ~force:true loc2 loc1
+        in
+        List.iter prepare value_dep;
+        ignore (collect_references.Tast_mapper.structure collect_references x);
+        let loc_dep =
+          if !DeadFlag.exported.DeadFlag.print then
+              value_dep
+          else []
+        in
+        eof loc_dep
+    | _ -> () (* todo: support partial_implementation? *)
+    )
+  in
+  match kind fn with
+  | `Cmti when !DeadCommon.declarations -> process_interface fn
+  | `Cmt_with_mli -> process_implementation fn
+  | `Cmt_without_mli ->
+      let _state = process_interface fn in
+      process_implementation fn
   | `Dir ->
       let next = Sys.readdir fn in
       Array.sort (fun f1 f2 -> compare f2 f1) next;
@@ -507,7 +510,6 @@ let rec load_file state fn =
         state
         next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
-
   | _ -> state
 
 
