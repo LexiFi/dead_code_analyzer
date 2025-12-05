@@ -25,7 +25,7 @@ jobs:
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: "5.2"
+          ocaml-compiler: "5.3"
 
       - run: opam install . --deps-only --with-test
 
@@ -45,7 +45,7 @@ jobs:
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: "5.2"
+          ocaml-compiler: "5.3"
       - uses: ocaml/setup-ocaml/lint-doc@v3
 
   lint-opam:
@@ -56,5 +56,5 @@ jobs:
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: "5.2"
+          ocaml-compiler: "5.3"
       - uses: ocaml/setup-ocaml/lint-opam@v3
