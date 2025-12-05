@@ -407,7 +407,7 @@ let read_interface fn signature state =
     let f =
       collect_export ~context:Toplevel [module_id] u decs
     in
-    List.iter f signature.sig_type;
+    List.iter f signature;
     last_loc := Lexing.dummy_pos
 
 
@@ -483,82 +483,83 @@ let load_file fn state =
         (* TODO: stateful computations should take and return the state when possible *)
         state
   in
+  let process_interface fn =
+    last_loc := Lexing.dummy_pos;
+      if state.State.config.verbose then
+        Printf.eprintf "Scanning interface from %s\n%!" fn;
+    init_and_continue state fn (fun state ->
+    match state.file_infos.cmi_infos with
+    | None -> bad_files := fn :: !bad_files
+    | Some {cmi_sign; _} ->
+        read_interface fn cmi_sign state
+    )
+  in
+  let process_implementation fn =
+    last_loc := Lexing.dummy_pos;
+      if state.State.config.verbose then
+        Printf.eprintf "Scanning implementation %s\n%!" fn;
+    init_and_continue state fn (fun state ->
+    match state.file_infos.cmt_infos with
+    | None -> bad_files := fn :: !bad_files
+    | Some ({cmt_annots = Implementation x; _} as cmt_infos) ->
+        regabs state;
+        let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
+          let ( let* ) x f = Option.bind x f in
+          let loc_opt_of_uid uid =
+            let* decl =
+              Uid.Tbl.find_opt cmt_infos.cmt_uid_to_decl uid
+            in
+            match decl with
+            | Value {val_loc = {loc_start; loc_ghost = false; _}; _} ->
+                Some loc_start
+            | _ -> None
+          in
+          let* def_loc = loc_opt_of_uid uid_def in
+          let* decl_loc = loc_opt_of_uid uid_decl in
+          Some (def_loc, decl_loc)
+        in
+        let value_dep =
+          cmt_infos.cmt_declaration_dependencies
+          |> List.filter_map uid_decl_dep_to_loc_pair
+        in
+        let prepare (loc1, loc2) =
+          DeadObj.add_equal loc1 loc2;
+          VdNode.merge_locs ~force:true loc2 loc1
+        in
+        List.iter prepare value_dep;
+        ignore (collect_references.Tast_mapper.structure collect_references x);
+        let loc_dep =
+          if Config.must_report_section state.config.sections.exported_values then
+            let sourceunit =
+              State.File_infos.get_sourceunit state.file_infos
+            in
+            let in_sourceunit (pos : Lexing.position) =
+              String.equal (Utils.Filepath.unit pos.pos_fname) sourceunit
+            in
+            List.filter_map
+              (fun (loc1, loc2) ->
+                 if in_sourceunit loc1 || in_sourceunit loc2 then
+                   Some (loc1, loc2)
+                 else None
+              )
+              value_dep
+          else []
+        in
+        eof loc_dep
+    | _ -> () (* todo: support partial_implementation? *)
+    )
+  in
   let exclude filepath = Config.is_excluded filepath state.State.config in
   match Utils.Filepath.kind ~exclude fn with
-  | Cmti when !DeadCommon.declarations ->
-      let open Cmt_format in
-      last_loc := Lexing.dummy_pos;
-      if state.State.config.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue state fn (fun state ->
-      match state.file_infos.cmti_infos with
-      | None -> bad_files := fn :: !bad_files
-      | Some {cmt_annots = Interface signature; _} ->
-          read_interface fn signature state
-      | _ -> ()
-      )
-
-  | Cmt ->
-      let open Cmt_format in
-      last_loc := Lexing.dummy_pos;
-      if state.config.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue state fn (fun state ->
-      regabs state;
-      match state.file_infos.cmt_infos with
-      | None -> bad_files := fn :: !bad_files
-      | Some ({cmt_annots = Implementation x; _} as cmt_infos) ->
-          let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
-            let ( let* ) x f = Option.bind x f in
-            let loc_opt_of_uid uid =
-              let* decl =
-                Uid.Tbl.find_opt cmt_infos.cmt_uid_to_decl uid
-              in
-              match decl with
-              | Value {val_loc = {loc_start; loc_ghost = false; _}; _} ->
-                  Some loc_start
-              | _ -> None
-            in
-            let* def_loc = loc_opt_of_uid uid_def in
-            let* decl_loc = loc_opt_of_uid uid_decl in
-            Some (def_loc, decl_loc)
-          in
-          let value_dep =
-            cmt_infos.cmt_declaration_dependencies
-            |> List.filter_map uid_decl_dep_to_loc_pair
-          in
-          let prepare (loc1, loc2) =
-            DeadObj.add_equal loc1 loc2;
-            VdNode.merge_locs ~force:true loc2 loc1
-          in
-          List.iter prepare value_dep;
-
-          ignore (collect_references.Tast_mapper.structure collect_references x);
-
-          let loc_dep =
-            if Config.must_report_section state.config.sections.exported_values then
-              let sourceunit =
-                State.File_infos.get_sourceunit state.file_infos
-              in
-              let in_sourceunit (pos : Lexing.position) =
-                String.equal (Utils.Filepath.unit pos.pos_fname) sourceunit
-              in
-              List.filter_map
-                (fun (loc1, loc2) ->
-                   if in_sourceunit loc1 || in_sourceunit loc2 then
-                     Some (loc1, loc2)
-                   else None
-                )
-                value_dep
-            else []
-          in
-          eof loc_dep
-      | _ -> () (* todo: support partial_implementation? *)
-      )
-
+  | Cmti when !DeadCommon.declarations -> process_interface fn
+  | Cmt_with_mli -> process_implementation fn
+  | Cmt_without_mli ->
+      let _state = process_interface fn in
+      process_implementation fn
   | Dir ->
       (* TODO : better error handling *)
       failwith ("Internal error : Unexpected directory "
                 ^ fn ^ ". Only .cmti and .cmt are expected")
-
   | _ -> state
 
 

@@ -11,7 +11,8 @@ module Filepath : sig
 
   type kind =
     | Cmti (** .cmti file *)
-    | Cmt (** .cmt file *)
+    | Cmt_without_mli (** .cmt file of .ml only module *)
+    | Cmt_with_mli (** .cmt file of module with .mli *)
     | Dir (** Directory *)
     | Ignore (** Irrelevant for the analyzer *)
 
