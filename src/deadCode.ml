@@ -456,7 +456,7 @@ let rec load_file state fn =
   in
   let process_implementation fn =
     last_loc := Lexing.dummy_pos;
-    if !DeadFlag.verbose then Printf.eprintf "Scanning implementation %s\n%!" fn;
+    if !DeadFlag.verbose then Printf.eprintf "Scanning implementation from %s\n%!" fn;
     init_and_continue state fn (fun state ->
     match state.file_infos.cmt_infos with
     | None -> bad_files := fn :: !bad_files
@@ -465,13 +465,7 @@ let rec load_file state fn =
         let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
           let ( let* ) x f = Option.bind x f in
           let loc_opt_of_uid uid =
-            let* decl =
-              Uid.Tbl.find_opt cmt_infos.cmt_uid_to_decl uid
-            in
-            match decl with
-            | Value {val_loc = {loc_start; loc_ghost = false; _}; _} ->
-                Some loc_start
-            | _ -> None
+            Uid.Tbl.find_opt state.signature.uid_to_loc uid
           in
           let* def_loc = loc_opt_of_uid uid_def in
           let* decl_loc = loc_opt_of_uid uid_decl in

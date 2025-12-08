@@ -52,8 +52,9 @@ let init_from_cm_file ~orig cm_file =
         init_from_all_cm_infos ~orig ~cm_file cmi_infos cmt_infos
         |> Result.ok
 
+let ( let* ) x f = Result.bind x f
+
 let init cm_file =
-  let ( let* ) x f = Result.bind x f in
   let* orig =
     match Filename.extension cm_file with
     | ".cmt" -> Result.ok `Cmt
@@ -88,15 +89,22 @@ let change_file file_infos cm_file =
   | ".cmt", {cmt_infos=Some cmt_infos; cmi_infos; cmti_infos; _} ->
       let res =
         init_from_all_cm_infos ~orig:`Cmt ~cm_file cmi_infos cmt_infos
-  in
+      in
       Result.ok {res with cmi_infos; cmti_infos}
   | ".cmti", {cmti_infos=Some cmti_infos; cmi_infos; cmt_infos; _} ->
       let res =
         init_from_all_cm_infos ~orig:`Cmti ~cm_file cmi_infos cmti_infos
       in
       Result.ok {res with cmt_infos}
-  | _ -> (* corresponding info is None or invlaid extension *)
-      init cm_file
+  | _, {cmi_infos; cmt_infos; cmti_infos; _} -> (* corresponding info is None or invalid extension *)
+      let* res = init cm_file in
+      let choose opt1 opt2 =
+        if Option.is_some opt1 then opt1 else opt2
+      in
+      let cmi_infos = choose res.cmi_infos cmi_infos in
+      let cmt_infos = choose res.cmt_infos cmt_infos in
+      let cmti_infos = choose res.cmti_infos cmti_infos in
+      Result.ok {res with cmi_infos; cmt_infos; cmti_infos}
 
 let has_sourcepath file_infos = Option.is_some file_infos.sourcepath
 
