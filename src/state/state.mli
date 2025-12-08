@@ -4,6 +4,8 @@ module File_infos = File_infos
 
 type t = {
   file_infos : File_infos.t; (** Info about the file being analyzed *)
+  signature : Signature.t; (** Data extracted or built using the current
+                               compiltion unit's signature *)
 }
 
 val empty : t (** The empty state *)
