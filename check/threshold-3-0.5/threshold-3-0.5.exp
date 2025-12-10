@@ -858,6 +858,7 @@ Nothing else to report in this section
 ./examples/using_make/dir/anonFn2.mli:2: ?a   (2/3 calls)
 ./examples/using_make/dir/anonFn2.mli:2: ?b   (2/3 calls)
 ./examples/using_make/dir/match_opt.ml:1: ?b   (2/3 calls)
+./examples/using_make/dir/matchopt.ml:1: ?x   (3/4 calls)
 ./examples/using_make/dir/ref_fn.ml:1: ?a   (2/3 calls)
 ./examples/using_make/dir/ref_fn.ml:1: ?b   (2/3 calls)
 
@@ -1035,6 +1036,8 @@ Nothing else to report in this section
 ./examples/using_make/dir/anonFn.mli:3: ?a   (1/2 calls)
 ./examples/using_make/dir/anonFn.mli:3: ?b   (1/2 calls)
 ./examples/using_make/dir/anonFn2.mli:1: ?b   (2/3 calls)
+./examples/using_make/dir/matchopt.ml:1: ?y   (3/4 calls)
+./examples/using_make/dir/matchopt.ml:1: ?z   (3/4 calls)
 
 ./examples/using_make/let_in.ml:1: ?b   (2/3 calls)
 ./examples/using_make/matchopt.ml:1: ?y   (3/4 calls)
