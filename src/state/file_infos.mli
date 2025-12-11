@@ -3,9 +3,11 @@
 type t = {
   builddir : string; (** The [cmt_builddir] *)
   cm_file : string; (** The filepath currently analyzed *)
-  cmi_infos : Cmi_format.cmi_infos option;
-  cmt_infos : Cmt_format.cmt_infos option;
-  cmti_infos : Cmt_format.cmt_infos option;
+  cmi_sign : Types.signature option; (** Extracted from [cmi_infos] *)
+  cmt_struct : Typedtree.structure option;
+    (** Extracted from a cmt's [cmt_infos.cmt_annots] *)
+  cmti_uid_to_decl : Location_dependencies.uid_to_decl option;
+    (** Extracted from a cmti's [cmt_infos] *)
   location_dependencies : Location_dependencies.t;
     (** Dependencies similar to [cmt_infos.cmt_value_dependencies] in OCaml 5.2 *)
   modname : string; (** Either [cmti_name] or [cmt_modname] *)
