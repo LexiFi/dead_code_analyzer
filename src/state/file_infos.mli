@@ -1,13 +1,15 @@
 (** Information about a analyzable file ([.cmti] or [.cmt] file) *)
 
 type t = {
-  cm_file : string; (** The filepath currently analyzed *)
-  sourcepath : string option; (** The path to the associated source file *)
   builddir : string; (** The [cmt_builddir] *)
-  modname : string; (** Either [cmti_name] or [cmt_modname] *)
+  cm_file : string; (** The filepath currently analyzed *)
   cmi_infos : Cmi_format.cmi_infos option;
   cmt_infos : Cmt_format.cmt_infos option;
   cmti_infos : Cmt_format.cmt_infos option;
+  location_dependencies : Location_dependencies.t;
+    (** Dependencies similar to [cmt_infos.cmt_value_dependencies] in OCaml 5.2 *)
+  modname : string; (** Either [cmti_name] or [cmt_modname] *)
+  sourcepath : string option; (** The path to the associated source file *)
 }
 
 val empty : t (** No file info *)

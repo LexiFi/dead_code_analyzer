@@ -3,17 +3,16 @@ module File_infos = File_infos
 type t =
   { config : Config.t
   ; file_infos : File_infos.t
-  ; signature : Signature.t
   }
 
 let init config =
   { config
   ; file_infos = File_infos.empty
-  ; signature = Signature.empty ()
   }
 
 let update_config config state =
   {state with config}
+
 
 let change_file state cm_file =
   let file_infos = state.file_infos in
@@ -28,16 +27,13 @@ let change_file state cm_file =
     let file_infos = File_infos.change_file file_infos cm_file in
     Result.map (fun file_infos -> {state with file_infos}) file_infos
   else
-    let ( let* ) x f = Result.bind x f in
-    let* file_infos = File_infos.init cm_file in
-    let* signature = Signature.init file_infos in
-    Result.ok {state with file_infos; signature}
+    let file_infos = File_infos.init cm_file in
+    Result.map (fun file_infos -> {state with file_infos}) file_infos
 
 (** Analysis' state *)
 let current = ref
     { config = Config.default_config
     ; file_infos = File_infos.empty
-    ; signature = Signature.empty ()
     }
 
 let get_current () = !current
