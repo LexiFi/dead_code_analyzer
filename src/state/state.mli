@@ -5,9 +5,6 @@ module File_infos = File_infos
 type t =
   { config : Config.t (** Configuration of the analysis *)
   ; file_infos : File_infos.t (** Info about the file being analyzed *)
-  ; signature : Signature.t
-      (** Data extracted or built using the current compialtion unit's
-          signature *)
   }
 
 val init : Config.t -> t
