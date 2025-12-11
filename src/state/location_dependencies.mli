@@ -3,10 +3,13 @@ type t = (Lexing.position * Lexing.position) list
 
 val empty : t (** No signature read *)
 
-val init : Cmt_format.cmt_infos option -> Cmt_format.cmt_infos option -> (t, string) result
-(** [init cmt_infos cmti_infos] expects [cmt_infos = Some _].
-    It reads the [cmt_infos] and the |cmti_infos] to retrieve their
-    [cmt_declaration_dependencies] and convert them into a single [t].
+type uid_to_decl = Typedtree.item_declaration Shape.Uid.Tbl.t
+
+val init : Cmt_format.cmt_infos -> uid_to_decl option -> (t, string) result
+(** [init cmt_infos cmti_infos cmti_uid_to_decl] expects
+    [cmt_infos.cmt_annots = Implementation _].
+    It reads the [cmt_infos] and the [cmti_uid_to_decl] to retrieve their
+    and converts [cmt_infos.cmt_declaration_dependencies] into a single [t].
     It returns an [Ok t] with [t] on success.
-    In case the [cmt_infos] is missing or does not contain an implementation,
-    it returns an [Err msg] with msg a string describing the issue. *)
+    In case the [cmt_infos] does not contain an implementation, it returns an
+    [Err msg] with msg a string describing the issue. *)
