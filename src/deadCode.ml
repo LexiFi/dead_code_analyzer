@@ -448,9 +448,9 @@ let rec load_file state fn =
     last_loc := Lexing.dummy_pos;
     if !DeadFlag.verbose then Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.cmi_infos with
+    match state.file_infos.cmi_sign with
     | None -> bad_files := fn :: !bad_files
-    | Some {cmi_sign; _} ->
+    | Some cmi_sign ->
         read_interface fn cmi_sign state
     )
   in
@@ -458,23 +458,23 @@ let rec load_file state fn =
     last_loc := Lexing.dummy_pos;
     if !DeadFlag.verbose then Printf.eprintf "Scanning implementation from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.cmt_infos with
+    match state.file_infos.cmt_struct with
     | None -> bad_files := fn :: !bad_files
-    | Some {cmt_annots = Implementation x; _} ->
+    | Some structure ->
         regabs state;
         let prepare (loc1, loc2) =
           DeadObj.add_equal loc1 loc2;
           VdNode.merge_locs ~force:true loc2 loc1
         in
         List.iter prepare state.file_infos.location_dependencies;
-        ignore (collect_references.Tast_mapper.structure collect_references x);
+        collect_references.Tast_mapper.structure collect_references structure
+        |> ignore;
         let loc_dep =
           if !DeadFlag.exported.DeadFlag.print then
               state.file_infos.location_dependencies
           else []
         in
         eof loc_dep
-    | _ -> () (* todo: support partial_implementation? *)
     )
   in
   match kind fn with
