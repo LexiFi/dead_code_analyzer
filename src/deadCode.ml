@@ -460,30 +460,17 @@ let rec load_file state fn =
     init_and_continue state fn (fun state ->
     match state.file_infos.cmt_infos with
     | None -> bad_files := fn :: !bad_files
-    | Some ({cmt_annots = Implementation x; _} as cmt_infos) ->
+    | Some {cmt_annots = Implementation x; _} ->
         regabs state;
-        let uid_decl_dep_to_loc_pair (_dep_kind, uid_def, uid_decl) =
-          let ( let* ) x f = Option.bind x f in
-          let loc_opt_of_uid uid =
-            Uid.Tbl.find_opt state.signature.uid_to_loc uid
-          in
-          let* def_loc = loc_opt_of_uid uid_def in
-          let* decl_loc = loc_opt_of_uid uid_decl in
-          Some (def_loc, decl_loc)
-        in
-        let value_dep =
-          cmt_infos.cmt_declaration_dependencies
-          |> List.filter_map uid_decl_dep_to_loc_pair
-        in
         let prepare (loc1, loc2) =
           DeadObj.add_equal loc1 loc2;
           VdNode.merge_locs ~force:true loc2 loc1
         in
-        List.iter prepare value_dep;
+        List.iter prepare state.file_infos.location_dependencies;
         ignore (collect_references.Tast_mapper.structure collect_references x);
         let loc_dep =
           if !DeadFlag.exported.DeadFlag.print then
-              value_dep
+              state.file_infos.location_dependencies
           else []
         in
         eof loc_dep

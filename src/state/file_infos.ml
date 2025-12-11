@@ -1,21 +1,23 @@
 type t = {
-  cm_file : string;
-  sourcepath : string option;
   builddir : string;
-  modname : string;
+  cm_file : string;
   cmi_infos : Cmi_format.cmi_infos option;
   cmt_infos : Cmt_format.cmt_infos option;
   cmti_infos : Cmt_format.cmt_infos option;
+  location_dependencies : Location_dependencies.t;
+  modname : string;
+  sourcepath : string option;
 }
 
 let empty = {
-  cm_file = "";
-  sourcepath = None;
   builddir = "!!UNKNOWN_BUILDDIR!!";
-  modname = "!!UNKNOWN_MODNAME!!";
+  cm_file = "";
   cmi_infos = None;
   cmt_infos = None;
   cmti_infos = None;
+  location_dependencies = Location_dependencies.empty;
+  modname = "!!UNKNOWN_MODNAME!!";
+  sourcepath = None;
 }
 
 (** [init_from_all_cm_infos ~orig ~cm_file cmi_infos cmt_infos] creates a [t] with:
@@ -35,7 +37,13 @@ let empty = {
     | `Cmt -> Some cmt_infos, None
     | `Cmti -> None, Some cmt_infos
   in
-  {cm_file; sourcepath; builddir; modname; cmi_infos; cmt_infos; cmti_infos}
+  {empty with builddir;
+              cm_file;
+              cmi_infos;
+              cmt_infos;
+              cmti_infos;
+              modname;
+              sourcepath}
 
 (** [init_from_cm_file ~orig cm_file] returns an [Ok t] with [t] filled using
     the [cm_file] (see [init_from_cmt_infos]).
@@ -80,7 +88,15 @@ let init cm_file =
         in
         file_infos.cmi_infos, cmt_infos, file_infos.cmti_infos
   in
-  Result.ok {file_infos with cmi_infos; cmt_infos; cmti_infos}
+  let* location_dependencies =
+    match orig with
+    | `Cmt -> Location_dependencies.init cmt_infos cmti_infos
+    | `Cmti -> Result.ok Location_dependencies.empty
+  in
+  Result.ok {file_infos with cmi_infos;
+                             cmt_infos;
+                             cmti_infos;
+                             location_dependencies}
 
 let change_file file_infos cm_file =
   let no_ext = Filename.remove_extension cm_file in
@@ -90,7 +106,11 @@ let change_file file_infos cm_file =
       let res =
         init_from_all_cm_infos ~orig:`Cmt ~cm_file cmi_infos cmt_infos
       in
-      Result.ok {res with cmi_infos; cmti_infos}
+      let res = {res with cmi_infos; cmti_infos} in
+      let* location_dependencies =
+        Location_dependencies.init res.cmt_infos res.cmti_infos
+      in
+      Result.ok {res with location_dependencies}
   | ".cmti", {cmti_infos=Some cmti_infos; cmi_infos; cmt_infos; _} ->
       let res =
         init_from_all_cm_infos ~orig:`Cmti ~cm_file cmi_infos cmti_infos

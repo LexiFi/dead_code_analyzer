@@ -2,19 +2,16 @@ module File_infos = File_infos
 
 type t = {
   file_infos : File_infos.t;
-  signature : Signature.t
 }
 
 let empty = {
   file_infos = File_infos.empty;
-  signature = Signature.empty ();
 }
 
 let init cm_file =
   let ( let* ) x f = Result.bind x f in
   let* file_infos = File_infos.init cm_file in
-  let* signature = Signature.init file_infos in
-  Result.ok {file_infos; signature}
+  Result.ok {file_infos}
 
 let change_file state cm_file =
   let file_infos = state.file_infos in
@@ -27,7 +24,7 @@ let change_file state cm_file =
     Result.ok state
   else if equal_no_ext file_infos.cm_file cm_file then
     let file_infos = File_infos.change_file file_infos cm_file in
-    Result.map (fun file_infos -> {state with file_infos}) file_infos
+    Result.map (fun file_infos -> {file_infos}) file_infos
   else
     init cm_file
 
