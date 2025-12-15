@@ -501,21 +501,21 @@ let rec load_file state fn =
 (* Prepare the list of opt_args for report *)
 let analyze_opt_args () =
   DeadArg.eocb ();
-  let all = ref [] in
-  let tbl = Hashtbl.create 256 in
   let dec_loc loc = Hashtbl.mem main_files (Utils.unit loc.Lexing.pos_fname) in
+  let all = ref [] in
+  let opt_args_tbl = Hashtbl.create 256 in
 
   let analyze = fun opt_arg_use ->
     let builddir = opt_arg_use.builddir in
     let loc = opt_arg_use.decl_loc in
     let lab = opt_arg_use.label in
     let slot =
-      try Hashtbl.find tbl (loc, lab)
+      try Hashtbl.find opt_args_tbl (builddir, loc, lab)
       with Not_found ->
         let r = {with_val = []; without_val = []} in
         if dec_loc loc then begin
           all := (builddir, loc, lab, r) :: !all;
-          Hashtbl.add tbl (loc, lab) r
+          Hashtbl.add opt_args_tbl (builddir, loc, lab) r
         end;
         r
     in

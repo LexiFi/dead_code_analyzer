@@ -862,6 +862,7 @@ Nothing else to report in this section
 ./examples/using_make/dir/ref_fn.ml:1: ?a   (2/3 calls)
 ./examples/using_make/dir/ref_fn.ml:1: ?b   (2/3 calls)
 
+./examples/using_make/dir/matchopt.ml:1: ?x   (3/4 calls): Should not be detected
 ./examples/using_make/matchopt.ml:1: ?x   (3/4 calls)
 
 ./examples/using_make/opt/sig_struct.ml:2: ?x   (2/3 calls)
@@ -1039,7 +1040,9 @@ Nothing else to report in this section
 ./examples/using_make/dir/matchopt.ml:1: ?y   (3/4 calls): Not detected
 ./examples/using_make/dir/matchopt.ml:1: ?z   (3/4 calls): Not detected
 ./examples/using_make/let_in.ml:1: ?b   (2/3 calls)
+./examples/using_make/dir/matchopt.ml:1: ?y   (3/4 calls): Should not be detected
 ./examples/using_make/matchopt.ml:1: ?y   (3/4 calls)
+./examples/using_make/dir/matchopt.ml:1: ?z   (3/4 calls): Should not be detected
 ./examples/using_make/matchopt.ml:1: ?z   (3/4 calls)
 ./examples/using_make/opt_in_opt.ml:1: ?b   (1/2 calls)
 --------
@@ -1088,7 +1091,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 923
+Total: 926
 Success: 920
-Failed: 3
-Ratio: 99.6749729144%
+Failed: 6
+Ratio: 99.3520518359%
