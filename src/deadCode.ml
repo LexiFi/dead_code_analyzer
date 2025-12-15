@@ -554,8 +554,10 @@ let report_opt_args s l =
           let ratio = float_of_int (List.length l) /. float_of_int total
           in (builddir, loc, lab, l, ratio, total))
         l
-      |> List.fast_sort (fun (_, loc1, lab1, slot1, _, _) (_, loc2, lab2, slot2, _, _) ->
-          compare (DeadCommon.abs loc1, loc1, lab1, slot1) (DeadCommon.abs loc2, loc2, lab2, slot2))
+      |> List.fast_sort (fun (builddir1, loc1, lab1, slot1, _, _) (builddir2, loc2, lab2, slot2, _, _) ->
+          let fn1 = Filename.concat builddir1 loc1.Lexing.pos_fname in
+          let fn2 = Filename.concat builddir2 loc2.Lexing.pos_fname in
+          compare (fn1, loc1, lab1, slot1) (fn2, loc2, lab2, slot2))
     in
 
     let change =
