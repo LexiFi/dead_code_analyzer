@@ -433,7 +433,7 @@ let rec load_file state fn =
   let init_and_continue state fn f =
     match State.change_file state fn with
     | Error msg ->
-      Printf.eprintf "%s\n!" msg;
+      Printf.eprintf "%s\n%!" msg;
       state
     | Ok state ->
         State.update state;
