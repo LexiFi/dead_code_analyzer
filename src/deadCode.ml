@@ -444,12 +444,17 @@ let rec load_file state fn =
         (* TODO: stateful computations should take and return the state when possible *)
         state
   in
+  let add_bad_file err fn =
+    if !DeadFlag.verbose then
+      Printf.eprintf "%s\n%!" err;
+    bad_files := fn :: !bad_files
+  in
   let process_interface fn =
     last_loc := Lexing.dummy_pos;
     if !DeadFlag.verbose then Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
     match state.file_infos.cmi_sign with
-    | None -> bad_files := fn :: !bad_files
+    | None -> add_bad_file "Missing cmi_sign" fn
     | Some cmi_sign ->
         read_interface fn cmi_sign state
     )
@@ -459,7 +464,7 @@ let rec load_file state fn =
     if !DeadFlag.verbose then Printf.eprintf "Scanning implementation from %s\n%!" fn;
     init_and_continue state fn (fun state ->
     match state.file_infos.cmt_struct with
-    | None -> bad_files := fn :: !bad_files
+    | None -> add_bad_file "Missing cmt_struct" fn
     | Some structure ->
         regabs state;
         let prepare (loc1, loc2) =
