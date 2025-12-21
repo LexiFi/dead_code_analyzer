@@ -1,0 +1,4 @@
+(library
+ (name preprocessed_lib)
+ (preprocess (pps ppx_deriving.eq))
+ (flags (:standard -warn-error -A)))

@@ -6,11 +6,12 @@
 
 (map_workspace_root false)
 
-(generate_opam_files false)
+(generate_opam_files true)
 
 (package
  (name using_dune)
  (allow_empty)
+ (depends ppx_deriving)
 )
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
