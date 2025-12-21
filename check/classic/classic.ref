@@ -1,5 +1,9 @@
 .> UNUSED EXPORTED VALUES:
 =========================
+./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
+
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
@@ -101,6 +105,9 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
+./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
+
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_int
@@ -160,6 +167,13 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:25: constructors.Unused
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: constr_with_eq.Unused
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:39: record.unused
+
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:1: unused_single_no_param.Unused_single_no_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:2: unused_single_unit.Unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:3: unused_single_param.Unused_single_param
@@ -227,6 +241,9 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?always
+
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?always
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?always
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:15: ?always
@@ -361,6 +378,11 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?never
+./examples/using_dune/preprocessed_lib/preprocessed.ml:65: ?opt
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?never
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:65: ?opt
+
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?never
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?never
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:15: ?never
@@ -464,6 +486,17 @@ Nothing else to report in this section
 
 .> CODING STYLE:
 ===============
+./examples/using_dune/preprocessed_lib/preprocessed.ml:64: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed.ml:64: unit pattern unit_binding
+./examples/using_dune/preprocessed_lib/preprocessed.ml:65: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_dune/preprocessed_lib/preprocessed.ml:66: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed.ml:67: let x = ... in x (=> useless binding)
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: unit pattern unit_binding
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:65: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:66: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:67: let x = ... in x (=> useless binding)
+
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:20: val f: ... -> (... -> ?_:_ -> ...) -> ...
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:22: val f: ... -> (... -> ?_:_ -> ...) -> ...
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:25: val f: ... -> (... -> ?_:_ -> ...) -> ...
@@ -500,7 +533,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 433
-Success: 433
-Failed: 0
-Ratio: 100.%
+Total: 460
+Success: 457
+Failed: 3
+Ratio: 99.347826087%
