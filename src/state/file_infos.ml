@@ -193,8 +193,7 @@ let get_sourcepath t =
 
 let get_sourceunit t =
   match t.sourcepath with
-  | Some sourcepath ->
-    sourcepath |> Filename.basename |> Filename.remove_extension
+  | Some sourcepath -> Utils.unit sourcepath
   | None -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cmti_file ^ ">!!"
 
 let get_modname t = t.modname
