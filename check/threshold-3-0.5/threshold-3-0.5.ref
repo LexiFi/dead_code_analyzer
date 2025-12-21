@@ -1,7 +1,6 @@
 .> UNUSED EXPORTED VALUES:
 =========================
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
-./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
@@ -104,10 +103,8 @@
 ./examples/using_dune/bin/use_wrapped_lib/use_without_class.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_wrapped_lib.mli:1: mark_used
 
-./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:4: externally_used
-./examples/using_dune/preprocessed_lib/preprocessed.mli:31: f: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:4: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:5: externally_used
 
@@ -242,9 +239,8 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 2 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:31: f: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: f
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:3: used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: f
 
@@ -519,9 +515,9 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
-./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:25: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: constr_with_eq.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:39: record.unused
@@ -591,13 +587,10 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:16: constructors.Internally_used: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:17: constructors.Externally_used: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:25: record.internally_used: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:26: record.externally_used: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:16: constructors.Internally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:17: constructors.Externally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:25: record.internally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:26: record.externally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:29: record_with_eq.implicitly_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:27: constructors.Internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:28: constructors.Externally_used
@@ -668,12 +661,8 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 2 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_dune/preprocessed_lib/preprocessed.mli:15: constructors.Used: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:16: constructors.Internally_used: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:17: constructors.Externally_used: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:24: record.used: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:25: record.internally_used: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:26: record.externally_used: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:15: constructors.Used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:24: record.used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:26: constructors.Used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:40: record.used
 
@@ -710,14 +699,11 @@ Nothing else to report in this section
 --------
 
 
+
 Nothing else to report in this section
 --------------------------------------------------------------------------------
-.>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 3 time(s):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/using_dune/preprocessed_lib/preprocessed.mli:15: constructors.Used: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:24: record.used: Should not be detected
-Nothing else to report in this section
---------------------------------------------------------------------------------
+
+
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
@@ -1182,7 +1168,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1001
-Success: 976
-Failed: 25
-Ratio: 97.5024975025%
+Total: 988
+Success: 988
+Failed: 0
+Ratio: 100.%
