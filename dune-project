@@ -4,7 +4,7 @@
 
 (generate_opam_files true)
 
-(version 1.0.0)
+(version 1.0.1)
 
 (maintainers
  "Alain Frisch <alain.frisch@lexifi.com>"
@@ -22,6 +22,6 @@
  (synopsis "Dead code analyzer for OCaml")
  (license MIT)
  (depends
-  (ocaml (and (>= 5.2) (< 5.3)))
+  (ocaml (and (>= 5.3) (< 5.4)))
  )
 )
