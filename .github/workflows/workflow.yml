@@ -29,6 +29,8 @@ jobs:
 
       - run: opam install . --deps-only --with-test
 
+      - run: opam install ./examples/using_dune --deps-only --with-test
+
       - run: opam exec -- dune build
 
       - run: opam exec -- make examples
