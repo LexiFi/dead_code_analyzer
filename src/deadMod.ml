@@ -16,14 +16,6 @@ open DeadCommon
 
 let defined : string list ref = ref []
 
-
-let rec sign ?(select_param = false) = function
-  | Mty_signature sg -> sg
-  | Mty_functor (_, t) when not select_param -> sign t
-  | Mty_functor (Named (_, t), _) -> sign t
-  | _ -> []
-
-
 let item maker = function
   | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}, _) ->
     (Ident.name id, loc)::[]
@@ -52,12 +44,12 @@ let item maker = function
   | _ -> []
 
 let rec make_content typ =
-  List.map (item make_content) (sign typ)
+  List.map (item make_content) (Utils.signature_of_modtype typ)
   |> List.flatten
 
 
 let rec make_arg typ =
-  List.map (item make_arg) (sign ~select_param:true typ)
+  List.map (item make_arg) (Utils.signature_of_modtype ~select_param:true typ)
   |> List.flatten
 
 
