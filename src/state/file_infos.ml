@@ -23,7 +23,8 @@ let empty = {
 let init_from_cmt_infos cmt_infos cmt_file =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
   let sourcepath =
-    Option.map (Filename.concat builddir) cmt_infos.cmt_sourcefile
+    Option.map Utils.remove_pp cmt_infos.cmt_sourcefile
+    |> Option.map (Filename.concat builddir)
   in
   let modname = cmt_infos.cmt_modname in
   {empty with cmti_file = cmt_file;

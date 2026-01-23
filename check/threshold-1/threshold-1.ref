@@ -518,13 +518,12 @@ Nothing else to report in this section
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
-./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?internally: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?internally
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:64: ?always
-./examples/using_dune/preprocessed_lib/preprocessed.ml:69: ?always: Should not be detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?always: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?externally: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:44: ?always: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?always
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?externally
+./examples/using_dune/preprocessed_lib/preprocessed.mli:44: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:59: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: ?always
@@ -663,15 +662,14 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
-./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:64: ?never
-./examples/using_dune/preprocessed_lib/preprocessed.ml:69: ?never: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:84: ?opt
-./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?internally: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?never: Not detected
-./examples/using_dune/preprocessed_lib/preprocessed.mli:44: ?never: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?internally
+./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?never
+./examples/using_dune/preprocessed_lib/preprocessed.mli:44: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:59: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: ?never
@@ -827,7 +825,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 719
-Success: 709
-Failed: 10
-Ratio: 98.6091794159%
+Total: 717
+Success: 717
+Failed: 0
+Ratio: 100.%
