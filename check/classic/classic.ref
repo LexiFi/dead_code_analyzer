@@ -2,6 +2,7 @@
 =========================
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:38: internally_used_f
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
@@ -243,9 +244,15 @@ Nothing else to report in this section
 =============================
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?internally: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?always
+./examples/using_dune/preprocessed_lib/preprocessed.ml:64: ?always
+./examples/using_dune/preprocessed_lib/preprocessed.ml:69: ?always: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?always: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?externally: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:44: ?always: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?always
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:59: ?always
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: ?always
 
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?always
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?always
@@ -383,11 +390,17 @@ Nothing else to report in this section
 ============================
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?never
-./examples/using_dune/preprocessed_lib/preprocessed.ml:65: ?opt
+./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?never
+./examples/using_dune/preprocessed_lib/preprocessed.ml:64: ?never
+./examples/using_dune/preprocessed_lib/preprocessed.ml:69: ?never: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.ml:84: ?opt
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?internally: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: ?never: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:44: ?never: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: ?never
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:65: ?opt
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:59: ?never
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: ?never
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:77: ?opt
 
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:1: ?never
 ./examples/using_dune/unwrapped_lib/opt_args/mixed_args.ml:8: ?never
@@ -492,16 +505,16 @@ Nothing else to report in this section
 
 .> CODING STYLE:
 ===============
-./examples/using_dune/preprocessed_lib/preprocessed.ml:64: let () = ... in ... (=> use sequence)
-./examples/using_dune/preprocessed_lib/preprocessed.ml:64: unit pattern unit_binding
-./examples/using_dune/preprocessed_lib/preprocessed.ml:65: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_dune/preprocessed_lib/preprocessed.ml:66: let () = ... in ... (=> use sequence)
-./examples/using_dune/preprocessed_lib/preprocessed.ml:67: let x = ... in x (=> useless binding)
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: let () = ... in ... (=> use sequence)
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: unit pattern unit_binding
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:65: val f: ... -> (... -> ?_:_ -> ...) -> ...
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:66: let () = ... in ... (=> use sequence)
-./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:67: let x = ... in x (=> useless binding)
+./examples/using_dune/preprocessed_lib/preprocessed.ml:83: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed.ml:83: unit pattern unit_binding
+./examples/using_dune/preprocessed_lib/preprocessed.ml:84: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_dune/preprocessed_lib/preprocessed.ml:85: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed.ml:86: let x = ... in x (=> useless binding)
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:76: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:76: unit pattern unit_binding
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:77: val f: ... -> (... -> ?_:_ -> ...) -> ...
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:78: let () = ... in ... (=> use sequence)
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:79: let x = ... in x (=> useless binding)
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:20: val f: ... -> (... -> ?_:_ -> ...) -> ...
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.ml:22: val f: ... -> (... -> ?_:_ -> ...) -> ...
@@ -539,7 +552,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 466
-Success: 460
-Failed: 6
-Ratio: 98.7124463519%
+Total: 479
+Success: 469
+Failed: 10
+Ratio: 97.9123173278%

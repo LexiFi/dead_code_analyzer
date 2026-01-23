@@ -50,14 +50,33 @@ let () = (* use record fields *)
   ignore r.internally_used
 
 (* Optional arguments *)
-let f ?never ?always ?internally ?externally () =
+let exported_f ?never ?always ?internally ?externally () =
   ignore never;
   ignore always;
   ignore internally;
   ignore externally
 
+let unexported_f ?never ?always ?sometimes () =
+  ignore never;
+  ignore always;
+  ignore sometimes
+
+let internally_used_f ?never ?always ?sometimes () =
+  ignore never;
+  ignore always;
+  ignore sometimes
+
+let externally_used_f ?never ?always ?sometimes () =
+  ignore never;
+  ignore always;
+  ignore sometimes
+
 let () = (* use optional arguments *)
-  f ~always:42 ~internally:42 ()
+  exported_f ~always:42 ~internally:42 ();
+  unexported_f ~always:42 ~sometimes:42 ();
+  unexported_f ~always:42 ();
+  internally_used_f ~always:42 ~sometimes:42 ();
+  internally_used_f ~always:42 ()
 
 (* Stylistic issues *)
 let _ =

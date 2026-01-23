@@ -56,8 +56,20 @@ let f ?never ?always ?internally ?externally () =
   ignore internally;
   ignore externally
 
+let internally_used_f ?never ?always ?sometimes () =
+  ignore never;
+  ignore always;
+  ignore sometimes
+
+let externally_used_f ?never ?always ?sometimes () =
+  ignore never;
+  ignore always;
+  ignore sometimes
+
 let () = (* use optional arguments *)
-  f ~always:42 ~internally:42 ()
+  f ~always:42 ~internally:42 ();
+  internally_used_f ~always:42 ~sometimes:42 ();
+  internally_used_f ~always:42 ()
 
 (* Stylistic issues *)
 let _ =

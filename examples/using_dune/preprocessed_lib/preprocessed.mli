@@ -28,9 +28,21 @@ type record = {
 
 type record_with_eq = {implicitly_used : int} [@@deriving eq]
 
-val f :
+val exported_f :
   ?never:'a ->
   ?always:'b ->
   ?internally:'c ->
   ?externally:'d ->
+  unit -> unit
+
+val internally_used_f :
+  ?never:'a ->
+  ?always:'b ->
+  ?sometimes:'c ->
+  unit -> unit
+
+val externally_used_f :
+  ?never:'a ->
+  ?always:'b ->
+  ?sometimes:'c ->
   unit -> unit
