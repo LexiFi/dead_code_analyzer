@@ -5,6 +5,7 @@
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
+./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
@@ -18,6 +19,8 @@
 
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
+./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int
 ./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
@@ -75,6 +78,7 @@
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_no_intf.mli:1: mark_used
 
+./examples/using_dune/bin/use_unwrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_constructors.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args.mli:1: mark_used
@@ -89,6 +93,7 @@
 ./examples/using_dune/bin/use_unwrapped_lib/use_with_class.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_without_class.mli:1: mark_used
 
+./examples/using_dune/bin/use_wrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_constructors.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args.mli:1: mark_used
@@ -809,7 +814,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 701
-Success: 701
-Failed: 0
-Ratio: 100.%
+Total: 706
+Success: 703
+Failed: 3
+Ratio: 99.5750708215%
