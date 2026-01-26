@@ -121,13 +121,13 @@ and process_mismatch state exp_lines got_lines =
     in
     let handle_report_infos alt state =
       (* If either is not a valid report line, then it is consumed.
-         If both are valid report_lines then the first in lexicographical order
-         is consumed *)
+         If both are valid report_lines then the first that should appear in
+         the report order is consumed *)
       let exp_ri = Reports.report_info_of_line exp in
       let got_ri = Reports.report_info_of_line got in
       match exp_ri, got_ri with
-      | Ok _, Ok _ ->
-        let comp = String.compare exp got in
+      | Ok exp_ri, Ok got_ri ->
+        let comp = Reports.compare exp_ri got_ri in
         assert (comp <> 0);
         if comp < 0 then consume_exp state
         else (* > 0 *)   consume_got state
