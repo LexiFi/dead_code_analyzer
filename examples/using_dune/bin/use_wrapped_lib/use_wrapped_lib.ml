@@ -23,6 +23,9 @@ let () =
 let () =
   Use_builder_sig_api.mark_used ()
 
+let () =
+  Use_include_modtype.mark_used ()
+
 let is_used = ref false
 let mark_used () =
   is_used := true

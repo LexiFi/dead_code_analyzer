@@ -77,6 +77,7 @@
 
 ./examples/using_dune/bin/use_unwrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args_in_higher_order_fun.mli:1: mark_used
@@ -92,6 +93,7 @@
 
 ./examples/using_dune/bin/use_wrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_wrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args_in_higher_order_fun.mli:1: mark_used
