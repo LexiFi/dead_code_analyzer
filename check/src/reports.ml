@@ -4,6 +4,12 @@ type report_info = {
   value : string;
 }
 
+let compare ri1 ri2 =
+  let ( |:? ) x f = if x <> 0 then x else f () in
+  String.compare ri1.filepath ri2.filepath
+  |:? (fun () -> Int.compare ri1.line_nb ri2.line_nb)
+  |:? (fun () -> String.compare ri1.value ri2.value)
+
 let line_of_report_info ri =
   Printf.sprintf "%s:%d:%s" ri.filepath ri.line_nb ri.value
 

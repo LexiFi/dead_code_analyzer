@@ -4,6 +4,8 @@ type report_info = {
   value : string;
 }
 
+val compare : report_info -> report_info -> int
+
 val line_of_report_info : report_info -> string
 
 (* Format of report lines is : '<file_path>:<line_number>:<value>' with :
