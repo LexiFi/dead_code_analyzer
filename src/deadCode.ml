@@ -34,8 +34,15 @@ let main_files = Hashtbl.create 256   (* names -> paths *)
 let rec collect_export ?(mod_type = false) path u stock = function
 
   | Sig_value (id, ({Types.val_loc; val_type; _} as value), _)
-    when not val_loc.Location.loc_ghost && stock == decs ->
-      if !DeadFlag.exported.DeadFlag.print then export path u stock id val_loc;
+    when not val_loc.Location.loc_ghost ->
+      let should_export stock loc =
+        !DeadFlag.exported.DeadFlag.print
+        && (* do not add the loc in decs if it belongs to a module type *)
+          ( stock != decs
+            || not (Hashtbl.mem in_modtype loc.Location.loc_start)
+          )
+      in
+      if should_export stock val_loc then export path u stock id val_loc;
       let path = Ident.create_persistent (Ident.name id ^ "*") :: path in
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
@@ -48,10 +55,13 @@ let rec collect_export ?(mod_type = false) path u stock = function
 
   | (Sig_module (id, _, {Types.md_type = t; _}, _, _)
   | Sig_modtype (id, {Types.mtd_type = Some t; _}, _)) as s ->
-      let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
-      if collect then
-        DeadMod.sign t
-        |> List.iter (collect_export ~mod_type (id :: path) u stock)
+      let stock =
+        match s with
+        | Sig_modtype _ when not mod_type -> in_modtype
+        | _ -> stock
+      in
+      DeadMod.sign t
+      |> List.iter (collect_export ~mod_type (id :: path) u stock)
 
   | _ -> ()
 
