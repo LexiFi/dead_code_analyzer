@@ -5,6 +5,10 @@
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
+./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
@@ -18,6 +22,11 @@
 
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
+./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int
 ./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
@@ -75,7 +84,9 @@
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_no_intf.mli:1: mark_used
 
+./examples/using_dune/bin/use_unwrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args_in_higher_order_fun.mli:1: mark_used
@@ -89,7 +100,9 @@
 ./examples/using_dune/bin/use_unwrapped_lib/use_with_class.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_without_class.mli:1: mark_used
 
+./examples/using_dune/bin/use_wrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_wrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args_in_higher_order_fun.mli:1: mark_used
@@ -115,6 +128,8 @@
 
 ./examples/using_dune/unwrapped_lib/style/style.ml:1: all
 
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:4: internally_used: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:5: externally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:3: internally_used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:4: externally_used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:5: externally_used_as_parameter_int
@@ -153,6 +168,8 @@
 
 ./examples/using_dune/wrapped_lib/style/style.ml:1: all
 
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:4: internally_used: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:5: externally_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:3: internally_used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:4: externally_used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:5: externally_used_as_parameter_int
@@ -809,7 +826,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 701
-Success: 701
-Failed: 0
-Ratio: 100.%
+Total: 718
+Success: 705
+Failed: 13
+Ratio: 98.1894150418%
