@@ -6,6 +6,7 @@
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
 ./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
@@ -23,6 +24,7 @@
 
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int
@@ -126,6 +128,8 @@
 
 ./examples/using_dune/unwrapped_lib/style/style.ml:1: all
 
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:4: internally_used: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:5: externally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:3: internally_used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:4: externally_used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:5: externally_used_as_parameter_int
@@ -164,6 +168,8 @@
 
 ./examples/using_dune/wrapped_lib/style/style.ml:1: all
 
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:4: internally_used: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:5: externally_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:3: internally_used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:4: externally_used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:5: externally_used_as_parameter_int
@@ -276,6 +282,7 @@
 ./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:9: internally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:10: externally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:11: sometimes_used: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:3: used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:4: internally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:4: internally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:5: externally_used: Should not be detected
@@ -317,6 +324,7 @@
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:10: externally_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:11: sometimes_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:11: sometimes_used: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:3: used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:4: internally_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:4: internally_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:5: externally_used: Should not be detected
@@ -1200,7 +1208,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1020
+Total: 1028
 Success: 992
-Failed: 28
-Ratio: 97.2549019608%
+Failed: 36
+Ratio: 96.4980544747%

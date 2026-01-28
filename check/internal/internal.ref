@@ -6,6 +6,7 @@
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
 ./examples/using_dune/unwrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
@@ -23,6 +24,7 @@
 
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/builder_sig_api/bsa_api.ml:7: unused: Should not be detected
+./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/include_modtype/imt_modtype.ml:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int
@@ -508,7 +510,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 437
+Total: 439
 Success: 430
-Failed: 7
-Ratio: 98.3981693364%
+Failed: 9
+Ratio: 97.9498861048%
