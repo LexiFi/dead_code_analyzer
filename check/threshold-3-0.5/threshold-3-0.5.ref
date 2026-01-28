@@ -5,7 +5,6 @@
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
-./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:2: unused_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
@@ -19,7 +18,6 @@
 
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 
-./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:2: unused: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:2: unused_int
 ./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
@@ -121,8 +119,6 @@
 
 ./examples/using_dune/unwrapped_lib/style/style.ml:1: all
 
-./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:4: internally_used: Should not be detected
-./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:5: externally_used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:3: internally_used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:4: externally_used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:5: externally_used_as_parameter_int
@@ -161,8 +157,6 @@
 
 ./examples/using_dune/wrapped_lib/style/style.ml:1: all
 
-./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:4: internally_used: Should not be detected
-./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:5: externally_used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:3: internally_used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:4: externally_used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:5: externally_used_as_parameter_int
@@ -272,7 +266,6 @@
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:13: expect_fun_with_never_used_opt_arg_with_sig
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:15: expect_fun_with_always_used_opt_arg_with_sig
 
-./examples/using_dune/unwrapped_lib/values/include_modtype/imt_internal_include.mli:3: used: Should not be detected
 ./examples/using_dune/unwrapped_lib/values/values.mli:1: used_int
 ./examples/using_dune/unwrapped_lib/values/values.mli:13: used_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:19: used_alias_fun
@@ -302,7 +295,6 @@
 ./examples/using_dune/wrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:13: expect_fun_with_never_used_opt_arg_with_sig
 ./examples/using_dune/wrapped_lib/opt_args/opt_args_in_higher_order_fun.mli:15: expect_fun_with_always_used_opt_arg_with_sig
 
-./examples/using_dune/wrapped_lib/values/include_modtype/imt_internal_include.mli:3: used: Should not be detected
 ./examples/using_dune/wrapped_lib/values/values.mli:1: used_int
 ./examples/using_dune/wrapped_lib/values/values.mli:13: used_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:19: used_alias_fun
@@ -1180,7 +1172,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1000
+Total: 992
 Success: 992
-Failed: 8
-Ratio: 99.2%
+Failed: 0
+Ratio: 100.%
