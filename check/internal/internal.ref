@@ -1,6 +1,7 @@
 .> UNUSED EXPORTED VALUES:
 =========================
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
@@ -135,9 +136,9 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
-./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
-./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
-./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
+./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused: Not detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:25: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: constr_with_eq.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:39: record.unused
@@ -501,7 +502,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 430
-Success: 430
-Failed: 0
-Ratio: 100.%
+Total: 431
+Success: 427
+Failed: 4
+Ratio: 99.0719257541%

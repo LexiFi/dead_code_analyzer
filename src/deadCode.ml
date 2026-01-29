@@ -50,7 +50,7 @@ let rec collect_export ?(mod_type = false) path u stock = function
   | Sig_modtype (id, {Types.mtd_type = Some t; _}, _)) as s ->
       let collect = match s with Sig_modtype _ -> mod_type | _ -> true in
       if collect then
-        DeadMod.sign t
+        Utils.signature_of_modtype t
         |> List.iter (collect_export ~mod_type (id :: path) u stock)
 
   | _ -> ()
@@ -64,8 +64,12 @@ let rec treat_exp exp args =
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; _}; _}) ->
       DeadArg.register_uses loc args
 
-  | Texp_match (_, l, _) ->
-      List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
+  | Texp_match (_, comp_l, val_l, _) ->
+      let process_cases l =
+        List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
+      in
+      process_cases comp_l;
+      process_cases val_l
 
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
@@ -141,9 +145,9 @@ let structure_item super self i =
       in
       let rec includ mod_expr =
         match mod_expr.mod_desc with
-        | Tmod_ident (_, _) -> collect_include (DeadMod.sign mod_expr.mod_type)
+        | Tmod_ident (_, _) -> collect_include (Utils.signature_of_modtype mod_expr.mod_type)
         | Tmod_structure structure -> collect_include structure.str_type
-        | Tmod_unpack (_, mod_type) -> collect_include (DeadMod.sign mod_type)
+        | Tmod_unpack (_, mod_type) -> collect_include (Utils.signature_of_modtype mod_type)
         | Tmod_functor (_, mod_expr)
         | Tmod_apply (_, mod_expr, _)
         | Tmod_apply_unit mod_expr
@@ -247,7 +251,7 @@ let expr super self e =
             "let () = ... in ... (=> use sequence)"
       end
 
-  | Texp_match (_, [{c_lhs; _}], _)
+  | Texp_match (_, [{c_lhs; _}], [], _)
     when DeadType.is_unit c_lhs.pat_type && !DeadFlag.style.DeadFlag.seq ->
       begin match c_lhs.pat_desc with
       | Tpat_value tpat_arg ->
@@ -331,8 +335,11 @@ let kind fn =
     `Ignore
   end else if DeadFlag.is_excluded fn then `Ignore
   else if Sys.is_directory fn then `Dir
-  else if Filename.check_suffix fn ".cmi" then `Cmi
-  else if Filename.check_suffix fn ".cmt" then `Cmt
+  else if Filename.check_suffix fn ".cmti" then `Cmti
+  else if Filename.check_suffix fn ".cmt" then
+    let cmti = Filename.remove_extension fn ^ ".cmti" in
+    if Sys.file_exists cmti then `Cmt_with_mli
+    else `Cmt_without_mli
   else `Ignore
 
 
@@ -343,31 +350,27 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.unit fn) ()
 
 
-let read_interface fn cmi_infos state = let open Cmi_format in
-  try
-    regabs state;
-    if !DeadFlag.exported.DeadFlag.print
-       || !DeadFlag.obj.DeadFlag.print
-       || !DeadFlag.typ.DeadFlag.print
-    then
-      let u =
-        if State.File_infos.has_sourcepath state.file_infos then
-          State.File_infos.get_sourceunit state.file_infos
-        else
-        Utils.unit fn
-      in
-      let module_id =
-        State.File_infos.get_modname state.file_infos
-        |> Ident.create_persistent
-      in
-      let f =
-        collect_export [module_id] u decs
-      in
-      List.iter f cmi_infos.cmi_sign;
-      last_loc := Lexing.dummy_pos
-  with Cmi_format.Error (Wrong_version_interface _) ->
-    (*Printf.eprintf "cannot read cmi file: %s\n%!" fn;*)
-    bad_files := fn :: !bad_files
+let read_interface fn signature state =
+  regabs state;
+  if !DeadFlag.exported.DeadFlag.print
+     || !DeadFlag.obj.DeadFlag.print
+     || !DeadFlag.typ.DeadFlag.print
+  then
+    let u =
+      if State.File_infos.has_sourcepath state.file_infos then
+        State.File_infos.get_sourceunit state.file_infos
+      else
+      Utils.unit fn
+    in
+    let module_id =
+      State.File_infos.get_modname state.file_infos
+      |> Ident.create_persistent
+    in
+    let f =
+      collect_export [module_id] u decs
+    in
+    List.iter f signature;
+    last_loc := Lexing.dummy_pos
 
 
 (* Merge a location's references to another one's *)
@@ -441,58 +444,58 @@ let rec load_file state fn =
         (* TODO: stateful computations should take and return the state when possible *)
         state
   in
+  let add_bad_file err fn =
+    if !DeadFlag.verbose then
+      Printf.eprintf "%s\n%!" err;
+    bad_files := fn :: !bad_files
+  in
+  let process_interface fn =
+    last_loc := Lexing.dummy_pos;
+    if !DeadFlag.verbose then Printf.eprintf "Scanning interface from %s\n%!" fn;
+    init_and_continue state fn (fun state ->
+    match state.file_infos.cmi_sign with
+    | None -> add_bad_file "Missing cmi_sign" fn
+    | Some cmi_sign ->
+        read_interface fn cmi_sign state
+    )
+  in
+  let process_implementation fn =
+    last_loc := Lexing.dummy_pos;
+    if !DeadFlag.verbose then Printf.eprintf "Scanning implementation from %s\n%!" fn;
+    init_and_continue state fn (fun state ->
+    match state.file_infos.cmt_struct with
+    | None -> add_bad_file "Missing cmt_struct" fn
+    | Some structure ->
+        regabs state;
+        let prepare (loc1, loc2) =
+          DeadObj.add_equal loc1 loc2;
+          VdNode.merge_locs ~force:true loc2 loc1
+        in
+        List.iter prepare state.file_infos.location_dependencies;
+        collect_references.Tast_mapper.structure collect_references structure
+        |> ignore;
+        let loc_dep =
+          if !DeadFlag.exported.DeadFlag.print then
+              state.file_infos.location_dependencies
+          else []
+        in
+        eof loc_dep
+    )
+  in
   match kind fn with
-  | `Cmi when !DeadCommon.declarations ->
-      last_loc := Lexing.dummy_pos;
-      if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue state fn (fun state ->
-      match state.file_infos.cmi_infos with
-      | None -> () (* TODO error handling ? *) 
-      | Some cmi_infos -> read_interface fn cmi_infos state
-      )
-
-  | `Cmt ->
-      let open Cmt_format in
-      last_loc := Lexing.dummy_pos;
-      if !DeadFlag.verbose then Printf.eprintf "Scanning %s\n%!" fn;
-      init_and_continue state fn (fun state ->
-      regabs state;
-      match state.file_infos.cmt_infos with
-      | None -> bad_files := fn :: !bad_files
-      | Some {cmt_annots = Implementation x; cmt_value_dependencies; _} ->
-          let prepare = function
-            | {Types.val_loc = {Location.loc_start = loc1; loc_ghost = false; _}; _},
-              {Types.val_loc = {Location.loc_start = loc2; loc_ghost = false; _}; _} ->
-                DeadObj.add_equal loc1 loc2;
-                VdNode.merge_locs ~force:true loc2 loc1
-            | _ -> ()
-          in
-          List.iter prepare cmt_value_dependencies;
-
-          ignore (collect_references.Tast_mapper.structure collect_references x);
-
-          let loc_dep =
-            if !DeadFlag.exported.DeadFlag.print then
-              List.rev_map
-                (fun (vd1, vd2) ->
-                  (vd1.Types.val_loc.Location.loc_start, vd2.Types.val_loc.Location.loc_start)
-                )
-                cmt_value_dependencies
-            else []
-          in
-          eof loc_dep
-      | _ -> () (* todo: support partial_implementation? *)
-      )
-
+  | `Cmti when !DeadCommon.declarations -> process_interface fn
+  | `Cmt_with_mli -> process_implementation fn
+  | `Cmt_without_mli ->
+      let _state = process_interface fn in
+      process_implementation fn
   | `Dir ->
       let next = Sys.readdir fn in
-      Array.sort compare next;
+      Array.sort (fun f1 f2 -> compare f2 f1) next;
       Array.fold_left
         (fun state s -> load_file state (fn ^ "/" ^ s))
         state
         next
       (* else Printf.eprintf "skipping directory %s\n" fn *)
-
   | _ -> state
 
 

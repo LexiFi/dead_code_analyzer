@@ -15,7 +15,7 @@ homepage: "https://github.com/LexiFi/dead_code_analyzer"
 bug-reports: "https://github.com/LexiFi/dead_code_analyzer/issues"
 depends: [
   "dune" {>= "3.20"}
-  "ocaml" {>= "5.2" & < "5.3"}
+  "ocaml" {>= "5.3" & < "5.4"}
   "odoc" {with-doc}
 ]
 build: [
