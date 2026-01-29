@@ -18,7 +18,9 @@ let () = (* use record fields *)
   ignore r.externally_used
 
 let () = (* use optional arguments *)
-  f ~always:42 ~externally:42 ()
+  f ~always:42 ~externally:42 ();
+  externally_used_f ~always:42 ~sometimes:42 ();
+  externally_used_f ~always:42 ()
 
 let is_used = ref false
 let mark_used () =
