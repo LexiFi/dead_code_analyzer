@@ -49,21 +49,23 @@ let init_from_cmt cmt_file =
 
 
 let sourcefname_of_cmi_infos cmi_unit cmi_infos =
+  (* Use lowercased units because dune wrapped lib's module units follow the
+     pattern : `<lib>__<Captilized_module>` while the original module unit may
+     not be capitalized.
+  *)
+  let cmi_unit = String.lowercase_ascii cmi_unit in
   let candidate_of_fname fname =
-    let src_unit = Utils.unit fname in
-    if String.equal src_unit cmi_unit then `Identical fname
+    let src_unit = Utils.unit fname |> String.lowercase_ascii in
+    if String.equal src_unit cmi_unit then
+      `Identical fname
     else if String.ends_with ~suffix:src_unit cmi_unit then
       `Suffix fname
-    else if String.starts_with ~prefix:src_unit cmi_unit then
-      `Prefix fname
-    else `Different fname
+    else `Different
   in
   let fname_of_candidate = function
-    | `Default -> None
+    | `Different -> None
     | `Identical fname
-    | `Suffix fname
-    | `Prefix fname
-    | `Different fname -> Some fname
+    | `Suffix fname -> Some fname
   in
   let get_item_loc (sig_item : Types.signature_item) =
     match sig_item with
@@ -84,20 +86,16 @@ let sourcefname_of_cmi_infos cmi_unit cmi_infos =
     else
       let fname = loc.Location.loc_start.pos_fname in
       match candidate, candidate_of_fname fname with
-        | _, `Default -> assert false
-        | (`Identical _ as candidate), _
-        | _, (`Identical _ as candidate) ->
-          (* best candidate found *)
-          fname_of_candidate candidate
-        | `Default, candidate
-        | `Different _, candidate
-        | candidate, `Different _
-        | `Prefix _, (`Suffix _ as candidate)
-        | (`Suffix _ as candidate), `Prefix _
-        | _, candidate ->
-          find_sourcename candidate items
+      | (`Identical _ as candidate), _
+      | _, (`Identical _ as candidate) ->
+        (* best candidate found *)
+        fname_of_candidate candidate
+      | `Different, candidate
+      | candidate, `Different
+      | _, candidate ->
+        find_sourcename candidate items
   in
-  find_sourcename `Default cmi_infos.Cmi_format.cmi_sign
+  find_sourcename `Different cmi_infos.Cmi_format.cmi_sign
 
 (** [init_from_cmi_infos ?with_cmt cmi_infos cmi_file] creates a [t] with:
     - information from [cmt_infos];
@@ -111,15 +109,32 @@ let sourcefname_of_cmi_infos cmi_unit cmi_infos =
 let init_from_cmi_infos ?with_cmt cmi_infos cmi_file =
   let builddir = Option.bind with_cmt (fun {builddir; _} -> builddir) in
   let sourcepath =
-    let unknown_sourcepath =
-      Option.bind with_cmt (fun {sourcepath; _} -> sourcepath)
+    let sourcepath =
+      (* Try to find a sourcepath in the cmi_infos *)
+      let cmi_unit = Utils.unit cmi_file in
+      let sourcefname = sourcefname_of_cmi_infos cmi_unit cmi_infos in
+      match sourcefname, builddir with
+      | Some fname, Some builddir -> Some (Filename.concat builddir fname)
+      | _, _ -> sourcefname
     in
-    let cmi_unit = Utils.unit cmi_file in
-    let sourcefname = sourcefname_of_cmi_infos cmi_unit cmi_infos in
-    match sourcefname, builddir with
-    | None, _ -> unknown_sourcepath
-    | Some _, None -> sourcefname
-    | Some fname, Some builddir -> Some (Filename.concat builddir fname)
+    match sourcepath with
+    | Some _ -> sourcepath
+    | None ->
+      (* There is no satisfying sourcepath in the cmi_infos.
+         Try to retrieve the sourecpath using with_cmt.
+      *)
+      let sourcepath_of_cmt cmt_file sourcepath =
+        (* When producing .cmt files for .ml files, the compiler also produces
+           .cmti files for .mli files. Hence, if a .cmti exists, we assume the
+           .mli does.
+        *)
+        if Sys.file_exists (cmt_file ^ "i") then sourcepath ^ "i"
+        else sourcepath
+      in
+      Option.bind with_cmt
+        (fun {sourcepath; cmti_file; _} ->
+          Option.map (sourcepath_of_cmt cmti_file) sourcepath
+        )
 
   in
   let modname = cmi_infos.cmi_name in
