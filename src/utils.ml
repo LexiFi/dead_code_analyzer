@@ -1,11 +1,23 @@
-let remove_pp fn =
-  let ext = Filename.extension fn in
-  let no_ext = Filename.remove_extension fn in
+let remove_pp filepath =
+  let ext = Filename.extension filepath in
+  let no_ext = Filename.remove_extension filepath in
   match Filename.extension no_ext with
   | ".pp" -> Filename.remove_extension no_ext ^ ext
-  | _ -> fn
+  | _ -> filepath
 
-let unit fn =
-  Filename.remove_extension (Filename.basename fn)
+let unit filepath =
+  Filename.remove_extension (Filename.basename filepath)
+
+(* Checks the nature of the file *)
+let kind ~exclude filepath =
+  if exclude filepath then `Ignore
+  else if not (Sys.file_exists filepath) then (
+    prerr_endline ("Warning: '" ^ filepath ^ "' not found");
+    `Ignore
+  )
+  else if Sys.is_directory filepath then `Dir
+  else if Filename.check_suffix filepath ".cmi" then `Cmi
+  else if Filename.check_suffix filepath ".cmt" then `Cmt
+  else `Ignore
 
 module StringSet = Set.Make(String)

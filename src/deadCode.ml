@@ -342,18 +342,6 @@ let collect_references =                          (* Tast_mapper *)
                 type_declaration
               }
 
-(* Checks the nature of the file *)
-let kind fn =
-  let state = State.get_current () in
-  if not (Sys.file_exists fn) then begin
-    prerr_endline ("Warning: '" ^ fn ^ "' not found");
-    `Ignore
-  end else if Config.is_excluded fn state.config then `Ignore
-  else if Sys.is_directory fn then `Dir
-  else if Filename.check_suffix fn ".cmi" then `Cmi
-  else if Filename.check_suffix fn ".cmt" then `Cmt
-  else `Ignore
-
 
 let regabs state =
   let fn = State.File_infos.get_sourcepath state.State.file_infos in
@@ -458,7 +446,8 @@ let rec load_file fn state =
         (* TODO: stateful computations should take and return the state when possible *)
         state
   in
-  match kind fn with
+  let exclude filepath = Config.is_excluded filepath state.State.config in
+  match Utils.kind ~exclude fn with
   | `Cmi when !DeadCommon.declarations ->
       last_loc := Lexing.dummy_pos;
       if state.State.config.verbose then Printf.eprintf "Scanning %s\n%!" fn;
