@@ -106,9 +106,22 @@ let normalize_path path =
   | "" -> Filename.current_dir_name
   | normalized_path -> normalized_path
 
+let rec add_filepaths acc path =
+  match Utils.Filepath.kind ~exclude:(fun _ -> false) path with
+  | Cmi | Cmt -> Utils.StringSet.add path acc
+  | Dir ->
+      Sys.readdir path
+      |> Array.fold_left
+        (fun acc sub_path ->
+          let path = Filename.concat path sub_path in
+          add_filepaths acc path
+        )
+        acc
+  | Ignore -> acc
+
 let exclude path config =
   let path = normalize_path path in
-  let excluded_paths = Utils.StringSet.add path config.excluded_paths in
+  let excluded_paths = add_filepaths config.excluded_paths path in
   {config with excluded_paths}
 
 let is_excluded path config =
@@ -116,11 +129,11 @@ let is_excluded path config =
   Utils.StringSet.mem path config.excluded_paths
 
 let add_reference_path path config =
-  let references_paths = Utils.StringSet.add path config.references_paths in
+  let references_paths = add_filepaths config.references_paths path in
   {config with references_paths}
 
 let add_path_to_analyze path config =
-  let paths_to_analyze = Utils.StringSet.add path config.paths_to_analyze in
+  let paths_to_analyze = add_filepaths config.paths_to_analyze path in
   {config with paths_to_analyze}
 
 (* Command line parsing *)

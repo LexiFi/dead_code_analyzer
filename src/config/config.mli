@@ -22,10 +22,12 @@ type t = private
   ; internal : bool (** Keep track of internal uses for exported values *)
   ; underscore : bool (** Keep track of elements with names starting with [_] *)
   ; paths_to_analyze : Utils.StringSet.t
-      (** Paths found in the command line and considered for analysis *)
-  ; excluded_paths : Utils.StringSet.t (** Paths to exclude from the analysis *)
+      (** Cmi and cmt filepaths found by exploring the paths provided in the
+          command line and considered for analysis *)
+  ; excluded_paths : Utils.StringSet.t
+      (** Cmi and cmt filepaths to exclude from the analysis *)
   ; references_paths : Utils.StringSet.t
-      (** Paths to explore for references only *)
+      (** Cmi and cmt filepaths to explore for references only *)
   ; sections : Sections.t (** Config for the different report sections *)
   }
 

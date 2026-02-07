@@ -434,7 +434,7 @@ let eof loc_dep =
 
 
 (* Starting point *)
-let rec load_file fn state =
+let load_file fn state =
   let init_and_continue state fn f =
     match State.change_file state fn with
     | Error msg ->
@@ -491,13 +491,9 @@ let rec load_file fn state =
       )
 
   | Dir ->
-      let next = Sys.readdir fn in
-      Array.sort compare next;
-      Array.fold_left
-        (fun state s -> load_file (fn ^ "/" ^ s) state)
-        state
-        next
-      (* else Printf.eprintf "skipping directory %s\n" fn *)
+      (* TODO : better error handling *)
+      failwith ("Internal error : Unexpected directory "
+                ^ fn ^ ". Only .cmi and .cmt are expected")
 
   | _ -> state
 
