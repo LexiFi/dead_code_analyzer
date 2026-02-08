@@ -64,7 +64,7 @@ let init_from_cmti_file cmti_file =
   let cmti_uid_to_decl = Some cmt_infos.cmt_uid_to_decl in
   {file_infos with cmti_uid_to_decl}
 
-let init_from_cmt_file cmt_file =
+let init_from_cmt_file ~cm_paths cmt_file =
   let* file_infos, cmt_infos = init_from_cm_file cmt_file in
   let* cmt_struct =
     match cmt_infos.cmt_annots with
@@ -82,26 +82,26 @@ let init_from_cmt_file cmt_file =
     | Ok file_infos -> file_infos.cmti_uid_to_decl
   in
   let+ location_dependencies =
-    Location_dependencies.init cmt_infos cmti_uid_to_decl
+    Location_dependencies.init ~cm_paths cmt_infos cmti_uid_to_decl
   in
   let file_infos =
     {file_infos with cmt_struct; cmti_uid_to_decl; location_dependencies}
   in
   file_infos, cmt_infos
 
-let init cm_file =
+let init ~cm_paths cm_file =
   match Filename.extension cm_file with
   | ".cmt" ->
-      let+ file_infos, _ = init_from_cmt_file cm_file in
+      let+ file_infos, _ = init_from_cmt_file ~cm_paths cm_file in
       file_infos
   | ".cmti" -> (
       (* Using cmt_infos is not critical. The intent is to mirror the behavior
          on cmt files, where both cmt and cmti are read. *)
       let filled_with_cmt_infos =
         let cmt_file = Filename.remove_extension cm_file ^ ".cmt" in
-        let* file_infos, cmt_infos = init_from_cmt_file cmt_file in
+        let* file_infos, cmt_infos = init_from_cmt_file ~cm_paths cmt_file in
         let+ location_dependencies =
-          Location_dependencies.init cmt_infos file_infos.cmti_uid_to_decl
+          Location_dependencies.init ~cm_paths cmt_infos file_infos.cmti_uid_to_decl
         in
         {file_infos with location_dependencies}
       in
@@ -113,7 +113,7 @@ let init cm_file =
   )
   | _ -> Result.error (cm_file ^ ": not a .cmti or .cmt file")
 
-let change_file file_infos cm_file =
+let change_file ~cm_paths file_infos cm_file =
   let no_ext = Filename.remove_extension cm_file in
   assert(no_ext = Filename.remove_extension file_infos.cm_file);
   match Filename.extension cm_file, file_infos with
@@ -121,7 +121,7 @@ let change_file file_infos cm_file =
       let* res, cmt_infos = init_from_cm_file cm_file in
       let+ location_dependencies =
         match file_infos.location_dependencies with
-        | [] -> Location_dependencies.init cmt_infos cmti_uid_to_decl
+        | [] -> Location_dependencies.init ~cm_paths cmt_infos cmti_uid_to_decl
         | loc_dep -> (* They have already been computed *)
             Result.ok loc_dep
       in
@@ -131,7 +131,7 @@ let change_file file_infos cm_file =
       {res with cmti_uid_to_decl = cutd; cmt_struct; location_dependencies}
   | _ ->
       (* invalid extension or the corresponding info is None *)
-      init cm_file
+      init ~cm_paths cm_file
 
 let has_sourcepath file_infos = Option.is_some file_infos.sourcepath
 

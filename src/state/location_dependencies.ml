@@ -34,26 +34,40 @@ let fill_from_structure (structure : Typedtree.structure) res_uid_to_loc =
   iterator.structure iterator structure;
   res_uid_to_loc
 
+let loc_opt_of_item_decl = function
+  | Typedtree.Value {val_loc = loc; _}
+  | Typedtree.Value_binding {vb_pat = {pat_loc = loc; _}; _} ->
+      Some loc.loc_start
+  | _ -> None
+
 let fill_from_cmt_tbl uid_to_decl res_uid_to_loc =
-  let open Typedtree in
-  let loc_of_item_decl = function
-    | Value {val_loc = loc; _}
-    | Value_binding {vb_pat = {pat_loc = loc; _}; _} ->
-        Some loc.loc_start
-    | _ -> None
-  in
   let add_uid_loc uid item_decl =
-    let loc = loc_of_item_decl item_decl in
+    let loc = loc_opt_of_item_decl item_decl in
     Option.iter (UidTbl.replace res_uid_to_loc uid) loc
   in
   UidTbl.iter add_uid_loc uid_to_decl;
   res_uid_to_loc
 
-let cmt_decl_dep_to_loc_dep cmt_decl_dep uid_to_loc =
+let find_opt_external_uid_loc ~cm_paths = function
+  | Shape.Uid.(Compilation_unit _ | Internal | Predef _) -> None
+  | Item {comp_unit; _} as uid ->
+    let ( let* ) x f = Option.bind x f in
+    let* cm_path =
+        Utils.StringSet.elements cm_paths
+        |> List.rev
+        |> List.find_opt (fun path -> Utils.Filepath.unit path = comp_unit)
+    in
+    let* cmt_infos = Cmt_format.read cm_path |> snd in
+    let* item_decl = UidTbl.find_opt cmt_infos.cmt_uid_to_decl uid in
+    loc_opt_of_item_decl item_decl
+
+let cmt_decl_dep_to_loc_dep ~cm_paths cmt_decl_dep uid_to_loc =
   let convert_pair (_dep_kind, uid_def, uid_decl) =
     let ( let* ) x f = Option.bind x f in
     let loc_opt_of_uid uid =
-      UidTbl.find_opt uid_to_loc uid
+      match UidTbl.find_opt uid_to_loc uid with
+      | Some _ as loc -> loc
+      | None -> find_opt_external_uid_loc ~cm_paths uid
     in
     let* def_loc = loc_opt_of_uid uid_def in
     let* decl_loc = loc_opt_of_uid uid_decl in
@@ -61,7 +75,7 @@ let cmt_decl_dep_to_loc_dep cmt_decl_dep uid_to_loc =
   in
   List.filter_map convert_pair cmt_decl_dep
 
-let init cmt_infos cmti_uid_to_decl =
+let init ~cm_paths cmt_infos cmti_uid_to_decl =
   match cmt_infos.Cmt_format.cmt_annots with
   | Implementation structure ->
     let fill_from_cmti_tbl tbl =
@@ -75,6 +89,6 @@ let init cmt_infos cmti_uid_to_decl =
     |> fill_from_structure structure
     |> fill_from_cmt_tbl cmt_infos.cmt_uid_to_decl
     |> fill_from_cmti_tbl
-    |> cmt_decl_dep_to_loc_dep cmt_infos.cmt_declaration_dependencies
+    |> cmt_decl_dep_to_loc_dep ~cm_paths cmt_infos.cmt_declaration_dependencies
     |> Result.ok
   | _ -> Result.error "No implementation found in cmt_infos"
