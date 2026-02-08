@@ -16,20 +16,22 @@ type t = {
 
 val empty : t (** No file info *)
 
-val init : string -> (t, string) result
+val init : cm_paths: Utils.StringSet.t -> string -> (t, string) result
 (** [init cm_file] expects either a [.cmti] or [.cmt] filepath as argument and
     returns an [Ok t] with [t] filled using the [cmtit_file].
     In case the file does not exist, it cannot be read, or its extension is
     invalid, then it returns an [Err msg] with msg a string
-    describing the issue. *)
+    describing the issue.
+    [cm_paths] is used to load external cm files if necessary. *)
 
-val change_file : t -> string -> (t, string) result
+val change_file : cm_paths: Utils.StringSet.t -> t -> string -> (t, string) result
 (** [change_file t cm_file] expects either a [.cmti] or a [.cmt] filepath as
     argument. [cm_file] must be the same as [t.cm_file], ignoring the
     extension.
     The returned value is either a simple update of [t] if the necessary
     [cmti_infos] or [cmt_infos] is available. Otherwise, it is the result of
-    [init t] *)
+    [init t].
+    [cm_paths] is used to load external cm files if necessary. *)
 
 val has_sourcepath : t -> bool
 
