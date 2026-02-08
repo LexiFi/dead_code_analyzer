@@ -10,7 +10,7 @@ module Filepath = struct
     | _ -> filepath
 
   let unit filepath =
-    Filename.remove_extension (Filename.basename filepath)
+    Unit_info.modname_from_source filepath
 
   type kind =
     | Cmi

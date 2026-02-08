@@ -50,13 +50,8 @@ let init_from_cmt cmt_file =
 
 
 let sourcefname_of_cmi_infos cmi_unit cmi_infos =
-  (* Use lowercased units because dune wrapped lib's module units follow the
-     pattern : `<lib>__<Captilized_module>` while the original module unit may
-     not be capitalized.
-  *)
-  let cmi_unit = String.lowercase_ascii cmi_unit in
   let candidate_of_fname fname =
-    let src_unit = Utils.Filepath.unit fname |> String.lowercase_ascii in
+    let src_unit = Utils.Filepath.unit fname in
     if String.equal src_unit cmi_unit then
       `Identical fname
     else if String.ends_with ~suffix:src_unit cmi_unit then
@@ -199,7 +194,8 @@ let get_builddir t =
 
 let get_sourcepath t =
   match t.sourcepath with
-  | Some sourcepath -> sourcepath
+  | Some sourcepath ->
+      sourcepath
   | None -> match t.builddir with
     | Some builddir ->
       Printf.sprintf "!!UNKNOWN_SOURCEPATH_IN<%s>_FOR_<%s>!!"
