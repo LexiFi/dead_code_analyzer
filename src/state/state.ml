@@ -21,13 +21,14 @@ let change_file state cm_file =
     let no_ext2 = Filename.remove_extension filename2 in
     String.equal no_ext1 no_ext2
   in
+  let cm_paths = state.config.paths_to_analyze in
   if String.equal file_infos.cm_file cm_file then
     Result.ok state
   else if equal_no_ext file_infos.cm_file cm_file then
-    let file_infos = File_infos.change_file file_infos cm_file in
+    let file_infos = File_infos.change_file ~cm_paths file_infos cm_file in
     Result.map (fun file_infos -> {state with file_infos}) file_infos
   else
-    let file_infos = File_infos.init cm_file in
+    let file_infos = File_infos.init ~cm_paths cm_file in
     Result.map (fun file_infos -> {state with file_infos}) file_infos
 
 (** Analysis' state *)

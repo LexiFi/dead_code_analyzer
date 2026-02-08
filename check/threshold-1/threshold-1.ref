@@ -48,17 +48,9 @@
 ./examples/using_dune/reduced_lib/reduced_lib.mli:19: Values_in_submodules.Exported.internally_used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:27: Values_in_submodules_no_intf.Exported.used_by_API
 ./examples/using_dune/reduced_lib/reduced_lib.mli:28: Values_in_submodules_no_intf.Exported.internally_used
-./examples/using_dune/reduced_lib/values.mli:2: used_by_API: Should not be detected
-./examples/using_dune/reduced_lib/values.mli:4: externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values.mli:7: lib_internal_unused
-./examples/using_dune/reduced_lib/values_in_submodules.mli:3: Exported.used_by_API: Should not be detected
-./examples/using_dune/reduced_lib/values_in_submodules.mli:5: Exported.externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values_in_submodules.mli:8: Exported.lib_internal_unused
-./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:3: Exported.used_by_API: Should not be detected
-./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:5: Exported.externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:8: Exported.lib_internal_unused
-./examples/using_dune/reduced_lib/values_no_intf.ml:2: used_by_API: Should not be detected
-./examples/using_dune/reduced_lib/values_no_intf.ml:4: externally_used: Should not be detected
 ./examples/using_dune/reduced_lib/values_no_intf.ml:11: lib_internal_unused
 
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
@@ -263,28 +255,20 @@
 ./examples/using_dune/reduced_lib/reduced_lib.mli:20: Values_in_submodules.Exported.externally_used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:26: Values_in_submodules_no_intf.Exported.used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:29: Values_in_submodules_no_intf.Exported.externally_used
-./examples/using_dune/reduced_lib/values.mli:1: used: Should not be detected
-./examples/using_dune/reduced_lib/values.mli:2: used_by_API: Not detected
-./examples/using_dune/reduced_lib/values.mli:3: internally_used: Should not be detected
-./examples/using_dune/reduced_lib/values.mli:4: externally_used: Not detected
+./examples/using_dune/reduced_lib/values.mli:2: used_by_API
+./examples/using_dune/reduced_lib/values.mli:4: externally_used
 ./examples/using_dune/reduced_lib/values.mli:8: lib_internal_internally_used
 ./examples/using_dune/reduced_lib/values.mli:9: lib_internal_externally_used
-./examples/using_dune/reduced_lib/values_in_submodules.mli:2: Exported.used: Should not be detected
-./examples/using_dune/reduced_lib/values_in_submodules.mli:3: Exported.used_by_API: Not detected
-./examples/using_dune/reduced_lib/values_in_submodules.mli:4: Exported.internally_used: Should not be detected
-./examples/using_dune/reduced_lib/values_in_submodules.mli:5: Exported.externally_used: Not detected
+./examples/using_dune/reduced_lib/values_in_submodules.mli:3: Exported.used_by_API
+./examples/using_dune/reduced_lib/values_in_submodules.mli:5: Exported.externally_used
 ./examples/using_dune/reduced_lib/values_in_submodules.mli:9: Exported.lib_internal_internally_used
 ./examples/using_dune/reduced_lib/values_in_submodules.mli:10: Exported.lib_internal_externally_used
-./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:2: Exported.used: Should not be detected
-./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:3: Exported.used_by_API: Not detected
-./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:4: Exported.internally_used: Should not be detected
-./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:5: Exported.externally_used: Not detected
+./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:3: Exported.used_by_API
+./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:5: Exported.externally_used
 ./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:9: Exported.lib_internal_internally_used
 ./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:10: Exported.lib_internal_externally_used
-./examples/using_dune/reduced_lib/values_no_intf.ml:1: used: Should not be detected
-./examples/using_dune/reduced_lib/values_no_intf.ml:2: used_by_API: Not detected
-./examples/using_dune/reduced_lib/values_no_intf.ml:3: internally_used: Should not be detected
-./examples/using_dune/reduced_lib/values_no_intf.ml:4: externally_used: Not detected
+./examples/using_dune/reduced_lib/values_no_intf.ml:2: used_by_API
+./examples/using_dune/reduced_lib/values_no_intf.ml:4: externally_used
 ./examples/using_dune/reduced_lib/values_no_intf.ml:12: lib_internal_internally_used
 ./examples/using_dune/reduced_lib/values_no_intf.ml:13: lib_internal_externally_used
 
@@ -1143,7 +1127,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 945
-Success: 913
-Failed: 32
-Ratio: 96.6137566138%
+Total: 929
+Success: 921
+Failed: 8
+Ratio: 99.1388589882%
