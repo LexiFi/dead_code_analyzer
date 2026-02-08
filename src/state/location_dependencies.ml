@@ -6,34 +6,6 @@ module UidTbl = Shape.Uid.Tbl
 
 type uid_to_decl = Typedtree.item_declaration UidTbl.t
 
-let fill_from_structure (structure : Typedtree.structure) res_uid_to_loc =
-  let open Types in
-  let rec fill_from_signature_item = function
-    | Sig_value (_, {val_loc; val_uid; _}, _) ->
-        UidTbl.replace res_uid_to_loc val_uid val_loc.loc_start
-    | Sig_module (_, _, {md_type = modtype; _}, _, _)
-    | Sig_modtype (_, {mtd_type = Some modtype; _}, _) ->
-        Utils.signature_of_modtype modtype
-        |> fill_from_signature
-    | _ -> ()
-  and fill_from_signature s =
-    List.iter fill_from_signature_item s
-  in
-  let iterator =
-    let super = Tast_iterator.default_iterator in
-    let structure_item self struct_item =
-      let open Typedtree in
-      begin match struct_item.str_desc with
-      | Tstr_include {incl_type; _} -> fill_from_signature incl_type
-      | _ -> ()
-      end;
-      super.Tast_iterator.structure_item self struct_item
-    in
-    {super with structure_item}
-  in
-  iterator.structure iterator structure;
-  res_uid_to_loc
-
 let loc_opt_of_item_decl = function
   | Typedtree.Value {val_loc = loc; _}
   | Typedtree.Value_binding {vb_pat = {pat_loc = loc; _}; _} ->
@@ -92,7 +64,7 @@ let cmt_decl_dep_to_loc_dep ~cm_paths cmt_decl_dep uid_to_loc =
 
 let init ~cm_paths cmt_infos cmti_uid_to_decl =
   match cmt_infos.Cmt_format.cmt_annots with
-  | Implementation structure ->
+  | Implementation _ ->
     let fill_from_cmti_tbl tbl =
       match cmti_uid_to_decl with
       | None -> tbl
@@ -101,7 +73,6 @@ let init ~cm_paths cmt_infos cmti_uid_to_decl =
     in
     (* TODO: Evaluate a generally good size for the tbl ? *)
     UidTbl.create 512
-    |> fill_from_structure structure
     |> fill_from_cmt_tbl cmt_infos.cmt_uid_to_decl
     |> fill_from_cmti_tbl
     |> cmt_decl_dep_to_loc_dep ~cm_paths cmt_infos.cmt_declaration_dependencies
