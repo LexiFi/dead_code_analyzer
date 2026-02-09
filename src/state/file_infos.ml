@@ -23,7 +23,7 @@ let empty = {
 let init_from_cmt_infos cmt_infos cmt_file =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
   let sourcepath =
-    Option.map Utils.remove_pp cmt_infos.cmt_sourcefile
+    Option.map Utils.Filepath.remove_pp cmt_infos.cmt_sourcefile
     |> Option.map (Filename.concat builddir)
   in
   let modname = cmt_infos.cmt_modname in
@@ -56,7 +56,7 @@ let sourcefname_of_cmi_infos cmi_unit cmi_infos =
   *)
   let cmi_unit = String.lowercase_ascii cmi_unit in
   let candidate_of_fname fname =
-    let src_unit = Utils.unit fname |> String.lowercase_ascii in
+    let src_unit = Utils.Filepath.unit fname |> String.lowercase_ascii in
     if String.equal src_unit cmi_unit then
       `Identical fname
     else if String.ends_with ~suffix:src_unit cmi_unit then
@@ -112,7 +112,7 @@ let init_from_cmi_infos ?with_cmt cmi_infos cmi_file =
   let sourcepath =
     let sourcepath =
       (* Try to find a sourcepath in the cmi_infos *)
-      let cmi_unit = Utils.unit cmi_file in
+      let cmi_unit = Utils.Filepath.unit cmi_file in
       let sourcefname = sourcefname_of_cmi_infos cmi_unit cmi_infos in
       match sourcefname, builddir with
       | Some fname, Some builddir -> Some (Filename.concat builddir fname)
@@ -209,7 +209,7 @@ let get_sourcepath t =
 
 let get_sourceunit t =
   match t.sourcepath with
-  | Some sourcepath -> Utils.unit sourcepath
+  | Some sourcepath -> Utils.Filepath.unit sourcepath
   | None -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cmti_file ^ ">!!"
 
 let get_modname t = t.modname

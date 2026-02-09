@@ -345,9 +345,9 @@ let collect_references =                          (* Tast_mapper *)
 
 let regabs state =
   let fn = State.File_infos.get_sourcepath state.State.file_infos in
-  hashtbl_add_unique_to_list abspath (Utils.unit fn) fn;
+  hashtbl_add_unique_to_list abspath (Utils.Filepath.unit fn) fn;
   if !DeadCommon.declarations then
-    hashtbl_add_unique_to_list main_files (Utils.unit fn) ()
+    hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
 let read_interface fn cmi_infos state = let open Cmi_format in
@@ -358,7 +358,7 @@ let read_interface fn cmi_infos state = let open Cmi_format in
         if State.File_infos.has_sourcepath state.file_infos then
           State.File_infos.get_sourceunit state.file_infos
         else
-        Utils.unit fn
+        Utils.Filepath.unit fn
       in
       let module_id =
         State.File_infos.get_modname state.file_infos
@@ -383,11 +383,11 @@ let assoc decs (loc1, loc2) =
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
   let has_iface fn =
     fn.[String.length fn - 1] = 'i'
-    || ( Utils.unit fn = sourceunit
+    || ( Utils.Filepath.unit fn = sourceunit
       && DeadCommon.file_exists (fn ^ "i"))
   in
   let is_iface fn loc =
-    Hashtbl.mem decs loc || Utils.unit fn <> sourceunit
+    Hashtbl.mem decs loc || Utils.Filepath.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
@@ -408,7 +408,7 @@ let clean references loc =
   let state = State.get_current () in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = loc.Lexing.pos_fname in
-  if (fn.[String.length fn - 1] <> 'i' && Utils.unit fn = sourceunit) then
+  if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
     LocHash.remove references loc
 
 let eof loc_dep =
@@ -447,8 +447,8 @@ let rec load_file fn state =
         state
   in
   let exclude filepath = Config.is_excluded filepath state.State.config in
-  match Utils.kind ~exclude fn with
-  | `Cmi when !DeadCommon.declarations ->
+  match Utils.Filepath.kind ~exclude fn with
+  | Cmi when !DeadCommon.declarations ->
       last_loc := Lexing.dummy_pos;
       if state.State.config.verbose then Printf.eprintf "Scanning %s\n%!" fn;
       init_and_continue state fn (fun state ->
@@ -457,7 +457,7 @@ let rec load_file fn state =
       | Some cmi_infos -> read_interface fn cmi_infos state
       )
 
-  | `Cmt ->
+  | Cmt ->
       let open Cmt_format in
       last_loc := Lexing.dummy_pos;
       if state.config.verbose then Printf.eprintf "Scanning %s\n%!" fn;
@@ -490,7 +490,7 @@ let rec load_file fn state =
       | _ -> () (* todo: support partial_implementation? *)
       )
 
-  | `Dir ->
+  | Dir ->
       let next = Sys.readdir fn in
       Array.sort compare next;
       Array.fold_left
@@ -507,7 +507,7 @@ let rec load_file fn state =
 (* Prepare the list of opt_args for report *)
 let analyze_opt_args () =
   DeadArg.eocb ();
-  let dec_loc loc = Hashtbl.mem main_files (Utils.unit loc.Lexing.pos_fname) in
+  let dec_loc loc = Hashtbl.mem main_files (Utils.Filepath.unit loc.Lexing.pos_fname) in
   let all = ref [] in
   let opt_args_tbl = Hashtbl.create 256 in
 

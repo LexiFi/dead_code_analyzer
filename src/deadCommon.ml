@@ -127,7 +127,7 @@ let find_path fn l =
   List.find (is_sub_path ~sep fn) l
 
 let find_abspath fn =
-  find_path fn (hashtbl_find_list abspath (Utils.unit fn))
+  find_path fn (hashtbl_find_list abspath (Utils.Filepath.unit fn))
 
 let file_exists fn =
   match find_abspath fn with
@@ -152,7 +152,7 @@ let exported ?(is_type = false) (flag : Config.Sections.main_section) loc =
   && (is_type
     || state.config.internal
     || fn.[String.length fn - 1] = 'i'
-    || sourceunit <> Utils.unit fn
+    || sourceunit <> Utils.Filepath.unit fn
     || not (file_exists (fn ^ "i")))
 
 
@@ -362,7 +362,7 @@ module VdNode = struct
         if not (LocSet.is_empty worklist) then
           let loc = LocSet.choose worklist in
           let wl = LocSet.remove loc worklist in
-          if Utils.unit loc.Lexing.pos_fname <> sourceunit then
+          if Utils.Filepath.unit loc.Lexing.pos_fname <> sourceunit then
             List.iter (LocHash.remove parents) loc_list
           else begin
             LocHash.replace met loc ();
@@ -394,7 +394,7 @@ let export ?(sep = ".") path u stock id loc =
     will create value definitions whose location is in set.mli
   *)
   if not loc.Location.loc_ghost
-  && (u = Utils.unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
+  && (u = Utils.Filepath.unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
   && check_underscore (Ident.name id) then
     let state = State.get_current () in
     let builddir = State.File_infos.get_builddir state.file_infos in
