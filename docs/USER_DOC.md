@@ -53,6 +53,7 @@ not related to the _use_ of elements of code.
 This documentation is split accross different topics:
 
 - [Usage](USAGE.md) describes the usage of the `dead_code_analyzer` and its options.
+- [Exported Values](exported_values/EXPORTED_VALUES.md)
 
 
 ## Footnotes
