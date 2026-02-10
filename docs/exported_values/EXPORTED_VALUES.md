@@ -6,6 +6,7 @@
 + [Examples](#examples)
     + [Single compilation unit without interface](#single-compilation-unit-without-interface)
     + [Single compilation unit with interface](#single-compilation-unit-with-interface)
+    + [Multiple compilation units](#multiple-compilation-units)
 
 # Exported Values
 
@@ -343,6 +344,185 @@ activated by passing the `-w +32` argument to the compiler :
 ```
 $ ocamlopt -w +32 hello_world.ml
 File "hello_world.ml", line 3, characters 4-11:
+3 | let goodbye = "Goodbye"
+        ^^^^^^^
+Warning 32 [unused-value-declaration]: unused value goodbye.
+```
+The `goodbye` value can be safely removed and neither the compiler nor the
+analyzer will report unused values anymore. Our work here is done.
+
+## Multiple compilation units
+
+This example illustrates a simple case of a library used by a binary.
+This is the same as the previous example with an extra indirection.
+
+The reference files for this example are
+[`hello_world_lib.mli`](./hello_world_lib.mli),
+[`hello_world_lib.ml`](./hello_world_lib.ml), and
+[`hello_world_bin.ml`](./hello_world_bin.ml)
+
+The compilation command to produce the the necessary `.cmi` and `.cmt` files is :
+```
+ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+```
+
+The analysis command is :
+```
+dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+```
+
+> [!NOTE]
+> It is left as an exercise to the user to explore this example without
+> `hello_world_lib.mli`.
+
+### First run
+
+Code :
+```OCaml
+(* hello_world_lib.mli *)
+val hello : string
+val goodbye : string
+val world : string
+```
+```OCaml
+(* hello_world_lib.ml *)
+let hello = "Hello"
+let goodbye = "Goodbye"
+let world = "World"
+```
+```OCaml
+(* hello_world_bin.ml *)
+let () =
+  let open Hello_world_lib in
+  let hello_world = hello ^ world in
+  let goodbye_world = goodbye ^ world in
+  print_endline hello_world
+```
+
+Compile and analyze :
+```
+$ ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+File "hello_world_bin.ml", line 5, characters 6-19:
+5 |   let goodbye_world = goodbye ^ world in
+          ^^^^^^^^^^^^^
+Warning 26 [unused-var]: unused variable goodbye_world.
+
+$ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+```
+
+Like in the previous example, the warning 26 is triggered during the
+compilation. Hence, the _local_ value `goodbye_world` at line 8 can be removed.
+
+The analyzer reports that there is no unused _exported_ value. The 3 exported
+values are `hello`, `goodbye` and `world` in `hello_world_lib.mli`. They are all
+referenced externally, in `hello_world_bin.ml`.
+
+> [!NOTE]
+> All the different flavors of explicit reference are taken into account the
+> same way. Here, the values are referenced after a local `open`. They could
+> have been referenced after a global `open` or using their full paths (e.g.
+> `Hello_world_lib.hello`) without making any difference on the reports.
+
+### Fixing the warning 26
+
+Let's remove the unused `goodbye_world`.
+
+Code :
+```OCaml
+(* hello_world_lib.mli *)
+val hello : string
+val goodbye : string
+val world : string
+```
+```OCaml
+(* hello_world_lib.ml *)
+let hello = "Hello"
+let goodbye = "Goodbye"
+let world = "World"
+```
+```OCaml
+(* hello_world_bin.ml *)
+let () =
+  let open Hello_world_lib in
+  let hello_world = hello ^ world in
+  print_endline hello_world
+```
+
+Compile and analyze :
+```
+$ ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+
+$ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+/tmp/docs/exported_values/hello_world_lib.mli:3: goodbye
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+```
+
+The compiler does not report any unused value.
+
+The analyzer, however, detects that `goodbye` declared in `hello_world_lib.mli`
+at line 3 is now unused.
+
+Like we did with the warning 26, `goodbye` can be removed.
+
+### Unexporting `goodbye`
+
+Code :
+```OCaml
+(* hello_world_lib.mli *)
+val hello : string
+val world : string
+```
+```OCaml
+(* hello_world_lib.ml *)
+let hello = "Hello"
+let goodbye = "Goodbye"
+let world = "World"
+```
+```OCaml
+(* hello_world_bin.ml *)
+let () =
+  let open Hello_world_lib in
+  let hello_world = hello ^ world in
+  print_endline hello_world
+```
+
+Compile and analyze :
+```
+$ ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+
+$ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+```
+
+Now, neither the compiler nor the analyzer report any unused value.
+
+Like in the previous example, we need to pass `-w +32` to the compiler to
+trigger the `unused-value-declaration` warning :
+```
+$ ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+File "hello_world_lib.ml", line 3, characters 4-11:
 3 | let goodbye = "Goodbye"
         ^^^^^^^
 Warning 32 [unused-value-declaration]: unused value goodbye.
