@@ -105,12 +105,20 @@ This is also the compiler's behavior for its warnings about unused values.
 
 ## Hello world
 
+All of the following examples can be found in the [hello\_world](./hello_world)
+directory.
+
+The reference takes place in `/tmp/docs/exported_values/hello_world`, which
+contains copies of the examples. Reported locations may differ depending on the
+location of the source files.
+
 ### Single compilation unit without interface
 
 This example illustrates a simple case of a compilation unit without `.mli` and
 without any external use.
 
-The reference file for this example is [`hello_world_no_intf.ml`](./hello_world_no_intf.ml).
+The reference file for this example is
+[`hello_world_no_intf.ml`](./hello_world/hello_world_no_intf.ml).
 
 The compilation command to produce the `hello_world_no_intf.cmi` and
 `hello_world_no_intf.cmt` is :
@@ -190,7 +198,7 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world_no_intf.ml:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -238,8 +246,9 @@ This example illustrates a simple case of a compilation unit with `.mli` and
 without any external use.
 This is the same as the previous example with an extra interface.
 
-The reference files for this example are [`hello_world.mli`](./hello_world.mli)
-and [`hello_world.ml`](./hello_world.ml)
+The reference files for this example are
+[`hello_world.mli`](./hello_world/hello_world.mli) and
+[`hello_world.ml`](./hello_world/hello_world.ml)
 
 The compilation command to produce the `hello_world.cmi` and `hello_world.cmt` is :
 ```
@@ -286,9 +295,9 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world.mli:2: hello
-/tmp/docs/exported_values/hello_world.mli:3: goodbye
-/tmp/docs/exported_values/hello_world.mli:4: world
+/tmp/docs/exported_values/hello_world/hello_world.mli:2: hello
+/tmp/docs/exported_values/hello_world/hello_world.mli:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world.mli:4: world
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -361,9 +370,9 @@ This example illustrates a simple case of a library used by a binary.
 This is the same as the previous example with an extra indirection.
 
 The reference files for this example are
-[`hello_world_lib.mli`](./hello_world_lib.mli),
-[`hello_world_lib.ml`](./hello_world_lib.ml), and
-[`hello_world_bin.ml`](./hello_world_bin.ml)
+[`hello_world_lib.mli`](./hello_world/hello_world_lib.mli),
+[`hello_world_lib.ml`](./hello_world/hello_world_lib.ml), and
+[`hello_world_bin.ml`](./hello_world/hello_world_bin.ml)
 
 The compilation command to produce the the necessary `.cmi` and `.cmt` files is :
 ```
@@ -470,7 +479,7 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world_lib.mli:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_lib.mli:3: goodbye
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -601,11 +610,11 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world.mli:2: hello
-/tmp/docs/exported_values/hello_world.mli:3: goodbye
-/tmp/docs/exported_values/hello_world.mli:4: world
-/tmp/docs/exported_values/hello_world_lib.mli:3: goodbye
-/tmp/docs/exported_values/hello_world_no_intf.ml:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world.mli:2: hello
+/tmp/docs/exported_values/hello_world/hello_world.mli:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world.mli:4: world
+/tmp/docs/exported_values/hello_world/hello_world_lib.mli:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
