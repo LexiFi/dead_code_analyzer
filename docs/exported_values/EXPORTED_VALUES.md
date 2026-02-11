@@ -4,9 +4,11 @@
     + [Definitions](#definitions)
     + [Usage](#usage)
 + [Examples](#examples)
-    + [Single compilation unit without interface](#single-compilation-unit-without-interface)
-    + [Single compilation unit with interface](#single-compilation-unit-with-interface)
-    + [Multiple compilation units](#multiple-compilation-units)
+    + [Hello world](#hello-world)
+        + [Single compilation unit without interface](#single-compilation-unit-without-interface)
+        + [Single compilation unit with interface](#single-compilation-unit-with-interface)
+        + [Multiple compilation units](#multiple-compilation-units)
+        + [All Together](#all-together)
 
 # Exported Values
 
@@ -101,7 +103,9 @@ This is also the compiler's behavior for its warnings about unused values.
 
 # Examples
 
-## Single compilation unit without interface
+## Hello world
+
+### Single compilation unit without interface
 
 This example illustrates a simple case of a compilation unit without `.mli` and
 without any external use.
@@ -119,7 +123,7 @@ The analysis command is :
 dead_code_analyzer --nothing -E all hello_world_no_intf.cmi hello_world_no_intf.cmt
 ```
 
-### First run
+#### First run
 
 Code :
 ```OCaml
@@ -160,7 +164,7 @@ The analyzer reports that there is no unused _exported_ value. The 3 exported
 values are `hello`, `goodbye` and `world`. They are all referenced internally.
 Because there is no `hello_world_no_intf.mli`, the internal uses are accounted for.
 
-### Fixing the warning 26
+#### Fixing the warning 26
 
 Let's remove the unused `goodbye_world`.
 
@@ -198,7 +202,7 @@ The analyzer, however, detects that `goodbye` declared at line 3 is now unused.
 
 Like we did with the warning 26, `goodbye` can be removed.
 
-### Removing the unused `goodbye`
+#### Removing the unused `goodbye`
 
 Code :
 ```OCaml
@@ -228,7 +232,7 @@ Nothing else to report in this section
 
 Now, neither the compiler nor the analyzer report any unused value. Our work here is done.
 
-## Single compilation unit with interface
+### Single compilation unit with interface
 
 This example illustrates a simple case of a compilation unit with `.mli` and
 without any external use.
@@ -247,7 +251,7 @@ The analysis command is :
 dead_code_analyzer --nothing -E all hello_world.cmi hello_world.cmt
 ```
 
-### First run
+#### First run
 
 Code :
 ```OCaml
@@ -301,7 +305,7 @@ they are the only one listed in the `.mli`. They are all used in
 interface file available, only external uses are accounted for. Thus, they are
 considered unused and can be dropped from the `.mli`
 
-### Removing the unused values
+#### Removing the unused values
 
 Let's remove the unused `goodbye_world` from `hello_world.ml`, reported unused
 by the compiler, and the values in `hello_world.mli` reported by the analyzer.
@@ -351,7 +355,7 @@ Warning 32 [unused-value-declaration]: unused value goodbye.
 The `goodbye` value can be safely removed and neither the compiler nor the
 analyzer will report unused values anymore. Our work here is done.
 
-## Multiple compilation units
+### Multiple compilation units
 
 This example illustrates a simple case of a library used by a binary.
 This is the same as the previous example with an extra indirection.
@@ -375,7 +379,7 @@ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hell
 > It is left as an exercise to the user to explore this example without
 > `hello_world_lib.mli`.
 
-### First run
+#### First run
 
 Code :
 ```OCaml
@@ -431,7 +435,7 @@ referenced externally, in `hello_world_bin.ml`.
 > have been referenced after a global `open` or using their full paths (e.g.
 > `Hello_world_lib.hello`) without making any difference on the reports.
 
-### Fixing the warning 26
+#### Fixing the warning 26
 
 Let's remove the unused `goodbye_world`.
 
@@ -479,7 +483,7 @@ at line 3 is now unused.
 
 Like we did with the warning 26, `goodbye` can be removed.
 
-### Unexporting `goodbye`
+#### Unexporting `goodbye`
 
 Code :
 ```OCaml
@@ -529,3 +533,127 @@ Warning 32 [unused-value-declaration]: unused value goodbye.
 ```
 The `goodbye` value can be safely removed and neither the compiler nor the
 analyzer will report unused values anymore. Our work here is done.
+
+### All Together
+
+This example illustrates a simple case of a complete codebase with independent
+and dependent components, and duplicate names.
+This is the grouping of all the previous [*Hello World*](#hello-world) examples.
+Analyzing all the files at once reduces the number of iterations to reach a
+satisfying codebase.
+
+The reference files for this example are all those listed previously.
+
+The compilation command to produce the the necessary `.cmi` and `.cmt` files,
+and the desired warnings is the combination of all the previous ones :
+```
+ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+```
+
+> [!NOTE]
+> For our usage, this has the same effect has running each of the previous
+> compliation commands, with the extra `-w +32` argument, one after the other.
+> The benefit is that all the warnings will be printed at once.
+
+The analysis command is :
+```
+dead_code_analyzer --nothing -E all .
+```
+
+> [!TIP]
+> As we can see for the compilation command, there is a large number of files to
+> list. Instead of listing all the `.cmi` and `.cmt` files in the command line,
+> the analyzer accepts directories as arguments and will analyze all the
+> relevant files it can find in them and in their subdirectories.
+
+The code is not re-exposed at each iteration here. It is the same as in the previous examples.
+
+#### First Run
+
+Compile :
+```
+$ ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+File "hello_world_no_intf.ml", line 8, characters 6-19:
+8 |   let goodbye_world = goodbye ^ world in
+          ^^^^^^^^^^^^^
+Warning 26 [unused-var]: unused variable goodbye_world.
+
+File "hello_world.ml", line 8, characters 6-19:
+8 |   let goodbye_world = goodbye ^ world in
+          ^^^^^^^^^^^^^
+Warning 26 [unused-var]: unused variable goodbye_world.
+
+File "hello_world_bin.ml", line 5, characters 6-19:
+5 |   let goodbye_world = goodbye ^ world in
+          ^^^^^^^^^^^^^
+Warning 26 [unused-var]: unused variable goodbye_world.
+```
+
+Without any surprise, the compiler identifies the different warning 26 explored
+in the previous examples.
+Let's fix them and **recompile**, before running the analyzer.
+
+Analyze :
+```
+$ dead_code_analyzer --nothing -E all .
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+/tmp/docs/exported_values/hello_world.mli:2: hello
+/tmp/docs/exported_values/hello_world.mli:3: goodbye
+/tmp/docs/exported_values/hello_world.mli:4: world
+/tmp/docs/exported_values/hello_world_lib.mli:3: goodbye
+/tmp/docs/exported_values/hello_world_no_intf.ml:3: goodbye
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+```
+
+The analyzer correclty identifies the unused exported values it identified for
+the previous examples, all in one run. Note that the reports are in the
+lexicographical order.
+Unlike the compiler which listed its warnings in the order the files appeared in
+the command line, the analyzer always sorts its reports in this order.
+
+#### Removing the unused exported values
+
+Like we did, in the previous examples, we can remove the exported values at the
+locations reported by the analyzer.
+
+Compile :
+```
+$ ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+File "hello_world.ml", line 3, characters 4-11:
+3 | let goodbye = "Goodbye"
+        ^^^^^^^
+Warning 32 [unused-value-declaration]: unused value goodbye.
+
+File "hello_world_lib.ml", line 3, characters 4-11:
+3 | let goodbye = "Goodbye"
+        ^^^^^^^
+Warning 32 [unused-value-declaration]: unused value goodbye.
+```
+
+Once again, the finidings are the same as for the previous examples. After
+`goodbye_world` is removed and `goodbye` is unexported, the compiler warning 32
+indicates that it is unused.
+Let's fix the warnings.
+
+Compile and analyze :
+```
+$ ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+
+$ dead_code_analyzer --nothing -E all .
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+```
+
+Now, neither the compiler nor the analyzer report any unused value. Our work here is done.
