@@ -15,6 +15,7 @@
         + [Functor](#functor)
         + [Module type](#module-type)
         + [Module signature](#module-signature)
+        + [Include](#include)
 
 # Exported Values
 
@@ -1662,3 +1663,162 @@ by removing `used_by_requirement` from the signature of `Alias_with_sig` we
 removed the requirement for `Original` to provide it. This value can be removed
 from `Orignal`, and neither the compiler nor the analyzer will report unused
 values anymore. Our work here is done.
+
+### Include
+
+The reference files for this example are in the
+[include](./code_constructs/include) directory.
+
+The compilation command is :
+```
+make -C include build
+```
+
+The analysis command is :
+```
+make -C include analyze
+```
+
+The compile + analyze command is :
+```
+make -C include
+```
+
+#### First run
+
+Code:
+```OCaml
+(* include_lib.ml *)
+module Original = struct
+  let used_directly = ()
+  let used_indirectly = ()
+  let unused = ()
+end
+
+module Reexport = struct
+  include Original
+end
+
+module Redefine = struct
+  include Original
+  let used_directly = ()
+  let unused = ()
+end
+```
+```OCaml
+(* include_bin.ml *)
+let () =
+  let open Include_lib in
+  ignore Original.used_directly;
+  ignore Reexport.used_indirectly;
+  ignore Redefine.used_directly;
+```
+
+Before looking at the analysis results, let's look at the code.
+
+The `Include_lib` compilation unit does not have a `.mli`, so all the internal
+uses are accounted for. It exposes 3 modules : `Original`, `Reexport`, and
+`Redefine`. The 1st one defines all its values, the 2nd only includes the 1st
+one, and the 3rd one includes the 1st and redefines 2 values : `used_directly`,
+and `unused`.
+By the explanation in the [module signature](#module-signature) and
+[module type](#module-type) examples, although there are 9 exported values
+(`used_directly`, `used_indirectly`, and `unused` for each module), only 5 are
+expected to be tracked by the analyzer : those in `Original` and the 2 redefined
+in `Redefine`. These are the only values a developer can trivially removeif
+they are reported unused.
+Thus, the only values used are `Original.used_directly`,
+`Original.used_indirectly` (by an explicit reference to
+`Reexport.used_indirectly`), and `Redefine.used_directly`. This means that the
+unused exported values tracked by the analyzer are `Original.unused` and
+`Redefine.unused`.
+
+Let's look at the actual results.
+
+Compile and analyze:
+```
+$ make -C include
+make: Entering directory '/tmp/docs/exported_values/code_constructs/include'
+ocamlopt -bin-annot include_lib.ml include_bin.ml
+dead_code_analyzer --nothing -E all .
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+/tmp/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
+/tmp/docs/exported_values/code_constructs/include/include_lib.ml:5: Reexport.unused
+/tmp/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/exported_values/code_constructs/include'
+```
+
+The compiler does not report any unused value.
+
+As expected, the analyzer reports `Original.unused` and `Redefine.unused`.
+However, it also reports `Reexport.unused`, which is unexpected.
+
+> [!WARNING]
+> The extra report on `Reexport.unused` is a known bug, tracked by
+> [issue #57](https://github.com/LexiFi/dead_code_analyzer/issues/57).
+> This duplicated report only exists because the modules `Original` and
+> `Reexport` belong to the same compilation unit (`Include_lib`). This can
+> easily be verified by moving `Reexport` in `Include_bin` instead.
+
+Because the report of `Reexport.unused` is actually a duplicate of the report
+of `Original.unused`, we can simply ignore it.
+
+#### Removing the unused values
+
+The reported values can be removed from the implementation.
+
+Code:
+```OCaml
+(* include_lib.ml *)
+module Original = struct
+  let used_directly = ()
+  let used_indirectly = ()
+end
+
+module Reexport = struct
+  include Original
+end
+
+module Redefine = struct
+  include Original
+  let used_directly = ()
+end
+```
+```OCaml
+(* include_bin.ml *)
+let () =
+  let open Include_lib in
+  ignore Original.used_directly;
+  ignore Reexport.used_indirectly;
+  ignore Redefine.used_directly;
+```
+
+Compile and analyze:
+```
+$ make -C include
+make: Entering directory '/tmp/docs/exported_values/code_constructs/include'
+ocamlopt -bin-annot include_lib.ml include_bin.ml
+dead_code_analyzer --nothing -E all .
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/exported_values/code_constructs/include'
+```
+
+Now, neither the compiler nor the analyzer report any unused value. Our work here is done.
