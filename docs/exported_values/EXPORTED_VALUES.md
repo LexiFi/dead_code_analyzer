@@ -226,24 +226,24 @@ This example illustrates a simple case of a compilation unit without `.mli` and
 without any external use.
 
 The reference file for this example is
-[`hello_world_no_intf.ml`](../../examples/docs/exported_values/hello_world/hello_world_no_intf.ml).
+[`hello_world_without_intf.ml`](../../examples/docs/exported_values/hello_world/hello_world_without_intf.ml).
 
-The compilation command to produce `hello_world_no_intf.cmi` and
-`hello_world_no_intf.cmt` is :
+The compilation command to produce `hello_world_without_intf.cmi` and
+`hello_world_without_intf.cmt` is :
 ```
-ocamlopt -bin-annot hello_world_no_intf.ml
+ocamlopt -bin-annot hello_world_without_intf.ml
 ```
 
 The analysis command is :
 ```
-dead_code_analyzer --nothing -E all hello_world_no_intf.cmi hello_world_no_intf.cmt
+dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
 ```
 
 #### First run
 
 Code :
 ```OCaml
-(* hello_world_no_intf.ml *)
+(* hello_world_without_intf.ml *)
 let hello = "Hello"
 let goodbye = "Goodbye"
 let world = "World"
@@ -256,8 +256,8 @@ let () =
 
 Compile :
 ```
-$ ocamlopt -bin-annot hello_world_no_intf.ml
-File "hello_world_no_intf.ml", line 8, characters 6-19:
+$ ocamlopt -bin-annot hello_world_without_intf.ml
+File "hello_world_without_intf.ml", line 8, characters 6-19:
 8 |   let goodbye_world = goodbye ^ world in
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
@@ -266,11 +266,11 @@ Warning 26 [unused-var]: unused variable goodbye_world.
 The compiler reports a warning 26 on `goodbye_world`:
 `Warning 26 [unused-var]: unused variable goodbye_world.`
 This tells us that the _local_ value is unused, and, thus, can be removed at the
-reported location: `File "hello_world_no_intf.ml", line 8`
+reported location: `File "hello_world_without_intf.ml", line 8`
 
 Analyze :
 ```
-$ dead_code_analyzer --nothing -E all hello_world_no_intf.cmi hello_world_no_intf.cmt
+$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
 Scanning files...
  [DONE]
 
@@ -282,9 +282,9 @@ Nothing else to report in this section
 ```
 
 The analyzer does not report any unused _exported_ value. There are 3 exported
-in the `Hello_world_no_intf` compilation unit : `hello`, `goodbye` and `world`.
-These are the top level values of `hello_world_no_intf.ml`.
-They are all referenced internally. Because there is no `hello_world_no_intf.mli`,
+in the `Hello_world_without_intf` compilation unit : `hello`, `goodbye` and `world`.
+These are the top level values of `hello_world_without_intf.ml`.
+They are all referenced internally. Because there is no `hello_world_without_intf.mli`,
 the internal uses are accounted for. Consequently, none of the exported values
 are considered unused by the analyzer.
 
@@ -294,7 +294,7 @@ Let's remove the unused `goodbye_world`.
 
 Code :
 ```OCaml
-(* hello_world_no_intf.ml *)
+(* hello_world_without_intf.ml *)
 let hello = "Hello"
 let goodbye = "Goodbye"
 let world = "World"
@@ -306,15 +306,15 @@ let () =
 
 Compile and analyze :
 ```
-$ ocamlopt -bin-annot hello_world_no_intf.ml
+$ ocamlopt -bin-annot hello_world_without_intf.ml
 
-$ dead_code_analyzer --nothing -E all hello_world_no_intf.cmi hello_world_no_intf.cmt
+$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
 Scanning files...
  [DONE]
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -323,7 +323,7 @@ Nothing else to report in this section
 The compiler does not report any unused value.
 
 The analyzer reports that `goodbye` declared at line 3 is unused :
-`/tmp/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye`
+`/tmp/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye`
 Like the warning 26 above, this report tells us that `goodbye` can be removed
 at the reported location.
 
@@ -331,7 +331,7 @@ at the reported location.
 
 Code :
 ```OCaml
-(* hello_world_no_intf.ml *)
+(* hello_world_without_intf.ml *)
 let hello = "Hello"
 let world = "World"
 
@@ -342,9 +342,9 @@ let () =
 
 Compile and analyze :
 ```
-$ ocamlopt -bin-annot hello_world_no_intf.ml
+$ ocamlopt -bin-annot hello_world_without_intf.ml
 
-$ dead_code_analyzer --nothing -E all hello_world_no_intf.cmi hello_world_no_intf.cmt
+$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
 Scanning files...
  [DONE]
 
@@ -365,12 +365,12 @@ Although an interface is provided, all the uses remain inside the same
 compilation unit.
 
 The reference files for this example are
-[`hello_world.mli`](../../examples/docs/exported_values/hello_world/hello_world.mli) and
-[`hello_world.ml`](../../examples/docs/exported_values/hello_world/hello_world.ml)
+[`hello_world_with_intf.mli`](../../examples/docs/exported_values/hello_world/hello_world_with_intf.mli) and
+[`hello_world_with_intf.ml`](../../examples/docs/exported_values/hello_world/hello_world_with_intf.ml)
 
 The compilation command to produce `hello_world.cmi` and `hello_world.cmt` is :
 ```
-ocamlopt -bin-annot hello_world.mli hello_world.ml
+ocamlopt -bin-annot hello_world_with_intf.mli hello_world_with_intf.ml
 ```
 
 The analysis command is :
@@ -382,13 +382,13 @@ dead_code_analyzer --nothing -E all hello_world.cmi hello_world.cmt
 
 Code :
 ```OCaml
-(* hello_world.mli *)
+(* hello_world_with_intf.mli *)
 val hello : string
 val goodbye : string
 val world : string
 ```
 ```OCaml
-(* hello_world.ml *)
+(* hello_world_with_intf.ml *)
 let hello = "Hello"
 let goodbye = "Goodbye"
 let world = "World"
@@ -401,8 +401,8 @@ let () =
 
 Compile and analyze :
 ```
-$ ocamlopt -bin-annot hello_world.ml
-File "hello_world.ml", line 8, characters 6-19:
+$ ocamlopt -bin-annot hello_world_with_intf.ml
+File "hello_world_with_intf.ml", line 8, characters 6-19:
 8 |   let goodbye_world = goodbye ^ world in
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
@@ -413,9 +413,9 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world/hello_world.mli:2: hello
-/tmp/docs/exported_values/hello_world/hello_world.mli:3: goodbye
-/tmp/docs/exported_values/hello_world/hello_world.mli:4: world
+/tmp/docs/exported_values/hello_world/hello_world_with_intf.mli:2: hello
+/tmp/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -425,24 +425,24 @@ The compiler reports the same warning 26 on `goodbye_world` as in the previous
 example.
 
 The analyzer reports that there are 3 unused _exported_ value in
-`hello_world.mli`: `hello` at line 2, `goodbye` line 3, and `world` line 4.
-These are the only exported values in the `Hello_world` compilation unit because
-they are the only ones listed in the `.mli`. They are all used in
-`hello_world.ml`, but not outside of their compilation unit. Because there is an
+`hello_world_with_intf.mli`: `hello` at line 2, `goodbye` line 3, and `world` line 4.
+These are the only exported values in the `Hello_world_with_intf` compilation
+unit because they are the only ones listed in the `.mli`. They are all used in
+`hello_world_with_intf.ml`, but not outside of their compilation unit. Because there is an
 interface file available, only external uses are accounted for. Thus, they are
 considered unused and can be dropped from the `.mli`
 
 #### Removing the unused values
 
-Let's remove the unused `goodbye_world` from `hello_world.ml`, reported unused
-by the compiler, and the values in `hello_world.mli` reported by the analyzer.
+Let's remove the unused `goodbye_world` from `hello_world_with_intf.ml`, reported unused
+by the compiler, and the values in `hello_world_with_intf.mli` reported by the analyzer.
 
 Code :
 ```OCaml
-(* hello_world.mli *)
+(* hello_world_with_intf.mli *)
 ```
 ```OCaml
-(* hello_world.ml *)
+(* hello_world_with_intf.ml *)
 let hello = "Hello"
 let goodbye = "Goodbye"
 let world = "World"
@@ -453,7 +453,7 @@ let () =
 ```
 Compile and analyze :
 ```
-$ ocamlopt -bin-annot hello_world.ml
+$ ocamlopt -bin-annot hello_world_with_intf.ml
 $ dead_code_analyzer --nothing -E all hello_world.cmi hello_world.cmt
 Scanning files...
  [DONE]
@@ -473,8 +473,8 @@ because it is an _unexported_ value here (while it was an _exported_ value in
 the previous example). The corresponding warning is actually off by default and
 can be activated by passing the `-w +32` argument to the compiler :
 ```
-$ ocamlopt -w +32 hello_world.ml
-File "hello_world.ml", line 3, characters 4-11:
+$ ocamlopt -w +32 hello_world_with_intf.ml
+File "hello_world_with_intf.ml", line 3, characters 4-11:
 3 | let goodbye = "Goodbye"
         ^^^^^^^
 Warning 32 [unused-value-declaration]: unused value goodbye.
@@ -669,7 +669,7 @@ The reference files for this example are all those listed previously.
 The compilation command to produce the necessary `.cmi` and `.cmt` files,
 and the desired warnings is the combination of all the previous ones :
 ```
-ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+ocamlopt -w +32 -bin-annot hello_world_without_intf.ml hello_world_with_intf.mli hello_world_with_intf.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
 ```
 
 > [!NOTE]
@@ -695,13 +695,13 @@ previous examples.
 
 Compile :
 ```
-$ ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
-File "hello_world_no_intf.ml", line 8, characters 6-19:
+$ ocamlopt -w +32 -bin-annot hello_world_without_intf.ml hello_world_with_intf.mli hello_world_with_intf.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+File "hello_world_without_intf.ml", line 8, characters 6-19:
 8 |   let goodbye_world = goodbye ^ world in
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
 
-File "hello_world.ml", line 8, characters 6-19:
+File "hello_world_with_intf.ml", line 8, characters 6-19:
 8 |   let goodbye_world = goodbye ^ world in
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
@@ -724,11 +724,11 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/hello_world/hello_world.mli:2: hello
-/tmp/docs/exported_values/hello_world/hello_world.mli:3: goodbye
-/tmp/docs/exported_values/hello_world/hello_world.mli:4: world
+/tmp/docs/exported_values/hello_world/hello_world_with_intf.mli:2: hello
+/tmp/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 /tmp/docs/exported_values/hello_world/hello_world_lib.mli:3: goodbye
-/tmp/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye
+/tmp/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -747,8 +747,8 @@ locations reported by the analyzer.
 
 Compile :
 ```
-$ ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
-File "hello_world.ml", line 3, characters 4-11:
+$ ocamlopt -w +32 -bin-annot hello_world_without_intf.ml hello_world_with_intf.mli hello_world_with_intf.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+File "hello_world_with_intf.ml", line 3, characters 4-11:
 3 | let goodbye = "Goodbye"
         ^^^^^^^
 Warning 32 [unused-value-declaration]: unused value goodbye.
@@ -766,7 +766,7 @@ Let's fix the warnings.
 
 Compile and analyze :
 ```
-$ ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
+$ ocamlopt -w +32 -bin-annot hello_world_without_intf.ml hello_world_with_intf.mli hello_world_with_intf.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
 
 $ dead_code_analyzer --nothing -E all .
 Scanning files...
