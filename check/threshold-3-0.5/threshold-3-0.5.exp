@@ -1,5 +1,20 @@
 .> UNUSED EXPORTED VALUES:
 =========================
+./examples/docs/exported_values/code_constructs/function/function_lib.mli:7: unused
+
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: InternalApp.unused
+
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
+
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: Original.unused
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:12: Alias_with_sig.used_by_requirement
+
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:19: M_redef.unused
+
+./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
@@ -84,6 +99,38 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/exported_values/code_constructs/function/function_lib.mli:3: memoize
+./examples/docs/exported_values/code_constructs/function/function_lib.mli:5: heavy_computation
+./examples/docs/exported_values/code_constructs/function/function_lib.mli:9: do_nothing
+
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:8: F.externally_used
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:14: InternalParam.used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:15: InternalParam.unused_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:24: InternalApp.externally_used
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: InternalApp.internally_used
+
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:3: Original.used_directly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: Original.used_indirectly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:14: Redefine.used_directly
+
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:3: Original.used_directly
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:4: Original.used_indirectly
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:5: Original.used_by_requirement
+
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:17: M_redef.externally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:18: M_redef.internally_used
+
+./examples/docs/exported_values/code_constructs/module/module_lib.mli:4: M.externally_used
+./examples/docs/exported_values/code_constructs/module/module_lib.mli:5: M.internally_used
+
+./examples/docs/exported_values/hello_world/hello_world.mli:2: hello
+./examples/docs/exported_values/hello_world/hello_world.mli:3: goodbye
+./examples/docs/exported_values/hello_world/hello_world_lib.mli:2: hello
+./examples/docs/exported_values/hello_world/hello_world_lib.mli:3: goodbye
+./examples/docs/exported_values/hello_world/hello_world_no_intf.ml:2: hello
+./examples/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye
+
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_no_intf.mli:1: mark_used
@@ -287,6 +334,17 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 2 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: ExternalParam.used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: ExternalParam.unused_required
+
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.externally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.internally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.unused
+
+./examples/docs/exported_values/hello_world/hello_world.mli:4: world
+./examples/docs/exported_values/hello_world/hello_world_lib.mli:4: world
+./examples/docs/exported_values/hello_world/hello_world_no_intf.ml:4: world
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: exported_f
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:38: internally_used_f
@@ -993,7 +1051,9 @@ Nothing else to report in this section
 ./examples/using_make/dir/anonFn2.mli:2: ?a   (2/3 calls)
 ./examples/using_make/dir/anonFn2.mli:2: ?b   (2/3 calls)
 ./examples/using_make/dir/match_opt.ml:1: ?b   (2/3 calls)
+
 ./examples/using_make/dir/matchopt.ml:1: ?x   (3/4 calls)
+
 ./examples/using_make/dir/ref_fn.ml:1: ?a   (2/3 calls)
 ./examples/using_make/dir/ref_fn.ml:1: ?b   (2/3 calls)
 
@@ -1192,9 +1252,9 @@ Nothing else to report in this section
 ./examples/using_make/dir/anonFn.mli:3: ?a   (1/2 calls)
 ./examples/using_make/dir/anonFn.mli:3: ?b   (1/2 calls)
 ./examples/using_make/dir/anonFn2.mli:1: ?b   (2/3 calls)
+
 ./examples/using_make/dir/matchopt.ml:1: ?y   (3/4 calls)
 ./examples/using_make/dir/matchopt.ml:1: ?z   (3/4 calls)
-
 ./examples/using_make/let_in.ml:1: ?b   (2/3 calls)
 ./examples/using_make/matchopt.ml:1: ?y   (3/4 calls)
 ./examples/using_make/matchopt.ml:1: ?z   (3/4 calls)
@@ -1209,6 +1269,32 @@ Nothing else to report in this section
 
 .> CODING STYLE:
 ===============
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:21: unit pattern used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:22: unit pattern unused_required
+
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:3: unit pattern used_directly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: unit pattern used_indirectly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: unit pattern unused
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:14: unit pattern used_directly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: unit pattern unused
+
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:3: unit pattern used_directly
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:4: unit pattern used_indirectly
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:5: unit pattern used_by_requirement
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: unit pattern unused
+
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:11: unit pattern externally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:12: unit pattern internally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:13: unit pattern unused
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:14: unit pattern unused_unexported
+
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:4: unit pattern externally_used
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:5: unit pattern internally_used
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:6: unit pattern unused
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: let () = ... in ... (=> use sequence)
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: unit pattern unit_binding
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:84: val f: ... -> (... -> ?_:_ -> ...) -> ...

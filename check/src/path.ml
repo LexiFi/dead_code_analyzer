@@ -37,22 +37,23 @@ let normalize path =
 
  (* Relocate a `path` found in a `.got` file as a relative path from the
     project's root.
-    - For files in 'using_make': there is no 'using_make' file or directory in
-   '<project_root>/examples/using_<dune|make>'. Therefore, taking everything in the
-   path from the last 'using_make' filename provides the common part for the
-   relocation. Then, adding an extra './' completes the path as found in the
-   expected reports
+    - For files in 'docs' and 'using_make': there is no 'using_make' file or
+   directory in '<project_root>/examples/*'. Therefore, taking everything in the
+   path from the last 'docs' or 'using_make' filename provides the common part
+   for the relocation. Then, adding an extra './iexamples' completes the path as
+   found in the expected reports
  - For files in 'using_dune': the same startegy as for files in 'using_make'
    can be applied with the removal of '_build/default' on the way.
    Because those directory names are unique, we can actually share the same
    logic for both 'using_make' and 'using_dune'. *)
 let relocate path =
   (* retrieve the subpath starting from the last occurence of
-     "using_<make|dune>" if it exists, and remove "_build" and "default"
+     a valid basename if it exists, and remove "_build" and "default"
      directories from the path *)
+  let valid_basenames = ["docs"; "using_make"; "using_dune"] in
   let rec extract_subpath acc dirpath =
     let basename = Filename.basename dirpath in
-    if basename = "using_make" || basename = "using_dune" then
+    if List.mem basename valid_basenames then
       basename::acc
     else if basename = dirpath (* fixpoint *) then
       path::[] (* TODO: error handling *)
@@ -64,7 +65,7 @@ let relocate path =
       in
       extract_subpath acc (Filename.dirname dirpath)
   in
-  let relative_path = (* ["using<make|dune>"; <path/to/file>...] *)
+  let relative_path = (* [valid_basename; <path/to/file>...] *)
     extract_subpath [] path
   in
   String.concat Filename.dir_sep ("."::"examples"::relative_path)

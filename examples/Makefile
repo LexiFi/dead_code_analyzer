@@ -1,11 +1,15 @@
-.PHONY: clean run_dca build_dca build_dune build_make build dune_only make_only
+.PHONY: clean run_dca build_dca build_dune build_make build_docs build dune_only make_only docs_only
 
+CMTI_ROOT_DOCS=docs
 CMTI_ROOT_MAKE=using_make
 CMTI_ROOT_DUNE=using_dune/_build/default/
-CMTI_ROOT?=$(CMTI_ROOT_MAKE) $(CMTI_ROOT_DUNE)
+CMTI_ROOT?=$(CMTI_ROOT_DOCS) $(CMTI_ROOT_MAKE) $(CMTI_ROOT_DUNE)
 REDIRECT?="" # Used by ../check/Makefile
 
 all: build build_dca run_dca
+
+docs_only: build_make build_dca
+	make run_dca CMTI_ROOT=$(CMTI_ROOT_DOCS)
 
 make_only: build_make build_dca
 	make run_dca CMTI_ROOT=$(CMTI_ROOT_MAKE)
@@ -13,7 +17,10 @@ make_only: build_make build_dca
 dune_only: build_dune build_dca
 	make run_dca CMTI_ROOT=$(CMTI_ROOT_DUNE)
 
-build: build_make build_dune
+build: build_docs build_make build_dune
+
+build_docs:
+	make -C docs
 
 build_make:
 	make -C using_make
@@ -29,5 +36,6 @@ run_dca:
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
+	make -C docs clean
 	make -C using_make clean
 	dune clean --root=using_dune
