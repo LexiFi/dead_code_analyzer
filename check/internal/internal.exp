@@ -1,5 +1,20 @@
 .> UNUSED EXPORTED VALUES:
 =========================
+./examples/docs/exported_values/code_constructs/function/function_lib.mli:7: unused
+
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: InternalApp.unused
+
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
+
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: Original.unused
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:12: Alias_with_sig.used_by_requirement
+
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:19: M_redef.unused
+
+./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
@@ -483,6 +498,32 @@ Nothing else to report in this section
 
 .> CODING STYLE:
 ===============
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:21: unit pattern used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:22: unit pattern unused_required
+
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:3: unit pattern used_directly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: unit pattern used_indirectly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: unit pattern unused
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:14: unit pattern used_directly
+./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: unit pattern unused
+
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:3: unit pattern used_directly
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:4: unit pattern used_indirectly
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:5: unit pattern used_by_requirement
+./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: unit pattern unused
+
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:11: unit pattern externally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:12: unit pattern internally_used
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:13: unit pattern unused
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.ml:14: unit pattern unused_unexported
+
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:4: unit pattern externally_used
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:5: unit pattern internally_used
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:6: unit pattern unused
+./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: let () = ... in ... (=> use sequence)
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: unit pattern unit_binding
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:84: val f: ... -> (... -> ?_:_ -> ...) -> ...
@@ -528,3 +569,5 @@ Nothing else to report in this section
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
+
+

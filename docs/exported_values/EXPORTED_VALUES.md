@@ -213,7 +213,7 @@ Warning 26 [unused-var]: unused variable y.
 
 ## Hello world
 
-All of the following examples can be found in the [hello\_world](./hello_world)
+All of the following examples can be found in the [hello\_world](../../examples/docs/exported_values/hello_world)
 directory.
 
 The reference takes place in `/tmp/docs/exported_values/hello_world`, which
@@ -226,7 +226,7 @@ This example illustrates a simple case of a compilation unit without `.mli` and
 without any external use.
 
 The reference file for this example is
-[`hello_world_no_intf.ml`](./hello_world/hello_world_no_intf.ml).
+[`hello_world_no_intf.ml`](../../examples/docs/exported_values/hello_world/hello_world_no_intf.ml).
 
 The compilation command to produce `hello_world_no_intf.cmi` and
 `hello_world_no_intf.cmt` is :
@@ -365,8 +365,8 @@ Although an interface is provided, all the uses remain inside the same
 compilation unit.
 
 The reference files for this example are
-[`hello_world.mli`](./hello_world/hello_world.mli) and
-[`hello_world.ml`](./hello_world/hello_world.ml)
+[`hello_world.mli`](../../examples/docs/exported_values/hello_world/hello_world.mli) and
+[`hello_world.ml`](../../examples/docs/exported_values/hello_world/hello_world.ml)
 
 The compilation command to produce `hello_world.cmi` and `hello_world.cmt` is :
 ```
@@ -488,9 +488,9 @@ This example is the same as the previous example, split in 2 separate
 compilation units. All the exported values are now used externally.
 
 The reference files for this example are
-[`hello_world_lib.mli`](./hello_world/hello_world_lib.mli),
-[`hello_world_lib.ml`](./hello_world/hello_world_lib.ml), and
-[`hello_world_bin.ml`](./hello_world/hello_world_bin.ml)
+[`hello_world_lib.mli`](../../examples/docs/exported_values/hello_world/hello_world_lib.mli),
+[`hello_world_lib.ml`](../../examples/docs/exported_values/hello_world/hello_world_lib.ml), and
+[`hello_world_bin.ml`](../../examples/docs/exported_values/hello_world/hello_world_bin.ml)
 
 The compilation command to produce the necessary `.cmi` and `.cmt` files is :
 ```
@@ -786,7 +786,7 @@ Our work here is done.
 ## Code constructs
 
 All of the following examples can be found in the
-[code\_constructs](./code_constructs) directory.
+[code\_constructs](../../examples/docs/exported_values/code_constructs) directory.
 
 The reference takes place in `/tmp/docs/exported_values/code_constructs`, which
 is a copy of `code_constructs`. Reported locations may differ depending on the
@@ -795,7 +795,7 @@ location of the source files.
 ### Function
 
 The reference files for this example are in the
-[function](./code_constructs/function) directory.
+[function](../../examples/docs/exported_values/code_constructs/function) directory.
 
 The compilation command is :
 ```
@@ -967,7 +967,7 @@ fixes all the warnings. Our work here is done.
 ### Module
 
 The reference files for this example are in the
-[module](./code_constructs/module) directory.
+[module](../../examples/docs/exported_values/code_constructs/module) directory.
 
 The compilation command is :
 ```
@@ -1118,7 +1118,7 @@ anything. Removing that value fixes all the warnings. Our work here is done.
 ### Functor
 
 The reference files for this example are in the
-[functor](./code_constructs/functor) directory.
+[functor](../../examples/docs/exported_values/code_constructs/functor) directory.
 
 The compilation command is :
 ```
@@ -1445,7 +1445,7 @@ The unused values can be removed as explained. Our work here is done.
 ### Module Type
 
 The reference files for this example are in the
-[modtyp](./code_constructs/modtyp) directory.
+[modtyp](../../examples/docs/exported_values/code_constructs/modtyp) directory.
 
 The compilation command is :
 ```
@@ -1597,7 +1597,7 @@ Our work here is done.
 ### Module Signature
 
 The reference files for this example are in the
-[modsig](./code_constructs/modsig) directory.
+[modsig](../../examples/docs/exported_values/code_constructs/modsig) directory.
 
 The compilation command is :
 ```
@@ -1760,7 +1760,7 @@ values anymore. Our work here is done.
 ### Include
 
 The reference files for this example are in the
-[include](./code_constructs/include) directory.
+[include](../../examples/docs/exported_values/code_constructs/include) directory.
 
 The compilation command is :
 ```
