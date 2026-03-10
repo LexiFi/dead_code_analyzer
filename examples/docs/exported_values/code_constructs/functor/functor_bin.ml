@@ -1,8 +1,8 @@
 (* functor_bin.ml *)
 open Functor_lib
 
-module ExternalApp = F(ExternalParam)
+module External_app = F(External_param)
 
 let () =
-  ignore InternalApp.externally_used;
-  ignore ExternalApp.externally_used
+  ignore Internal_app.externally_used;
+  ignore External_app.externally_used

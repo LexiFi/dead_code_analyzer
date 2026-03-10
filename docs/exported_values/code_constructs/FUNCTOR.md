@@ -37,17 +37,17 @@ end) : sig
   val unused : t
 end
 
-module InternalParam : sig
+module Internal_param : sig
   val used_required : t
   val unused_required : t
 end
 
-module ExternalParam : sig
+module External_param : sig
   val used_required : t
   val unused_required : t
 end
 
-module InternalApp : sig
+module Internal_app : sig
   val externally_used : t
   val internally_used : t
   val unused : t
@@ -68,27 +68,27 @@ end) = struct
   let () = internally_used
 end
 
-module InternalParam = struct
+module Internal_param = struct
   let used_required = ()
   let unused_required = ()
 end
 
-module ExternalParam = struct
+module External_param = struct
   let used_required = ()
   let unused_required = ()
 end
 
-module InternalApp = F(InternalParam)
+module Internal_app = F(Internal_param)
 ```
 ```OCaml
 (* functor_bin.ml *)
 open Functor_lib
 
-module ExternalApp = F(ExternalParam)
+module External_app = F(External_param)
 
 let () =
-  ignore InternalApp.externally_used;
-  ignore ExternalApp.externally_used
+  ignore Internal_app.externally_used;
+  ignore External_app.externally_used
 ```
 
 Before looking at the analysis results, let's look at the code.
@@ -96,21 +96,21 @@ Before looking at the analysis results, let's look at the code.
 The `Functor_lib` compilation unit exports 1 functor and 3 modules :
 - `F` takes a module containing the values `used_required` and `unused_required`,
   and returns a module with 3 values whose names are explicit.
-- `InternalParam` and `ExternalParam` fit the signature of `F`'s parameter `P`.
+- `Internal_param` and `External_param` fit the signature of `F`'s parameter `P`.
   The first one is used for a functor application inside `Functor_lib`.
   The second one is used for a functor application outside of it.
-- `InternalApp` fits the signature of the result of `F`, and is impemented as
+- `Internal_app` fits the signature of the result of `F`, and is impemented as
   the result of applying `F` inside its compilation unit.
 
-The `Functor_bin` compilation unit exports 1 module : `ExternalApp`, which is
+The `Functor_bin` compilation unit exports 1 module : `External_app`, which is
 the result of applying `Functor_lib.F` outside its compilation unit.
 
 Among all the exported values, the only explicit references accounted for are
-`InternalApp.externally_used` and `External_app.externally_used` in
+`Internal_app.externally_used` and `External_app.externally_used` in
 `Functor_bin`.
 
-Additionally, some values are used by requirement. Because `InternalParam` and
-`ExternalParam` are passed as arguments to `F`, their values `used_required` and
+Additionally, some values are used by requirement. Because `Internal_param` and
+`External_param` are passed as arguments to `F`, their values `used_required` and
 `unused_required` are used by requirement to fulfill the signature of `F`'s
 parameter `P`.
 
@@ -139,10 +139,10 @@ Scanning files...
 =========================
 /tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
 /tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
-/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:14: InternalParam.used_required
-/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:15: InternalParam.unused_required
-/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:25: InternalApp.internally_used
-/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:26: InternalApp.unused
+/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:14: Internal_param.used_required
+/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:15: Internal_param.unused_required
+/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
+/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:26: Internal_app.unused
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -156,35 +156,35 @@ make: Leaving directory '/tmp/docs/exported_values/code_constructs/functor'
 > - `unexported_unused`, defined by `F`, like it did in the [module](MODULE.md) example.
 
 The analyzer reports 6 unused exported values, all in `functor_lib.mli` :
-2 in `F`, 2 in `InternalParam`, and 2 in `InternalApp`. Let's observe them by
+2 in `F`, 2 in `Internal_param`, and 2 in `Internal_app`. Let's observe them by
 module (in reverse order) :
 
-- The reports for `InternalApp` are identical to the [module](MODULE.md) example.
-Although, `InternalApp` is implemented as the result of applying `F` in
+- The reports for `Internal_app` are identical to the [module](MODULE.md) example.
+Although, `Internal_app` is implemented as the result of applying `F` in
 `functor_lib.ml`, its signature is independent of `F` in `functor_lib.mli`.
 I.e. it exposes its own values and the link between them and those of
 `F` is absent from the signature. Consequently, they are tracked independently.
 
-- As we observed before runnning the analyzer, the values in `InternalParam` are
+- As we observed before runnning the analyzer, the values in `Internal_param` are
 used by requirement. However, this use is internal to `Functor_lib`, and there
 is an interface available : `functor_lib.mli`. Consequently, the internal uses
-are ignored, and `InternalParam`'s values become unused.
+are ignored, and `Internal_param`'s values become unused.
 
 - `F` is a functor but is tracked like a regular module. The reported values are
 those of its result module. Reporting on those may feel like duplicates, but,
-as explained for the reports of `InternalApp`, the values of the result
-module are declared independently of those of `InternalApp`, hence they are
+as explained for the reports of `Internal_app`, the values of the result
+module are declared independently of those of `Internal_app`, hence they are
 tracked and reported independently.
 
 All the values reported by the analyzer can be safely removed.
 
 Before moving on, there is another observation that we can make :
-the values `unused` and `internally_used` of `ExternalApp` are not reported.
-Because they are reported for `InternalApp` and `F`, one could
-expect them to be reported for `ExternalApp` as well. In reality, they are not
-tracked individually for `ExternalApp` because it does not expose them
-explicitly. Unlike `InternalApp` which has an explicit module signature,
-`ExternalApp` does not. Consequently, its values are directly linked to those of
+the values `unused` and `internally_used` of `External_app` are not reported.
+Because they are reported for `Internal_app` and `F`, one could
+expect them to be reported for `External_app` as well. In reality, they are not
+tracked individually for `External_app` because it does not expose them
+explicitly. Unlike `Internal_app` which has an explicit module signature,
+`External_app` does not. Consequently, its values are directly linked to those of
 `F`. This situation is explored in the
 [module signature](MODSIG.md) example.
 
@@ -214,7 +214,7 @@ explicitly. Unlike `InternalApp` which has an explicit module signature,
 ## Removing the unused values
 
 In addition to removing everything that was reported by the compiler and the
-analyzer, we also commented out `P.used_required` and `InternalParam` in
+analyzer, we also commented out `P.used_required` and `Internal_param` in
 `functor_lib.mli`. It is up to the user to decide whether they would like to
 keep them or remove them from their specifications. Neither would be reported
 by the compiler or the analyzer.
@@ -239,16 +239,16 @@ end) : sig
 end
 
 (*
-module InternalParam : sig
+module Internal_param : sig
 end
 *)
 
-module ExternalParam : sig
+module External_param : sig
   val used_required : t
   val unused_required : t
 end
 
-module InternalApp : sig
+module Internal_app : sig
   val externally_used : t
 end
 ```
@@ -265,27 +265,27 @@ end) = struct
   let () = internally_used
 end
 
-module InternalParam = struct
+module Internal_param = struct
   let used_required = ()
   let unused_required = ()
 end
 
-module ExternalParam = struct
+module External_param = struct
   let used_required = ()
   let unused_required = ()
 end
 
-module InternalApp = F(InternalParam)
+module Internal_app = F(Internal_param)
 ```
 ```OCaml
 (* functor_bin.ml *)
 open Functor_lib
 
-module ExternalApp = F(ExternalParam)
+module External_app = F(External_param)
 
 let () =
-  ignore InternalApp.externally_used;
-  ignore ExternalApp.externally_used
+  ignore Internal_app.externally_used;
+  ignore External_app.externally_used
 ```
 
 Compile and analyze :
@@ -308,7 +308,7 @@ Scanning files...
 
 .> UNUSED EXPORTED VALUES:
 =========================
-/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:18: ExternalParam.unused_required
+/tmp/docs/exported_values/code_constructs/functor/functor_lib.mli:18: External_param.unused_required
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -317,13 +317,13 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/functor'
 ```
 
-Now that `F.unused` and `InternalParam.unused_required` are not exported, they
+Now that `F.unused` and `Internal_param.unused_required` are not exported, they
 are reported as unused by the compiler, and can be removed safely.
 
-`ExternalParam.unused_required` was used by requirement. Now that it is not
+`External_param.unused_required` was used by requirement. Now that it is not
 required by `P` (because it is commented out), it is unused and the analyzer
 correctly reports it. It can be removed safely. Removing it will trigger the
-same compiler warning as for `InternalParam.unused_required`, so it can be
+same compiler warning as for `Internal_param.unused_required`, so it can be
 removed from both the interface and the implementation.
 
 The unused values can be removed as explained. Our work here is done.

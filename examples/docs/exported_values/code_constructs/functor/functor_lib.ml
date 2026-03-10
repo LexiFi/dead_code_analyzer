@@ -12,14 +12,14 @@ end) = struct
   let () = internally_used
 end
 
-module InternalParam = struct
+module Internal_param = struct
   let used_required = ()
   let unused_required = ()
 end
 
-module ExternalParam = struct
+module External_param = struct
   let used_required = ()
   let unused_required = ()
 end
 
-module InternalApp = F(InternalParam)
+module Internal_app = F(Internal_param)

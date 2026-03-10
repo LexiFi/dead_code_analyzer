@@ -4,10 +4,10 @@
 
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:14: InternalParam.used_required
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:15: InternalParam.unused_required
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: InternalApp.internally_used
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: InternalApp.unused
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:14: Internal_param.used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:15: Internal_param.unused_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: Internal_app.unused
 
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
