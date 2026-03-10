@@ -81,10 +81,10 @@ Unused exported values are reported by default.
 Their reports can be deactivated by using the `--nothing` or `-E nothing`
 command line arguments.
 They can be reactivated by using the `--all` or `-E all` command line arguments.
-For more detail on the command line arguments see [the more general Usage
+For more details about the command line arguments see [the more general Usage
 documentation](../USAGE.md).
 
-The report section title is `.> UNUSED EXPORTED VALUES:`.
+The report section looks like:
 
 The expected resolution for an unused exported value is to remove it from the
 `.mli` if there is one, or the `.ml` otherwise.
@@ -127,7 +127,7 @@ without any external use.
 The reference file for this example is
 [`hello_world_no_intf.ml`](./hello_world/hello_world_no_intf.ml).
 
-The compilation command to produce the `hello_world_no_intf.cmi` and
+The compilation command to produce `hello_world_no_intf.cmi` and
 `hello_world_no_intf.cmt` is :
 ```
 ocamlopt -bin-annot hello_world_no_intf.ml
@@ -153,14 +153,22 @@ let () =
   print_endline hello_world
 ```
 
-Compile and analyze :
+Compile :
 ```
 $ ocamlopt -bin-annot hello_world_no_intf.ml
 File "hello_world_no_intf.ml", line 8, characters 6-19:
 8 |   let goodbye_world = goodbye ^ world in
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
+```
 
+The compiler reports a warning 26 on `goodbye_world`:
+`Warning 26 [unused-var]: unused variable goodbye_world.`
+This tells us that the _local_ value is unused, and, thus, can be removed at the
+reported location: `File "hello_world_no_intf.ml", line 8`
+
+Analyze :
+```
 $ dead_code_analyzer --nothing -E all hello_world_no_intf.cmi hello_world_no_intf.cmt
 Scanning files...
  [DONE]
@@ -172,12 +180,12 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 ```
 
-Here we can see the warning 26 is triggered during the compilation. Hence, the
-_local_ value `goodbye_world` at line 8 can be removed.
-
-The analyzer reports that there is no unused _exported_ value. The 3 exported
-values are `hello`, `goodbye` and `world`. They are all referenced internally.
-Because there is no `hello_world_no_intf.mli`, the internal uses are accounted for.
+The analyzer does not report any unused _exported_ value. There are 3 exported
+in the `Hello_world_no_intf` compilation unit : `hello`, `goodbye` and `world`.
+These are the top level values of `hello_world_no_intf.ml`.
+They are all referenced internally. Because there is no `hello_world_no_intf.mli`,
+the internal uses are accounted for. Consequently, none of the exported values
+are considered unused by the analyzer.
 
 #### Fixing the warning 26
 
@@ -213,9 +221,10 @@ Nothing else to report in this section
 
 The compiler does not report any unused value.
 
-The analyzer, however, detects that `goodbye` declared at line 3 is now unused.
-
-Like we did with the warning 26, `goodbye` can be removed.
+The analyzer reports that `goodbye` declared at line 3 is unused :
+`/tmp/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye`
+Like the warning 26 above, this report tells us that `goodbye` can be removed
+at the reported location.
 
 #### Removing the unused `goodbye`
 
@@ -245,19 +254,20 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 ```
 
-Now, neither the compiler nor the analyzer report any unused value. Our work here is done.
+Now, neither the compiler nor the analyzer report any unused value.
+Our work here is done.
 
 ### Single compilation unit with interface
 
-This example illustrates a simple case of a compilation unit with `.mli` and
-without any external use.
-This is the same as the previous example with an extra interface.
+This example is the same as the previous example, with an explicit `.mli`.
+Although an interface is provided, all the uses remain inside the same
+compilation unit.
 
 The reference files for this example are
 [`hello_world.mli`](./hello_world/hello_world.mli) and
 [`hello_world.ml`](./hello_world/hello_world.ml)
 
-The compilation command to produce the `hello_world.cmi` and `hello_world.cmt` is :
+The compilation command to produce `hello_world.cmi` and `hello_world.cmt` is :
 ```
 ocamlopt -bin-annot hello_world.mli hello_world.ml
 ```
@@ -310,13 +320,13 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 ```
 
-Like in the previous example, the warning 26 is triggered during the
-compilation. Hence, the _local_ value `goodbye_world` at line 8 can be removed.
+The compiler reports the same warning 26 on `goodbye_world` as in the previous
+example.
 
 The analyzer reports that there are 3 unused _exported_ value in
 `hello_world.mli`: `hello` at line 2, `goodbye` line 3, and `world` line 4.
-These are the only exported values in the `hello_world` compilation unit because
-they are the only one listed in the `.mli`. They are all used in
+These are the only exported values in the `Hello_world` compilation unit because
+they are the only ones listed in the `.mli`. They are all used in
 `hello_world.ml`, but not outside of their compilation unit. Because there is an
 interface file available, only external uses are accounted for. Thus, they are
 considered unused and can be dropped from the `.mli`
@@ -359,8 +369,8 @@ Now, neither the compiler nor the analyzer report any unused value.
 We learned from the previous example that the `goodbye` value is unused after
 we remove `goodbye_world`. This is on the compiler to report it in this example
 because it is an _unexported_ value here (while it was an _exported_ value in
-the previous example). This warning is actually off by default and can be
-activated by passing the `-w +32` argument to the compiler :
+the previous example). The corresponding warning is actually off by default and
+can be activated by passing the `-w +32` argument to the compiler :
 ```
 $ ocamlopt -w +32 hello_world.ml
 File "hello_world.ml", line 3, characters 4-11:
@@ -373,15 +383,15 @@ analyzer will report unused values anymore. Our work here is done.
 
 ### Multiple compilation units
 
-This example illustrates a simple case of a library used by a binary.
-This is the same as the previous example with an extra indirection.
+This example is the same as the previous example, split in 2 separate
+compilation units. All the exported values are now used externally.
 
 The reference files for this example are
 [`hello_world_lib.mli`](./hello_world/hello_world_lib.mli),
 [`hello_world_lib.ml`](./hello_world/hello_world_lib.ml), and
 [`hello_world_bin.ml`](./hello_world/hello_world_bin.ml)
 
-The compilation command to produce the the necessary `.cmi` and `.cmt` files is :
+The compilation command to produce the necessary `.cmi` and `.cmt` files is :
 ```
 ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
 ```
@@ -438,10 +448,10 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 ```
 
-Like in the previous example, the warning 26 is triggered during the
-compilation. Hence, the _local_ value `goodbye_world` at line 8 can be removed.
+The compiler reports the same warning 26 on `goodbye_world` as in the previous
+example.
 
-The analyzer reports that there is no unused _exported_ value. The 3 exported
+The analyzer does not report any unused _exported_ value. The 3 exported
 values are `hello`, `goodbye` and `world` in `hello_world_lib.mli`. They are all
 referenced externally, in `hello_world_bin.ml`.
 
@@ -494,10 +504,7 @@ Nothing else to report in this section
 
 The compiler does not report any unused value.
 
-The analyzer, however, detects that `goodbye` declared in `hello_world_lib.mli`
-at line 3 is now unused.
-
-Like we did with the warning 26, `goodbye` can be removed.
+The analyzer reports `goodbye` as unused, as in the previous example.
 
 #### Unexporting `goodbye`
 
@@ -552,15 +559,13 @@ analyzer will report unused values anymore. Our work here is done.
 
 ### All Together
 
-This example illustrates a simple case of a complete codebase with independent
-and dependent components, and duplicate names.
-This is the grouping of all the previous [*Hello World*](#hello-world) examples.
-Analyzing all the files at once reduces the number of iterations to reach a
-satisfying codebase.
+This example is the grouping of all the previous [*Hello World*](#hello-world)
+examples. Analyzing all the files at once reduces the number of iterations to
+reach a satisfying codebase.
 
 The reference files for this example are all those listed previously.
 
-The compilation command to produce the the necessary `.cmi` and `.cmt` files,
+The compilation command to produce the necessary `.cmi` and `.cmt` files,
 and the desired warnings is the combination of all the previous ones :
 ```
 ocamlopt -w +32 -bin-annot hello_world_no_intf.ml hello_world.mli hello_world.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
@@ -577,12 +582,13 @@ dead_code_analyzer --nothing -E all .
 ```
 
 > [!TIP]
-> As we can see for the compilation command, there is a large number of files to
+> As we can see in the compilation command, there is a large number of files to
 > list. Instead of listing all the `.cmi` and `.cmt` files in the command line,
 > the analyzer accepts directories as arguments and will analyze all the
-> relevant files it can find in them and in their subdirectories.
+> relevant files it can find in them.
 
-The code is not re-exposed at each iteration here. It is the same as in the previous examples.
+The code is not re-exposed at each iteration here. It is the same as in the
+previous examples.
 
 #### First Run
 
@@ -605,7 +611,7 @@ File "hello_world_bin.ml", line 5, characters 6-19:
 Warning 26 [unused-var]: unused variable goodbye_world.
 ```
 
-Without any surprise, the compiler identifies the different warning 26 explored
+Without any surprise, the compiler reports the warnings 26 explored
 in the previous examples.
 Let's fix them and **recompile**, before running the analyzer.
 
@@ -627,10 +633,10 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 ```
 
-The analyzer correclty identifies the unused exported values it identified for
+The analyzer correctly reports the unused exported values it reported in
 the previous examples, all in one run. Note that the reports are in the
 lexicographical order.
-Unlike the compiler which listed its warnings in the order the files appeared in
+Unlike the compiler which listed its warnings in the order of the files in
 the command line, the analyzer always sorts its reports in this order.
 
 #### Removing the unused exported values
@@ -652,9 +658,9 @@ File "hello_world_lib.ml", line 3, characters 4-11:
 Warning 32 [unused-value-declaration]: unused value goodbye.
 ```
 
-Once again, the finidings are the same as for the previous examples. After
+Once again, the warnings are the same as for the previous examples. After
 `goodbye_world` is removed and `goodbye` is unexported, the compiler warning 32
-indicates that it is unused.
+indicates that `goodbye` is unused.
 Let's fix the warnings.
 
 Compile and analyze :
@@ -672,7 +678,8 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 ```
 
-Now, neither the compiler nor the analyzer report any unused value. Our work here is done.
+Now, neither the compiler nor the analyzer report any unused value.
+Our work here is done.
 
 
 ## Code constructs
@@ -685,8 +692,6 @@ is a copy of `code_constructs`. Reported locations may differ depending on the
 location of the source files.
 
 ### Function
-
-This example illustrates that exported functions are exported values.
 
 The reference files for this example are in the
 [function](./code_constructs/function) directory.
@@ -749,9 +754,9 @@ let () =
 ```
 
 Function values are analyzed like any other value. Hence, passing them as
-argument to a function or applying them (even partially) count as uses just like
-any other explicit reference. Therefore, `Function_lib`'s `heavy_computation`,
-`memoize`, and `do_nothing` are used in `Function_bin`. This leaves
+arguments to a function or applying them (even partially) count as uses just
+like any other explicit reference. Therefore, `Function_lib`'s `memoize`,
+`heavy_computation`, and `do_nothing` are used in `Function_bin`. This leaves
 `Function_lib.unused` as the only unused exported value.
 
 
@@ -785,12 +790,7 @@ warning 27. This can be easily fixed by prefixing the name with an underscore
 solutions may be considered, such as removing the parameter, or fixing the
 argument's type to `unit`.
 
-> [!NOTE]
-> The warning 27 is off by default. It is enabled by passing the `-w +27`
-> argument to the compiler
-
-As expected, the only unused exported value reported by the analyzer is
-`unused` in `function_lib.mli`.
+As expected, the analyzer only reports `unused`, declared in `function_lib.mli`.
 
 #### Removing the unused values
 
@@ -858,14 +858,12 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/function'
 ```
 
-Now that `unused` is unexported, the compiler can report it as unused via the
-warning 32, and the analyzer does not report anaything. Removing that value
+Now that `unused` is unexported, the compiler reports it as unused via the
+warning 32, and the analyzer does not report anything. Removing that value
 fixes all the warnings. Our work here is done.
 
 
 ### Module
-
-This example illustrates a simple case of exported values in submodules.
 
 The reference files for this example are in the
 [module](./code_constructs/module) directory.
@@ -916,7 +914,8 @@ let () =
 ```
 
 Before looking at the analysis results, let's look at the code.
-Here, all the values of `Module_lib.M` are exported except for
+
+All the values of `Module_lib.M` are exported except for
 `unused_unexported`. Among the exported values, `unused` is not referenced
 anywhere, `internally_used` is only referenced within its compilation unit
 (`Module_lib`), and `externally_used` is only referenced outside of it.
@@ -950,14 +949,14 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/module'
 ```
 
-The compiler detects that `unused_unexported` is unused.
+The compiler reports that `unused_unexported` is unused.
 
 The analyzer reports `M.internally_used` and `M.unused` as unused. Notice how
 it did not only report the name of the value but its full path within its
 compilation unit.
 
 > [!NOTE]
-> `M.internally_used` is only used withing its compialtion unit. Because its is
+> `M.internally_used` is only used within its compilation unit. Because it is
 > declared in a `.mli`, only external uses are accounted for.
 > It is left as an exercise to the reader to explore this example without
 > `module_lib.mli`
@@ -1012,11 +1011,10 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/module'
 ```
 
-The compiler reports `unused` as unused and the analyzer does not report anything. Removing that value fixes all the warnings. Our work here is done.
+The compiler reports `unused` as unused and the analyzer does not report
+anything. Removing that value fixes all the warnings. Our work here is done.
 
 ### Functor
-
-This example illustrates a simple case of exported values in functors.
 
 The reference files for this example are in the
 [functor](./code_constructs/functor) directory.
@@ -1121,7 +1119,7 @@ The `Functor_bin` compilation unit exports 1 module : `ExternalApp`, which is
 the result of applying `Functor_lib.F` outside its compilation unit.
 
 Among all the exported values, the only explicit references accounted for are
-those of `InternalApp.externally_used` and `External_app.externally_used` in
+`InternalApp.externally_used` and `External_app.externally_used` in
 `Functor_bin`.
 
 Additionally, some values are used by requirement. Because `InternalParam` and
@@ -1129,7 +1127,7 @@ Additionally, some values are used by requirement. Because `InternalParam` and
 `unused_required` are used by requirement to fulfill the signature of `F`'s
 parameter `P`.
 
-With those observations in mind, let's see what the compiler and the anlyzer
+With those observations in mind, let's see what the compiler and the analyzer
 report.
 
 Compile and analyze:
@@ -1166,28 +1164,24 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/functor'
 ```
 
-The compiler tells us that `unused_required` is unused in the implementation of
-`F`. It also reports `unexported_unused` in `F` like it did in the
-[module example](#module) for regular modules. These 2 values can be removed at
-the indicated locations.
+> The compiler reports 2 unused values, that can be removed at the reported locations :
+> - `unused_required`, defined by `P`, the parameter of `F`;
+> - `unexported_unused`, defined by `F`, like it did in the [module](#module) example.
 
-The analyzer reports 6 unused exported values, all in the `functor_lib.mli` :
+The analyzer reports 6 unused exported values, all in `functor_lib.mli` :
 2 in `F`, 2 in `InternalParam`, and 2 in `InternalApp`. Let's observe them by
 module (in reverse order) :
 
-- The reports for `InternalApp` are identical to the [module example](#module).
-Although, `InternalApp` is the result of applying `F`, it has an explicit
-signature. I.e. it exposes its own values and the link between them and those of
+- The reports for `InternalApp` are identical to the [module](#module) example.
+Although, `InternalApp` is implemented as the result of applying `F` in
+`functor_lib.ml`, its signature is independent of `F` in `functor_lib.mli`.
+I.e. it exposes its own values and the link between them and those of
 `F` is absent from the signature. Consequently, they are tracked independently.
 
 - As we observed before runnning the analyzer, the values in `InternalParam` are
 used by requirement. However, this use is internal to `Functor_lib`, and there
 is an interface available : `functor_lib.mli`. Consequently, the internal uses
 are ignored, and `InternalParam`'s values become unused.
-
-> [!NOTE]
-> The kind of use (explicit reference, or by requirement) has no influence on
-> the tracking mode (external only, or internal + external).
 
 - `F` is a functor but is tracked like a regular module. The reported values are
 those of its result module. Reporting on those may feel like duplicates, but,
@@ -1199,16 +1193,16 @@ All the values reported by the analyzer can be safely removed.
 
 Before moving on, there is another observation that we can make :
 the values `unused` and `internally_used` of `ExternalApp` are not reported.
-Because they are reported for `InternalApp` and `F`, it would be natural to
-expect them in the reports for `ExternalApp` as well. In reality, they are not
+Because they are reported for `InternalApp` and `F`, one could
+expect them to be reported for `ExternalApp` as well. In reality, they are not
 tracked individually for `ExternalApp` because it does not expose them
 explicitly. Unlike `InternalApp` which has an explicit module signature,
 `ExternalApp` does not. Consequently, its values are directly linked to those of
-`F`. This situation will be explored in the
+`F`. This situation is explored in the
 [module signature](#module-signature) example.
 
 > [!TIP]
-> If we activated the compiler warning 67 `unused-functor-parameter`(by
+> If we activated the compiler warning 67 `unused-functor-parameter` (by
 > passing the argument `-w +67`), then the compiler would have reported :
 > ```
 > File "functor_lib.mli", line 4, characters 10-11:
@@ -1239,11 +1233,11 @@ keep them or remove them from their specifications. Neither would be reported
 by the compiler or the analyzer.
 
 > [!NOTE]
-> Functors are covariant in their parameters. I.e. it is allowed to give a
-> larger module as argument than what the parameter specifies.
-> Similarly it is allowed to declare the parameter larger in the interface than
-> it is in the implementation. Consequently, the compiler would not complain if
-> `P` would expect `unused_required` in the `.mli` but not in the `.ml`.
+> It is allowed to give a larger module as argument than what the parameter
+> specifies. Similarly it is allowed to declare the parameter larger in the
+> interface than it is in the implementation. Consequently, the compiler would
+> not complain if  `P` expected `unused_required` in the `.mli` but not in the
+> `.ml`.
 
 Code:
 ```OCaml
@@ -1349,8 +1343,6 @@ The unused values can be removed as explained. Our work here is done.
 
 ### Module Type
 
-This example illustrates a simple case of exported values in module types.
-
 The reference files for this example are in the
 [modtyp](./code_constructs/modtyp) directory.
 
@@ -1371,6 +1363,7 @@ make -C modtyp
 
 > [!IMPORTANT]
 > **LIMITATION**
+>
 > In order to reduce noise (false positives and duplication) in the results,
 > the analyzer currently ignores values exported by module types
 > (see [issue #50](https://github.com/LexiFi/dead_code_analyzer/issues/50)).
@@ -1436,19 +1429,20 @@ let () =
   ignore Modtyp_lib.M_redef.externally_used
 ```
 
-Once again, let's look at the code before diving into the compilation and
-analysis. Here the `Modtyp_lib` exports 1 module type `T` and 4 modules :
+Before looking at the analysis results, let's look at the code.
+
+The `Modtyp_lib` exports 1 module type `T` and 4 modules :
 `M_reuse`, `M_constr`, `M_subst`, and `M_redef`. Of these 4 modules, the first
 3 have `T` as signature (with minor twists), while the last one has its own
 explicit signature, which is a copy of `T`. In this way, `M_redef` is equivalent
-to the [module](#module) example's `Module_lib.M` module : it exposes exactly
+to `Module_lib.M` in the [module](#module) example : it exposes exactly
 the same information.
 Each of the modules exposed by `Modtyp_lib` are used exactly in the same way :
 their `externally_used` values are explicitly referenced in `Modtyp_bin`.
 
-One could naturally expect that all the exported values are reported
-except for the `externally_used`. However, reporting e.g. `M_subst.internally_used`
-as unused would not be really actionable. In reality, this value is explicitly
+One could expect that all the exported values are reported except for the
+`externally_used`. However, reporting e.g. `M_subst.internally_used` as unused
+would not be immediately actionable. In reality, this value is explicitly
 declared by `T`.
 Fixing an unused value reported in a module using a module type as signature
 would require either removing the value from the module type (if possible),
@@ -1456,10 +1450,10 @@ or explicilty describing the signature of the module, effectively losing the
 benefits of using the module type. Thus, reporting unused values for the module
 itself would be counterproductive.
 
-An actionable report would be that of the value in the module type itself,
+An actionable report would be of the value in the module type itself,
 if it is unused by all the modules of that module type (as it is the case here
-for `T.unused`). Currenyl, and as described in the introduction of this example,
-the values exported by module types are ignored by the analyzeri, and,
+for `T.unused`). Currently, and as described in the introduction of this example,
+the values exported by module types are ignored by the analyzer, and,
 consequently, are not reported.
 
 Now that we have explained what the expected behavior of the analyzer should be,
@@ -1490,18 +1484,16 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/modtyp'
 ```
 
-As in the module example, the compiler detects that `unused_unexported` is unused.
+As in the module example, the compiler reports that `unused_unexported` is unused.
 
 As in the module example, the analyzer reports `M_redef.internally_used` and
 `M_redef.unused` as unused exported values.
 
-All the reports are similar to those of the [module example](#module).
-The exploration iand resolution of that example can be applied here identically.
+All the reports are similar to those of the [module](#module) example.
+Its exploration and resolution can be applied.
 Our work here is done.
 
 ### Module Signature
-
-This example illustrates a simple case of exported values in module signatures.
 
 The reference files for this example are in the
 [modsig](./code_constructs/modsig) directory.
@@ -1553,17 +1545,17 @@ The `Modsig_lib` compilation unit does not have a `.mli`, so all the internal
 uses are accounted for. It exposes 3 modules : `Original`, `Alias_without_sig`,
 and `Alias_with_sig`. Only the first module actually defines values. The second
 one is an trivial alias, and the third is an alias with an explicit signature.
-Because the 2 latter modules are aliases for the `Original` module, one could
-expect that the values exposed by them are unified with the ones in `Original`.
+Because the 2 latter modules are aliases of the `Original` module, one could
+expect that the values they expose are unified with the ones of `Original`.
 This would imply that only the values in `Original` could be reported as unused.
 This reasoning is partially true.
 
-As explained in the [module type example](#module-type), a report on a value in
-`Alias_without_sig` would not be trivially solved, but require removing the
-value from `Original` itself if possible or add an explicit signature to
-unexport the unused value. Thus, it is the case for `Alias_without_sig` that
-its values are unified with those of `Original`, and, consequently, that they
-cannot be reported as unused. Only the values in `Original` can be reported in this case.
+As explained in the [module type](#module-type) example, reporting a value in
+`Alias_without_sig` would not be trivially solved. Thus,
+its values are unified with those of `Original`, and, consequently, they
+cannot be reported by the analyzer. Only the values in `Original` can be
+reported in this case.
+
 However, `Alias_with_sig` has an explicit signature, which means 2 things:
 1. it controls what it exports, thus a reporting values in that module is
    trivially actionable by removing the reported values from the signature
@@ -1596,7 +1588,7 @@ make: Leaving directory '/tmp/docs/exported_values/code_constructs/modsig'
 
 The compiler does not report any unused value.
 
-The analyzer detects that `Original.unused` and
+The analyzer reports that `Original.unused` and
 `Alias_with_sig.used_by_requirement` are unused. As expected, it does not report
 any unused value in `Alias_without_sig`.
 Let's look more closely at the values and their uses.
@@ -1658,7 +1650,7 @@ make: Leaving directory '/tmp/docs/exported_values/code_constructs/modsig'
 
 The compiler does not report any unused value.
 
-The analyzer now detects that `Original.used_by_requirement` is unused. Indeed,
+The analyzer reports `Original.used_by_requirement` as unused. Indeed,
 by removing `used_by_requirement` from the signature of `Alias_with_sig` we
 removed the requirement for `Original` to provide it. This value can be removed
 from `Orignal`, and neither the compiler nor the analyzer will report unused
@@ -1717,23 +1709,24 @@ let () =
 Before looking at the analysis results, let's look at the code.
 
 The `Include_lib` compilation unit does not have a `.mli`, so all the internal
-uses are accounted for. It exposes 3 modules : `Original`, `Reexport`, and
-`Redefine`. The 1st one defines all its values, the 2nd only includes the 1st
-one, and the 3rd one includes the 1st and redefines 2 values : `used_directly`,
-and `unused`.
+uses are accounted for. It exposes 3 modules :
+- `Original`, which explicitly defines all its values;
+- `Reexport`, which only includes `Original`;
+- `Redefine`, which includes `Original` and redefines 2 values :
+  `used_directly`, and `unused`.
+
 By the explanation in the [module signature](#module-signature) and
 [module type](#module-type) examples, although there are 9 exported values
 (`used_directly`, `used_indirectly`, and `unused` for each module), only 5 are
 expected to be tracked by the analyzer : those in `Original` and the 2 redefined
-in `Redefine`. These are the only values a developer can trivially removeif
+in `Redefine`. These are the only values a developer can trivially remove if
 they are reported unused.
+
 Thus, the only values used are `Original.used_directly`,
 `Original.used_indirectly` (by an explicit reference to
 `Reexport.used_indirectly`), and `Redefine.used_directly`. This means that the
 unused exported values tracked by the analyzer are `Original.unused` and
 `Redefine.unused`.
-
-Let's look at the actual results.
 
 Compile and analyze:
 ```
@@ -1821,4 +1814,5 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/exported_values/code_constructs/include'
 ```
 
-Now, neither the compiler nor the analyzer report any unused value. Our work here is done.
+Now, neither the compiler nor the analyzer report any unused value.
+Our work here is done.
