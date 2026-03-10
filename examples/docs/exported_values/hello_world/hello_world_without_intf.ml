@@ -1,4 +1,4 @@
-(* hello_world.ml *)
+(* hello_world_without_intf.ml *)
 let hello = "Hello"
 let goodbye = "Goodbye"
 let world = "World"

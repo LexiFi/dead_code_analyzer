@@ -128,12 +128,12 @@
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:4: M.externally_used
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:5: M.internally_used
 
-./examples/docs/exported_values/hello_world/hello_world.mli:2: hello
-./examples/docs/exported_values/hello_world/hello_world.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_lib.mli:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_lib.mli:3: goodbye
-./examples/docs/exported_values/hello_world/hello_world_no_intf.ml:2: hello
-./examples/docs/exported_values/hello_world/hello_world_no_intf.ml:3: goodbye
+./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:2: hello
+./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
+./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
+./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
@@ -345,9 +345,9 @@
 ./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.internally_used
 ./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.unused
 
-./examples/docs/exported_values/hello_world/hello_world.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_lib.mli:4: world
-./examples/docs/exported_values/hello_world/hello_world_no_intf.ml:4: world
+./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
+./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:4: world
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: exported_f
