@@ -10,17 +10,17 @@ end) : sig
   val unused : t
 end
 
-module InternalParam : sig
+module Internal_param : sig
   val used_required : t
   val unused_required : t
 end
 
-module ExternalParam : sig
+module External_param : sig
   val used_required : t
   val unused_required : t
 end
 
-module InternalApp : sig
+module Internal_app : sig
   val externally_used : t
   val internally_used : t
   val unused : t
