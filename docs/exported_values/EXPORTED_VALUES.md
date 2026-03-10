@@ -2,6 +2,10 @@
 
 + [Exported Values](#exported-values)
     + [Definitions](#definitions)
+    + [Compiler warnings](#compiler-warnings)
+        + [Warning 26: unused-var](#warning-26-unused-var)
+        + [Warning 27: unused-var-strict](#warning-27-unused-var-strict)
+        + [Warning 32: unused-value-declaration](#warning-32-unused-value-declaration)
     + [Usage](#usage)
 + [Examples](#examples)
     + [Hello world](#hello-world)
@@ -28,18 +32,6 @@ In general, this is the `lhs` of `let lhs = ...` or `val lhs : ...`.
 An **exported** value is one that is accessible outside its compilation unit.
 I.e. a value that can be referenced in other `.ml` and/or `.mli` files than
 the ones that declare it.
-
-> [!NOTE]
-> The _exported_ attribute is important here.
-> The compiler already reports unused _unexported_ values (warning 32
-> `unused-value-declaration`) and unused _local_
-> values (warning 26 `unused-var`) [^unused-var-strict]. Because the compiler
-> already reports these 2 categories of values, the `dead_code_analyzer`
-> complements its work by focusing on the 3rd category.
-
-[^unused-var-strict]: The compiler also has the warning 27 `unused-var-strict`
-for unused values not bound by `let` or `as` (e.g. function parameters or values
-in patterns). These are out of context for the analyzer.
 
 A **use** is either :
 - An explicit reference.
@@ -75,6 +67,98 @@ A **use** is either :
          File "requirement.ml", line 4, characters 16-32: Expected declaration
   ```
 
+## Compiler warnings
+
+The analyzer reports unused _exported_ values while the compiler reports other
+kinds of unused values. They complement each other.
+
+> [!TIP]
+> To obtain a list of available compiler warnings, use
+> `ocamlopt -warn-help`
+
+The compiler warnings related to unused values are the 26, 27, and 32.
+The two firsts warn about unused local values. The third warns about unused
+unexported toplevel values.
+
+### Warning 26: unused-var
+
+This warning is enabled by default.
+I can be disabled by passing the `-w -26` to the compiler.
+
+Description:
+```
+26 [unused-var] Suspicious unused variable: unused variable that is bound
+    with "let" or "as", and doesn't start with an underscore ("_")
+    character.
+```
+
+Example:
+```OCaml
+(* warning26.ml *)
+let () =
+  let x = () in
+  ()
+```
+```
+$ ocamlopt warning26.ml
+File "warning26.ml", line 3, characters 6-7:
+3 |   let x = () in
+          ^
+Warning 26 [unused-var]: unused variable x.
+```
+
+### Warning 27: unused-var-strict
+
+This warning is disabled by default.
+I can be enabled by passing the `-w +27` to the compiler.
+
+Description:
+```
+27 [unused-var-strict] Innocuous unused variable: unused variable that is not bound with
+    "let" nor "as", and doesn't start with an underscore ("_")
+    character.
+```
+
+Example:
+```OCaml
+(* warning27.ml *)
+let f = function
+  | x -> ()
+```
+```
+$ ocamlopt -w +27 warning27.ml
+File "warning27.ml", line 2, characters 4-5:
+2 |   | x -> ()
+        ^
+Warning 27 [unused-var-strict]: unused variable x.
+```
+
+### Warning 32: unused-value-declaration
+
+This warning is disabled by default.
+I can be enabled by passing the `-w +32` to the compiler.
+
+Description:
+```
+32 [unused-value-declaration] Unused value declaration. (since 4.00)
+```
+
+Example:
+```OCaml
+(* warning32.mli *)
+```
+```OCaml
+(* warning32.ml *)
+let x = ()
+```
+```
+$ ocamlopt -w +32 warning32.mli warning32.ml
+File "warning32.ml", line 2, characters 4-5:
+2 | let x = ()
+        ^
+Warning 32 [unused-value-declaration]: unused value x.
+```
+
 ## Usage
 
 Unused exported values are reported by default.
@@ -107,6 +191,23 @@ exported values. I.e. if a value is only used by unused values, then it will
 not be reported as unused. It would be reported unused only after all the code
 using it has been removed.
 This is also the compiler's behavior for its warnings about unused values.
+
+E.g.
+```OCaml
+(* not_transitive.ml *)
+let () =
+  let x = () in
+  let y = x in
+  ()
+```
+```
+$ ocamlopt not_transitive.ml
+File "not_transitive.ml", line 4, characters 6-7:
+4 |   let y = x in
+          ^
+Warning 26 [unused-var]: unused variable y.
+```
+`y` is reported by the warning 26 but not `x`, because `x` is used by `y`.
 
 # Examples
 
