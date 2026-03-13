@@ -6,7 +6,6 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: Internal_app.unused
 
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
-./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Reexport.unused: Should not be detected
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
 
 ./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: Original.unused
@@ -572,7 +571,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 489
+Total: 488
 Success: 488
-Failed: 1
-Ratio: 99.7955010225%
+Failed: 0
+Ratio: 100.%
