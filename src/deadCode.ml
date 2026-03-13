@@ -516,9 +516,19 @@ let load_file fn state =
 
           let loc_dep =
             if Config.must_report_section state.config.sections.exported_values then
-              List.rev_map
+              let sourceunit =
+                State.File_infos.get_sourceunit state.file_infos
+              in
+              let in_sourceunit (pos : Lexing.position) =
+                String.equal (Utils.Filepath.unit pos.pos_fname) sourceunit
+              in
+              List.filter_map
                 (fun (vd1, vd2) ->
-                  (vd1.Types.val_loc.Location.loc_start, vd2.Types.val_loc.Location.loc_start)
+                   let loc1 = vd1.Types.val_loc.Location.loc_start in
+                   let loc2 = vd2.Types.val_loc.Location.loc_start in
+                   if in_sourceunit loc1 || in_sourceunit loc2 then
+                     Some (loc1, loc2)
+                   else None
                 )
                 cmt_value_dependencies
             else []
