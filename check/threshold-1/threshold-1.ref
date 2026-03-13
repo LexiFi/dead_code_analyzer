@@ -108,6 +108,8 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:14: Internal_param.used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:15: Internal_param.unused_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required: Not detected
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required: Not detected
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:24: Internal_app.externally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
 
@@ -950,7 +952,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 821
+Total: 823
 Success: 817
-Failed: 4
-Ratio: 99.5127892814%
+Failed: 6
+Ratio: 99.2709599028%
