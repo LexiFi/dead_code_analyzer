@@ -6,7 +6,6 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: Internal_app.unused
 
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
-./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Reexport.unused: Should not be detected
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
 
 ./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:6: Original.unused
@@ -114,10 +113,7 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
 
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:3: Original.used_directly
-./examples/docs/exported_values/code_constructs/include/include_lib.ml:3: Reexport.used_directly: Should not be detected
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: Original.used_indirectly
-./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: Redefine.used_indirectly: Should not be detected
-./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: Reexport.used_indirectly: Should not be detected
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:14: Redefine.used_directly
 
 ./examples/docs/exported_values/code_constructs/modsig/modsig_lib.ml:3: Original.used_directly
@@ -952,7 +948,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 823
+Total: 819
 Success: 817
-Failed: 6
-Ratio: 99.2709599028%
+Failed: 2
+Ratio: 99.7557997558%

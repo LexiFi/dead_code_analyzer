@@ -36,11 +36,19 @@ let rec collect_export ?(mod_type = false) path u stock = function
   | Sig_value (id, ({Types.val_loc; val_type; _} as value), _)
     when not val_loc.Location.loc_ghost ->
       let state = State.get_current () in
+      let builddir = State.File_infos.get_builddir state.file_infos in
       let should_export stock loc =
+        let loc = loc.Location.loc_start in
+        let already_exported stock loc =
+          match Hashtbl.find_opt stock loc with
+          | Some (builddir', _) -> String.equal builddir builddir'
+          | None -> false
+        in
         Config.must_report_section state.config.sections.exported_values
-        && (* do not add the loc in decs if it belongs to a module type *)
+        && (* do not add the loc in decs if it belongs to a module type
+              or if it is already exported *)
           ( stock != decs
-            || not (Hashtbl.mem in_modtype loc.Location.loc_start)
+            || not (Hashtbl.mem in_modtype loc || already_exported stock loc)
           )
       in
       if should_export stock val_loc then export path u stock id val_loc;
