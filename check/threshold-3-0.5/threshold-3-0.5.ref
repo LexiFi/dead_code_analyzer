@@ -107,8 +107,8 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:14: Internal_param.used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:15: Internal_param.unused_required
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required: Not detected
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required: Not detected
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:24: Internal_app.externally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
 
@@ -336,8 +336,6 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 2 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required: Should not be detected
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required: Should not be detected
 ./examples/docs/exported_values/hello_world/hello_world_lib.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:4: world
@@ -1339,7 +1337,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1133
-Success: 1129
-Failed: 4
-Ratio: 99.6469549868%
+Total: 1131
+Success: 1131
+Failed: 0
+Ratio: 100.%
