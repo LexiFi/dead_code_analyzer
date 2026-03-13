@@ -31,27 +31,55 @@ let main_files = Hashtbl.create 256   (* names -> paths *)
 
                 (********   PROCESSING   ********)
 
-let rec collect_export ?(mod_type = false) path u stock = function
+type context =
+  | Toplevel
+  | In_module of (Ident.t * Location.t)
+  | In_modtyp of (Ident.t * Location.t)
+  | Include
+
+let should_export_value ~context stock loc =
+  let state = State.get_current () in
+  let belongs_to_context loc =
+    match context with
+    | Toplevel | Include -> true
+    | In_module (_, md_loc)
+    | In_modtyp (_, md_loc) ->
+        (* When a value is part of a module sig because of:
+           - an include, then its location precedes that of the current module;
+           - a module type with substitution, then its location ends
+             with the current module's sig.
+           Checking that the value's location is striclty within the
+           module's rules out these 2 cases.
+          *)
+        let get_pos_info loc =
+          let fname, start_l, start_c =
+            Location.get_pos_info loc.Location.loc_start
+          in
+          let _, end_l, end_c = Location.get_pos_info loc.loc_end in
+          fname, (start_l, start_c), (end_l, end_c)
+        in
+        let v_fname, v_start, v_end = get_pos_info loc in
+        let md_fname, md_start, md_end = get_pos_info md_loc in
+        let ( > ) (l1, c1) (l2, c2) =
+          l1 > l2 || (l1 = l2 && c1 > c2)
+        in
+        String.equal v_fname md_fname
+        && v_start > md_start
+        && md_end > v_end
+  in
+  Config.must_report_section state.config.sections.exported_values
+  && (* do not add the loc in decs if it belongs to a module type
+        or if it is not actually declared in the current context *)
+    ( stock != decs
+      || (not (Hashtbl.mem in_modtype loc.Location.loc_start)
+          && belongs_to_context loc)
+    )
+
+let rec collect_export ~context path u stock = function
 
   | Sig_value (id, ({Types.val_loc; val_type; _} as value), _)
     when not val_loc.Location.loc_ghost ->
-      let state = State.get_current () in
-      let builddir = State.File_infos.get_builddir state.file_infos in
-      let should_export stock loc =
-        let loc = loc.Location.loc_start in
-        let already_exported stock loc =
-          match Hashtbl.find_opt stock loc with
-          | Some (builddir', _) -> String.equal builddir builddir'
-          | None -> false
-        in
-        Config.must_report_section state.config.sections.exported_values
-        && (* do not add the loc in decs if it belongs to a module type
-              or if it is already exported *)
-          ( stock != decs
-            || not (Hashtbl.mem in_modtype loc || already_exported stock loc)
-          )
-      in
-      if should_export stock val_loc then export path u stock id val_loc;
+      if should_export_value ~context stock val_loc then export path u stock id val_loc;
       let path = Ident.create_persistent (Ident.name id ^ "*") :: path in
       DeadObj.collect_export path u stock ~obj:val_type val_loc;
       !DeadLexiFi.sig_value value
@@ -62,15 +90,16 @@ let rec collect_export ?(mod_type = false) path u stock = function
   | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _, _) ->
       DeadObj.collect_export (id :: path) u stock ~cltyp:t loc
 
-  | (Sig_module (id, _, {Types.md_type = t; _}, _, _)
-  | Sig_modtype (id, {Types.mtd_type = Some t; _}, _)) as s ->
-      let stock =
-        match s with
-        | Sig_modtype _ when not mod_type -> in_modtype
-        | _ -> stock
+  | (Sig_module (id, _, {Types.md_type = t; md_loc = loc; _}, _, _)
+  | Sig_modtype (id, {Types.mtd_type = Some t; mtd_loc = loc; _}, _)) as s ->
+      let stock, context =
+        match s, context with
+        | _, Include -> stock, Include
+        | Sig_modtype _, _ -> in_modtype, In_modtyp (id, loc)
+        | _, _ -> stock, In_module (id, loc)
       in
       DeadMod.sign t
-      |> List.iter (collect_export ~mod_type (id :: path) u stock)
+      |> List.iter (collect_export ~context (id :: path) u stock)
 
   | _ -> ()
 
@@ -156,7 +185,7 @@ let structure_item super self i =
           |> Ident.create_persistent
         in
         List.iter
-          (collect_export ~mod_type:true [module_id] _include incl)
+          (collect_export ~context:Include [module_id] _include incl)
           signature;
         last_loc := prev_last_loc;
       in
@@ -373,7 +402,7 @@ let read_interface fn cmi_infos state = let open Cmi_format in
         |> Ident.create_persistent
       in
       let f =
-        collect_export [module_id] u decs
+        collect_export ~context:Toplevel [module_id] u decs
       in
       List.iter f cmi_infos.cmi_sign;
       last_loc := Lexing.dummy_pos
