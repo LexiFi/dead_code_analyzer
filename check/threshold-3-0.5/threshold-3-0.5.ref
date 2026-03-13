@@ -108,6 +108,8 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:14: Internal_param.used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:15: Internal_param.unused_required
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required: Not detected
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required: Not detected
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:24: Internal_app.externally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
 
@@ -338,13 +340,11 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 2 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required
-./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required
-
-./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.externally_used
-./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.internally_used
-./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.unused
-
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:19: External_param.used_required: Should not be detected
+./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:20: External_param.unused_required: Should not be detected
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.externally_used: Should not be detected
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.internally_used: Should not be detected
+./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:13: M_subst.unused: Should not be detected
 ./examples/docs/exported_values/hello_world/hello_world_lib.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:4: world
@@ -1346,7 +1346,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1138
-Success: 1134
-Failed: 4
-Ratio: 99.6485061511%
+Total: 1140
+Success: 1129
+Failed: 11
+Ratio: 99.0350877193%
