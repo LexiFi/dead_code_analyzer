@@ -11,6 +11,7 @@
 + [Limitations](#limitations)
     + [Module type](#module-type)
     + [Include module type with substitution](#include-module-type-with-substitution)
+    + [Including a module with same name](#including-a-module-with-the-same-name)
 
 # Exported Values
 
@@ -318,3 +319,72 @@ make: Leaving directory '/tmp/docs/exported_values/limitations/sigincl'
 
 The analyzer reports `I.x` at the line where `T` is included although it is
 actually declared in `T`.
+
+## Including a module with the same name
+
+Related issue :
+[issue #55](https://github.com/LexiFi/dead_code_analyzer/issues/55).
+
+According to the semantics described in the
+[Include](./code_constructs/INCLUDE.md) example, values re-exported via included
+should not be reported. However, it may happen that values re-exported by
+including a compilation unit out of the current codebase are reported when the
+re-exporting compilation unit has the same name as the one included.
+
+### Example
+
+The reference files for this example are in the
+[incl\_same\_name](../examples/docs/exported_values/limitations/incl_same_name)
+directory.
+
+The reference takes place in `/tmp/docs/exported_values/limitations`, which
+is a copy of the [limitations](../examples/docs/exported_values/limitations)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C incl_same_name build
+```
+
+The analysis command is :
+```
+make -C incl_same_name analyze
+```
+
+The compile + analyze command is :
+```
+make -C incl_same_name
+```
+
+Code:
+```OCaml
+(* oo.ml *)
+include Stdlib.Oo
+```
+
+Compile and analyze:
+```
+$ make -C incl_same_name
+make: Entering directory '/tmp/docs/exported_values/limitations/incl_same_name'
+ocamlopt -bin-annot oo.ml
+dead_code_analyzer --nothing -E all .
+Scanning files...
+ [DONE]
+
+.> UNUSED EXPORTED VALUES:
+=========================
+/tmp/docs/exported_values/limitations/incl_same_name/oo.mli:20: copy
+/tmp/docs/exported_values/limitations/incl_same_name/oo.mli:25: id
+/tmp/docs/exported_values/limitations/incl_same_name/oo.mli:40: new_method
+/tmp/docs/exported_values/limitations/incl_same_name/oo.mli:41: public_method_label
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/exported_values/limitations/incl_same_name'
+```
+
+The analyzer reports values in `oo.mli` although they are included from
+`Stdlib.Oo`.

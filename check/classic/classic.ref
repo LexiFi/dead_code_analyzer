@@ -25,6 +25,10 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:20: copy: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:25: id: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:40: new_method: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:41: public_method_label: Should not be detected
 ./examples/docs/exported_values/limitations/sigincl/sigincl_lib.mli:10: I.x: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
@@ -619,7 +623,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 532
+Total: 536
 Success: 531
-Failed: 1
-Ratio: 99.8120300752%
+Failed: 5
+Ratio: 99.0671641791%
