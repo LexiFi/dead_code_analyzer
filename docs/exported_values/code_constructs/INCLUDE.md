@@ -85,7 +85,6 @@ Scanning files...
 .> UNUSED EXPORTED VALUES:
 =========================
 /tmp/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
-/tmp/docs/exported_values/code_constructs/include/include_lib.ml:5: Reexport.unused
 /tmp/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
 
 Nothing else to report in this section
@@ -98,17 +97,6 @@ make: Leaving directory '/tmp/docs/exported_values/code_constructs/include'
 The compiler does not report any unused value.
 
 As expected, the analyzer reports `Original.unused` and `Redefine.unused`.
-However, it also reports `Reexport.unused`, which is unexpected.
-
-> [!WARNING]
-> The extra report on `Reexport.unused` is a known bug, tracked by
-> [issue #57](https://github.com/LexiFi/dead_code_analyzer/issues/57).
-> This duplicated report only exists because the modules `Original` and
-> `Reexport` belong to the same compilation unit (`Include_lib`). This can
-> easily be verified by moving `Reexport` in `Include_bin` instead.
-
-Because the report of `Reexport.unused` is actually a duplicate of the report
-of `Original.unused`, we can simply ignore it.
 
 ## Removing the unused values
 
