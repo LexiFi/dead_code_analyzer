@@ -524,6 +524,8 @@ Nothing else to report in this section
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:6: unit pattern unused
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
 
+./examples/docs/exported_values/limitations/sigincl/sigincl_lib.ml:9: unit pattern x
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: let () = ... in ... (=> use sequence)
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: unit pattern unit_binding
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:84: val f: ... -> (... -> ?_:_ -> ...) -> ...
