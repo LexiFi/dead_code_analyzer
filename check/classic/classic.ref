@@ -25,6 +25,7 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 
+./examples/docs/exported_values/limitations/sigincl/sigincl_lib.mli:10: I.x: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:38: internally_used_f
@@ -569,6 +570,8 @@ Nothing else to report in this section
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:6: unit pattern unused
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
 
+./examples/docs/exported_values/limitations/sigincl/sigincl_lib.ml:9: unit pattern x
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: let () = ... in ... (=> use sequence)
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: unit pattern unit_binding
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:84: val f: ... -> (... -> ?_:_ -> ...) -> ...
@@ -616,7 +619,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 530
-Success: 530
-Failed: 0
-Ratio: 100.%
+Total: 532
+Success: 531
+Failed: 1
+Ratio: 99.8120300752%
