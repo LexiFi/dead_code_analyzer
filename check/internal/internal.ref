@@ -15,6 +15,10 @@
 
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
 
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:20: copy: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:25: id: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:40: new_method: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/oo.mli:41: public_method_label: Should not be detected
 ./examples/docs/exported_values/limitations/sigincl/sigincl_lib.mli:10: I.x: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
@@ -574,7 +578,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 490
+Total: 494
 Success: 489
-Failed: 1
-Ratio: 99.7959183673%
+Failed: 5
+Ratio: 98.987854251%
