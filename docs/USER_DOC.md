@@ -54,6 +54,7 @@ This documentation is split accross different topics:
 
 - [Usage](USAGE.md) describes the usage of the `dead_code_analyzer` and its options.
 - [Exported Values](exported_values/EXPORTED_VALUES.md) describes the semantics and usage of the "unused exported values" report section, and provides examples.
+- [Methods](methods/METHODS.md) describes the semantics and usage of the "unused methods" report section, and provides examples.
 
 
 ## Footnotes
