@@ -161,6 +161,19 @@ For more details about the command line arguments see [the more general Usage
 documentation](../USAGE.md).
 
 The report section looks like:
+```
+.> UNUSED EXPORTED VALUES:
+=========================
+filepath:line: value
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+```
+The report line format is `filepath:line: value` with `filepath` the absolute
+path to the file (`.mli` if available, `.ml` otherwise) where `value` is
+declared, `line` the line index in `filepath` at which `value` is declared, and
+`value` the path of the value within its compilation unit (e.g. `M.x`).
+There can be any number of such lines.
 
 The expected resolution for an unused exported value is to remove it from the
 `.mli` if there is one, or the `.ml` otherwise.
