@@ -5,6 +5,7 @@
     + [Compiler warnings](#compiler-warnings)
         + [Warning 26: unused-ancestor](#warning-36-unused-ancestor)
     + [Usage](#usage)
++ [Examples](#examples)
 
 # Methods
 
@@ -130,3 +131,15 @@ from the `.mli` if there is one and the `.ml`.
 > of new unused methods, or remove some for values of object types.
 > Consequently, it is expected that a user might need to compile and analyze
 > their code multiple times when cleaning up their codebase.
+
+# Examples
+
+- The [code constructs](./code_constructs) directory contains a collection of
+  examples dedicated to specific code constructs :
+    - [Immediate object](./code_constructs/IMMEDIATE_OBJECT.md)
+
+[TODO]: # (
+    - [Class](./code_constructs/CLASS.md)
+    - [Class type](./code_constructs/CLASS_TYPE.md)
+    - [Inheritance](./code_constructs/INHERITANCE.md)
+    )
