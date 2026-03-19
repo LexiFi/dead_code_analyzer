@@ -15,6 +15,8 @@
 
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
 
+./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
@@ -101,6 +103,9 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
+./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
+./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
