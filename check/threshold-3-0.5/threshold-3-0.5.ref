@@ -140,6 +140,8 @@
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
+./examples/docs/methods/code_constructs/class/class_bin.ml:4: push_n_times
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:4: push_n_times
 
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
@@ -477,6 +479,9 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
+./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
+./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
 
@@ -540,6 +545,10 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED METHODS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#peek
+./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#pop
+./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#push
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#peek
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#pop
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#push
@@ -1357,7 +1366,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1145
-Success: 1140
+Total: 1151
+Success: 1146
 Failed: 5
-Ratio: 99.5633187773%
+Ratio: 99.5655951347%
