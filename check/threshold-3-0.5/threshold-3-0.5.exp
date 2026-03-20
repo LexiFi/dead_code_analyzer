@@ -137,6 +137,8 @@
 
 ./examples/docs/methods/code_constructs/class/class_bin.ml:4: push_n_times
 
+./examples/docs/methods/code_constructs/class_type/class_type_bin.ml:4: push_n_times
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:4: push_n_times
 
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
@@ -451,6 +453,8 @@
 
 .>->  ALMOST UNUSED EXPORTED VALUES: Called 3 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/methods/code_constructs/class_type/class_type_lib.mli:10: int_stack
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack
 
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:19: aliased_fun
