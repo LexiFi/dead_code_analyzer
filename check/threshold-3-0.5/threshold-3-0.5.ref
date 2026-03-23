@@ -150,6 +150,8 @@
 
 ./examples/docs/methods/code_constructs/object_type/object_type_bin.ml:4: push_n_times
 
+./examples/docs/methods/limitations/alias/alias_lib.mli:8: alias
+
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_no_intf.mli:1: mark_used
@@ -357,6 +359,8 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:4: world
 
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: exported_f
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:38: internally_used_f
@@ -500,6 +504,8 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
@@ -575,6 +581,8 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#used
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#used_by_child
 
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#externally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#externally_used
@@ -1388,7 +1396,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1164
-Success: 1159
-Failed: 5
-Ratio: 99.5704467354%
+Total: 1170
+Success: 1163
+Failed: 7
+Ratio: 99.4017094017%

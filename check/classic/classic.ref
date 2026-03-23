@@ -164,6 +164,8 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
@@ -636,7 +638,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 544
-Success: 539
-Failed: 5
-Ratio: 99.0808823529%
+Total: 546
+Success: 540
+Failed: 6
+Ratio: 98.9010989011%
