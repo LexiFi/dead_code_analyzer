@@ -139,12 +139,12 @@ from the `.mli` if there is one and the `.ml`.
 
 - The [code constructs](./code_constructs) directory contains a collection of
   examples dedicated to specific code constructs :
-    - [Immediate object](./code_constructs/IMMEDIATE_OBJECT.md)
     - [Class](./code_constructs/CLASS.md)
+    - [Constructor](./code_constructs/CONSTRUCTOR.md)
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)
+    - [Immediate object](./code_constructs/IMMEDIATE_OBJECT.md)
     - [Object type](./code_constructs/OBJECT_TYPE.md)
-    - [Constructor](./code_constructs/CONSTRUCTOR.md)
 
 # Limitations
 
