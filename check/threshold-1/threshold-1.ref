@@ -146,6 +146,8 @@
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:4: push_n_times
 
+./examples/docs/methods/code_constructs/object_type/object_type_bin.ml:4: push_n_times
+
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_no_intf.mli:1: mark_used
@@ -982,7 +984,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 842
-Success: 837
+Total: 843
+Success: 838
 Failed: 5
-Ratio: 99.406175772%
+Ratio: 99.4068801898%
