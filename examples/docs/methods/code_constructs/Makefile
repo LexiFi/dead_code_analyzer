@@ -7,6 +7,7 @@ build:
 	make -C class build
 	make -C class_type build
 	make -C inheritance build
+	make -C object_type build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -14,4 +15,5 @@ clean:
 	make -C class clean
 	make -C class_type clean
 	make -C inheritance clean
+	make -C object_type clean
 

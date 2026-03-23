@@ -8,6 +8,7 @@
 + [Examples](#examples)
 + [Limitations](#limitations)
     +[Class type](#class-type)
+    +[Object type](#object-type)
 
 # Methods
 
@@ -142,6 +143,7 @@ from the `.mli` if there is one and the `.ml`.
     - [Class](./code_constructs/CLASS.md)
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)
+    - [Object type](./code_constructs/OBJECT_TYPE.md)
 
 # Limitations
 
@@ -150,3 +152,9 @@ from the `.mli` if there is one and the `.ml`.
 As explained in the [Class type](./code_constructs/CLASS_TYPE.md) example, the
 analyzer is currently restricted to not reporting methods declared in class
 type definitions.
+
+## Object type
+
+As explained in the [Object type](./code_constructs/OBJECT_TYPE.md) example, the
+analyzer is currently restricted to not reporting methods declared in object
+types.
