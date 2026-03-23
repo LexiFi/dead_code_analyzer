@@ -146,6 +146,7 @@ from the `.mli` if there is one and the `.ml`.
     - [Inheritance](./code_constructs/INHERITANCE.md)
     - [Immediate object](./code_constructs/IMMEDIATE_OBJECT.md)
     - [Object type](./code_constructs/OBJECT_TYPE.md)
+    - [Coercion](./code_constructs/COERCION.md)
 
 # Limitations
 

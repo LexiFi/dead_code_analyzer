@@ -151,6 +151,8 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
 
+./examples/docs/methods/code_constructs/coercion/coercion_lib.mli:2: obj#unused
+
 ./examples/docs/methods/code_constructs/constructor/constructor_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#reset
 
