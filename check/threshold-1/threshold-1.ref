@@ -144,6 +144,8 @@
 
 ./examples/docs/methods/code_constructs/class_type/class_type_bin.ml:4: push_n_times
 
+./examples/docs/methods/code_constructs/constructor/constructor_bin.ml:4: push_n_times
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:4: push_n_times
 
 ./examples/docs/methods/code_constructs/object_type/object_type_bin.ml:4: push_n_times
@@ -356,6 +358,9 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
 
+./examples/docs/methods/code_constructs/constructor/constructor_bin.ml:2: unused_class#unused_method
+./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#reset
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
 
@@ -424,6 +429,10 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#peek
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#pop
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#push
+
+./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#peek
+./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#pop
+./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#push
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#peek
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#pop
@@ -984,7 +993,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 843
-Success: 838
+Total: 849
+Success: 844
 Failed: 5
-Ratio: 99.4068801898%
+Ratio: 99.4110718492%
