@@ -139,7 +139,4 @@ from the `.mli` if there is one and the `.ml`.
     - [Immediate object](./code_constructs/IMMEDIATE_OBJECT.md)
     - [Class](./code_constructs/CLASS.md)
     - [Class type](./code_constructs/CLASS_TYPE.md)
-
-[TODO]: # (
     - [Inheritance](./code_constructs/INHERITANCE.md)
-    )
