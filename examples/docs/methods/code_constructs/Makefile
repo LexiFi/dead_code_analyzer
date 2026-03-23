@@ -9,6 +9,7 @@ build:
 	make -C inheritance build
 	make -C immediate_object build
 	make -C object_type build
+	make -C coercion build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -18,4 +19,5 @@ clean:
 	make -C inheritance clean
 	make -C immediate_object clean
 	make -C object_type clean
+	make -C coercion clean
 
