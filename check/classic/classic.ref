@@ -159,6 +159,8 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
 
+./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
@@ -631,7 +633,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 541
-Success: 536
+Total: 542
+Success: 537
 Failed: 5
-Ratio: 99.0757855823%
+Ratio: 99.0774907749%
