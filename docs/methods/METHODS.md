@@ -6,6 +6,8 @@
         + [Warning 26: unused-ancestor](#warning-36-unused-ancestor)
     + [Usage](#usage)
 + [Examples](#examples)
++ [Limitations](#limitations)
+    +[Class type](#class-type)
 
 # Methods
 
@@ -140,3 +142,11 @@ from the `.mli` if there is one and the `.ml`.
     - [Class](./code_constructs/CLASS.md)
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)
+
+# Limitations
+
+## Class type
+
+As explained in the [Class type](./code_constructs/CLASS_TYPE.md) example, the
+analyzer is currently restricted to not reporting methods declared in class
+type definitions.
