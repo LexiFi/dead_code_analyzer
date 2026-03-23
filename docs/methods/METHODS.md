@@ -9,6 +9,7 @@
 + [Limitations](#limitations)
     +[Class type](#class-type)
     +[Object type](#object-type)
+    +[Alias](#alias)
 
 # Methods
 
@@ -159,3 +160,97 @@ type definitions.
 As explained in the [Object type](./code_constructs/OBJECT_TYPE.md) example, the
 analyzer is currently restricted to not reporting methods declared in object
 types.
+
+## Alias
+
+Related issue :
+[issue #66](https://github.com/LexiFi/dead_code_analyzer/issues/66).
+
+In the presence of multiple bindings to the same object, the analyzer corrctly
+avoids tracking their methods individually. However, it fails at unifying them
+and only keeps track of the methods used through the original binding, where the
+methods are defined. This leads to **false positives**.
+
+### Example
+
+The reference files for this example are in the
+[alias](../../examples/docs/methods/limitations/alias) directory.
+
+The reference takes place in `/tmp/docs/methods/limitations`, which
+is a copy of the [limitations](../../../examples/docs/methods/limitations)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C alias build
+```
+
+The analysis command is :
+```
+make -C alias analyze
+```
+
+The compile + analyze command is :
+```
+make -C alias
+```
+
+Code:
+```OCaml
+(* alias_lib.mli *)
+val original :
+  < used : unit
+  ; used_by_alias : unit
+  ; unused : unit
+  >
+
+val alias :
+  < used : unit
+  ; used_by_alias : unit
+  ; unused : unit
+  >
+```
+```OCaml
+(* alias_lib.ml *)
+let original =
+  object
+    method used = ()
+    method used_by_alias = ()
+    method unused = ()
+  end
+
+let alias = original
+```
+```OCaml
+(* alias_bin.ml *)
+open Alias_lib
+
+let () =
+  original#used;
+  alias#used_by_alias
+```
+
+Compile and analyze:
+```
+$ make -C alias
+make: Entering directory '/tmp/docs/methods/limitations/alias'
+ocamlopt -bin-annot alias_lib.mli alias_lib.ml alias_bin.ml
+dead_code_analyzer --nothing -M all .
+Scanning files...
+ [DONE]
+
+.> UNUSED METHODS:
+=================
+/tmp/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
+/tmp/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/methods/limitations/alias'
+```
+
+The analyzer reports `original#used_by_alias` although it is used by
+`alias#used_by_alias`.

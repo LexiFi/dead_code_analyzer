@@ -159,6 +159,8 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
