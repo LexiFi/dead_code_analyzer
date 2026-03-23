@@ -144,6 +144,7 @@ from the `.mli` if there is one and the `.ml`.
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)
     - [Object type](./code_constructs/OBJECT_TYPE.md)
+    - [Constructor](./code_constructs/CONSTRUCTOR.md)
 
 # Limitations
 
