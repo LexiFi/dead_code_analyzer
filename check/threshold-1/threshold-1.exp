@@ -15,7 +15,12 @@
 
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
 
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj
+
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
@@ -142,6 +147,8 @@
 ./examples/docs/methods/code_constructs/coercion/coercion_lib.mli:2: obj
 
 ./examples/docs/methods/code_constructs/constructor/constructor_bin.ml:4: push_n_times
+
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:4: push_n_times
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:4: push_n_times
 
@@ -362,12 +369,18 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/constructor/constructor_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#reset
 
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory#unused_method
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#reset
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
+
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
@@ -438,6 +451,10 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#peek
 ./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#pop
 ./examples/docs/methods/code_constructs/constructor/constructor_lib.mli:2: int_stack#push
+
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#peek
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#pop
+./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#push
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#peek
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#pop
@@ -953,6 +970,9 @@ Nothing else to report in this section
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
 
 ./examples/docs/exported_values/limitations/sigincl/sigincl_lib.ml:9: unit pattern x
+
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:3: let x = ... in x (=> useless binding)
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:12: let x = ... in x (=> useless binding)
 
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: let () = ... in ... (=> use sequence)
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:83: unit pattern unit_binding
