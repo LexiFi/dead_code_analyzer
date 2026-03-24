@@ -129,6 +129,8 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
+
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m: Not detected
@@ -609,7 +611,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 514
-Success: 507
+Total: 515
+Success: 508
 Failed: 7
-Ratio: 98.6381322957%
+Ratio: 98.640776699%

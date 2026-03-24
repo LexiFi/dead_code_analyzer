@@ -142,6 +142,7 @@ from the `.mli` if there is one and the `.ml`.
 - The [code constructs](./code_constructs) directory contains a collection of
   examples dedicated to specific code constructs :
     - [Class](./code_constructs/CLASS.md)
+    - [Polymorphic class](./code_constructs/CLASS.md)
     - [Constructor](./code_constructs/CONSTRUCTOR.md)
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)

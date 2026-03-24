@@ -154,6 +154,8 @@
 
 ./examples/docs/methods/code_constructs/object_type/object_type_bin.ml:4: push_n_times
 
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_bin.ml:2: push_n_times
+
 ./examples/docs/methods/limitations/alias/alias_lib.mli:8: alias
 
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
@@ -515,6 +517,8 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
+
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
 
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m
@@ -600,6 +604,10 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#used
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#used_by_child
+
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#peek
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#pop
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#push
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias

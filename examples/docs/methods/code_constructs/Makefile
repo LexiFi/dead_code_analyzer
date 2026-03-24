@@ -4,6 +4,7 @@ all: build
 
 build:
 	make -C class build
+	make -C polymorphic_class build
 	make -C constructor build
 	make -C class_type build
 	make -C inheritance build
@@ -15,6 +16,7 @@ build:
 clean:
 	rm -f *~ *.cm* *.o *.obj
 	make -C class clean
+	make -C polymorphic_class clean
 	make -C constructor clean
 	make -C class_type clean
 	make -C inheritance clean

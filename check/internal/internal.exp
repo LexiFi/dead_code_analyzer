@@ -124,6 +124,8 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
+./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
+
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
 
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m
