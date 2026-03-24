@@ -8,6 +8,7 @@ build:
 	make -C class_type build
 	make -C inheritance build
 	make -C immediate_object build
+	make -C factory_fun build
 	make -C object_type build
 	make -C coercion build
 
@@ -18,6 +19,7 @@ clean:
 	make -C class_type clean
 	make -C inheritance clean
 	make -C immediate_object clean
+	make -C factory_fun clean
 	make -C object_type clean
 	make -C coercion clean
 

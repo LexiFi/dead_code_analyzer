@@ -10,6 +10,7 @@
     +[Class type](#class-type)
     +[Object type](#object-type)
     +[Alias](#alias)
+    +[Factory function](#factory-function)
 
 # Methods
 
@@ -145,6 +146,7 @@ from the `.mli` if there is one and the `.ml`.
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)
     - [Immediate object](./code_constructs/IMMEDIATE_OBJECT.md)
+    - [Factory function](./code_constructs/FACTORY_FUN.md)
     - [Object type](./code_constructs/OBJECT_TYPE.md)
     - [Coercion](./code_constructs/COERCION.md)
 
@@ -255,3 +257,86 @@ make: Leaving directory '/tmp/docs/methods/limitations/alias'
 
 The analyzer reports `original#used_by_alias` although it is used by
 `alias#used_by_alias`.
+
+## Factory function
+
+Related issue :
+[issue #67](https://github.com/LexiFi/dead_code_analyzer/issues/67).
+
+Factory functions' methods analysis is currently very limited to situations like
+the one in the [Factory function](./code_constructs/FACTORY_FUN.md) example :
+functions without intermediate binding to the returned object in at least one
+branch. I.e. if in all the branches, the result object is bound to a name, then
+the analyzer fails to track its methods. This leads to **false negatives**.
+
+### Example
+
+The reference files for this example are in the
+[factory\_fun\_indir](../../examples/docs/methods/limitations/factory_fun_indir) directory.
+
+The reference takes place in `/tmp/docs/methods/limitations`, which
+is a copy of the [limitations](../../../examples/docs/methods/limitations)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C factory_fun_indir build
+```
+
+The analysis command is :
+```
+make -C factory_fun_indir analyze
+```
+
+The compile + analyze command is :
+```
+make -C factory_fun_indir
+```
+
+Code:
+```OCaml
+(* factoy_fun_indir.ml *)
+let factory_with_intermediate_binding () =
+  let res =
+    object method m = () end
+  in
+  res
+
+let random_factory () =
+  if Random.bool () then
+    object method m = () end
+  else
+    let res = object method m = () end in
+    res
+```
+
+Compile and analyze:
+```
+$ make -C factory_fun_indir
+make: Entering directory '/tmp/docs/methods/limitations/factory_fun_indir'
+ocamlopt -bin-annot factory_fun_indir.ml
+dead_code_analyzer --nothing -M all .
+Scanning files...
+ [DONE]
+
+.> UNUSED METHODS:
+=================
+/tmp/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/methods/limitations/factory_fun_indir'
+```
+
+The analyzer correctly reports `random_factory#m` because its last expression in
+the `if` branch is the object's definition. It does not report
+`factory_with_intermediate_binding#m` because the returned object is bound
+inside the function.
+
+> [!NOTE]
+> The analyzer does not distinguish which object is actually returned when there
+> are alternatives like in `random_factory`. Only uses outside of the function
+> are accounted for. E.g. using `res#m` in the `else` branch does not count.
