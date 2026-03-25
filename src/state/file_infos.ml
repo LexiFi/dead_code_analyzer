@@ -47,10 +47,9 @@ let empty = {
 let init_from_cm_file cm_file =
   if not (Sys.file_exists cm_file) then Result.error (cm_file ^ ": file not found")
   else
-    match Cmt_format.read cm_file with
-    | exception _ -> Result.error (cm_file ^ ": error reading file")
-    | _, None -> Result.error (cm_file ^ ": cmt_infos not found")
-    | cmi_infos, Some cmt_infos ->
+    match Cmt.read cm_file with
+    | Error _ as err -> err
+    | Ok (cmi_infos, cmt_infos) ->
         let file_infos =
           init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos
         in
