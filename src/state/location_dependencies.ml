@@ -20,31 +20,32 @@ let fill_from_cmt_tbl uid_to_decl res_uid_to_loc =
   UidTbl.iter add_uid_loc uid_to_decl;
   res_uid_to_loc
 
-let find_opt_external_uid_loc, clear_external_cache =
-  let cache = Hashtbl.create 16 in
-  let clear_external_cache () = Hashtbl.reset cache in
-  let find_opt_external_uid_loc ~cm_paths = function
-    | Shape.Uid.(Compilation_unit _ | Internal | Predef _) -> None
-    | Item {comp_unit; _} as uid ->
+let find_opt_external_uid_loc ~cm_paths = function
+  | Shape.Uid.(Compilation_unit _ | Internal | Predef _) -> None
+  | Item {comp_unit; from; _} as uid ->
       let ( let* ) x f = Option.bind x f in
-      let* cmt_uid_to_decl =
-        match Hashtbl.find_opt cache comp_unit with
-        | Some _ as cmt_uid_to_decl -> cmt_uid_to_decl
-        | None ->
-            let* cm_path =
-                Utils.StringSet.elements cm_paths
-                |> List.rev
-                |> List.find_opt (fun path -> Utils.Filepath.unit path = comp_unit)
-            in
-            let* cmt_infos = Cmt_format.read cm_path |> snd in
-            let cmt_uid_to_decl = cmt_infos.cmt_uid_to_decl in
-            Hashtbl.add cache comp_unit cmt_uid_to_decl;
-            Some cmt_uid_to_decl
+      let cached =
+        match from with
+        | Unit_info.Intf -> Cmt.cached_cmti comp_unit
+        | Unit_info.Impl -> Cmt.cached_cmt comp_unit
       in
+      let read_from_path () =
+        let* cm_path =
+          Utils.StringSet.elements cm_paths
+          |> List.rev
+          |> List.find_opt (fun path -> Utils.Filepath.unit path = comp_unit)
+        in
+        Cmt.read cm_path |> Result.to_option
+      in
+      let* cmi_cmt_infos =
+        match cached with
+        | Some _ as some -> some
+        | None  -> read_from_path ()
+      in
+      let cmt_infos = snd cmi_cmt_infos in
+      let cmt_uid_to_decl = cmt_infos.cmt_uid_to_decl in
       let* item_decl = UidTbl.find_opt cmt_uid_to_decl uid in
       loc_opt_of_item_decl item_decl
-  in
-  find_opt_external_uid_loc, clear_external_cache
 
 let cmt_decl_dep_to_loc_dep ~cm_paths cmt_decl_dep uid_to_loc =
   let convert_pair (_dep_kind, uid_def, uid_decl) =
@@ -59,7 +60,6 @@ let cmt_decl_dep_to_loc_dep ~cm_paths cmt_decl_dep uid_to_loc =
     Some (def_loc, decl_loc)
   in
   let res = List.filter_map convert_pair cmt_decl_dep in
-  clear_external_cache ();
   res
 
 let init ~cm_paths cmt_infos cmti_uid_to_decl =
