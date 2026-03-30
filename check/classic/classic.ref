@@ -243,6 +243,9 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
+./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
@@ -656,7 +659,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 557
-Success: 550
+Total: 559
+Success: 552
 Failed: 7
-Ratio: 98.7432675045%
+Ratio: 98.747763864%

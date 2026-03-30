@@ -7,6 +7,7 @@
         + [Warning 38: unused-extension](#warning-38-unused-extension)
         + [Warning 69: unused-field](#warning-69-unused-field)
     + [Usage](#usage)
++ [Examples](#examples)
 
 # Fields and constructors
 
@@ -221,3 +222,9 @@ The expected resolution for an unused exported value is to remove it from the
 > Removing unused fields or constructors may lead to compilation errors, because
 > one had to write all the fields when building a record, and potentially match
 > on the constructors.
+
+# Examples
+
+- The [code constructs](./code_constructs) directory contains a collection of
+  examples dedicated to specific code constructs :
+    - [Polymorphic type](./code_constructs/POLYMORPHIC_TYPE.md)
