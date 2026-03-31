@@ -198,6 +198,8 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
@@ -614,7 +616,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 517
-Success: 510
+Total: 518
+Success: 511
 Failed: 7
-Ratio: 98.6460348162%
+Ratio: 98.6486486486%

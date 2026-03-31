@@ -193,6 +193,8 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 

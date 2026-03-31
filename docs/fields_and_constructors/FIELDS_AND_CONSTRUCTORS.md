@@ -231,6 +231,7 @@ The expected resolution for an unused exported value is to remove it from the
   examples dedicated to specific code constructs :
     - [Polymorphic type](./code_constructs/POLYMORPHIC_TYPE.md)
     - [Polymorphic variant](./code_constructs/POLYMORPHIC_VARIANT.md)
+    - [GADT](./code_constructs/GADT.md)
 
 # Limitations
 
