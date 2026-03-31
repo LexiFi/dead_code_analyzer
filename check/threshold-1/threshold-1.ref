@@ -145,6 +145,9 @@
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
+./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:4: poly_of_int
+./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:6: float_opt_of_poly
+
 ./examples/docs/methods/code_constructs/class/class_bin.ml:4: push_n_times
 
 ./examples/docs/methods/code_constructs/class_type/class_type_bin.ml:4: push_n_times
@@ -1039,7 +1042,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 879
-Success: 871
+Total: 881
+Success: 873
 Failed: 8
-Ratio: 99.0898748578%
+Ratio: 99.0919409762%
