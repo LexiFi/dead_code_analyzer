@@ -140,6 +140,9 @@
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
+./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:6: gadt_of_int
+./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:8: float_opt_of_gadt
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:4: poly_of_int
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:6: float_opt_of_poly
 
@@ -722,6 +725,8 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
@@ -797,6 +802,8 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:3: gadt.Int
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Left
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.right
 
