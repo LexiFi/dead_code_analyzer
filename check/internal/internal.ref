@@ -200,6 +200,9 @@ Nothing else to report in this section
 ====================================
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
+./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
+./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:5: t.Right
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
@@ -616,7 +619,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 518
-Success: 511
+Total: 520
+Success: 513
 Failed: 7
-Ratio: 98.6486486486%
+Ratio: 98.6538461538%
