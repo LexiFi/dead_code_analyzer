@@ -148,6 +148,8 @@
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:6: gadt_of_int
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:8: float_opt_of_gadt
 
+./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:7: get_left_opt
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:4: poly_of_int
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:6: float_opt_of_poly
 
@@ -554,6 +556,9 @@ Nothing else to report in this section
 ====================================
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
+./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
+./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:5: t.Right
+
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
@@ -630,6 +635,8 @@ Nothing else to report in this section
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:3: gadt.Int
+
+./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:3: t.Both
 
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Left
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.right
@@ -1049,7 +1056,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 885
-Success: 877
+Total: 889
+Success: 881
 Failed: 8
-Ratio: 99.0960451977%
+Ratio: 99.1001124859%

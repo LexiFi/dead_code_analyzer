@@ -232,6 +232,7 @@ The expected resolution for an unused exported value is to remove it from the
     - [Polymorphic type](./code_constructs/POLYMORPHIC_TYPE.md)
     - [Polymorphic variant](./code_constructs/POLYMORPHIC_VARIANT.md)
     - [GADT](./code_constructs/GADT.md)
+    - [Inline record](./code_constructs/INLINE_RECORD.md)
 
 # Limitations
 
@@ -239,6 +240,14 @@ The expected resolution for an unused exported value is to remove it from the
 
 The analyzer does not keep track of polymorphic variants, as explained in the
 [Polymorphic variant](./code_constructs/POLYMORPHIC_VARIANT.md) example.
+
+If you have a strong need/desire for this feature, please feel free to
+[open an issue](https://github.com/LexiFi/dead_code_analyzer/issues/new)
+
+## Inline record
+
+The analyzer does not keep track of fields in inline records, as explained in
+the [Inline record](./code_constructs/INLINE_RECORD.md) example
 
 If you have a strong need/desire for this feature, please feel free to
 [open an issue](https://github.com/LexiFi/dead_code_analyzer/issues/new)
