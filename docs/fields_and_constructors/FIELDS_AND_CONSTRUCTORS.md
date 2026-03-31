@@ -8,6 +8,8 @@
         + [Warning 69: unused-field](#warning-69-unused-field)
     + [Usage](#usage)
 + [Examples](#examples)
++ [Limitations](#limitations)
+    + [Polymorphic variant](#polymorphic-variant)
 
 # Fields and constructors
 
@@ -228,3 +230,14 @@ The expected resolution for an unused exported value is to remove it from the
 - The [code constructs](./code_constructs) directory contains a collection of
   examples dedicated to specific code constructs :
     - [Polymorphic type](./code_constructs/POLYMORPHIC_TYPE.md)
+    - [Polymorphic variant](./code_constructs/POLYMORPHIC_VARIANT.md)
+
+# Limitations
+
+## Polymorphic variant
+
+The analyzer does not keep track of polymorphic variants, as explained in the
+[Polymorphic variant](./code_constructs/POLYMORPHIC_VARIANT.md) example.
+
+If you have a strong need/desire for this feature, please feel free to
+[open an issue](https://github.com/LexiFi/dead_code_analyzer/issues/new)
