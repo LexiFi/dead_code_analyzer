@@ -67,7 +67,7 @@ The code is pretty straightforward. `Inheritance_lib` defines 2 classes :
 
 CLass inheritance is semantically equivalent to module inclusion from the
 analyzer's point of view : the `parent` class is the actual "owner" of the
-methods, and `child` only re-exposes them. This, has 2 consequences :
+methods, and `child` only re-exposes them. This has 2 consequences :
 - inherited methods in `child` are not analyzed individually;
 - using a method from `child` that is inherited from `parent` is the same as
   using the method from `parent`.
