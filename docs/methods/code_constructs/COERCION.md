@@ -50,11 +50,11 @@ let () =
 
 Before looking at the analysis results, let's look at the code.
 
-There is 1 object : `Coercion_lib.obj`, which defined 2 zmthods :
+There is 1 object : `Coercion_lib.obj`, which defined 2 methods :
 `used_by_requirement`, and `unused`. Neither of them is explicitly referenced,
 and the object is only manipulated through a coercion. The coercion produces an
 alias to `obj` named `_coerce`, which only exposes the method
-`used_by_requirement`. Because the method is required to exists in `obj` for the
+`used_by_requirement`. Because the method is required to exists in `obj` by the
 coercion, then the analyzer effectively considers it as used by requirement.
 
 Compile and analyze:
@@ -77,6 +77,6 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/methods/code_constructs/coercion'
 ```
 
-As expected, the anlyzer reports `obj#unsed` as unused and not
+As expected, the analyzer reports `obj#unsed` as unused and not
 `obj#used_by_requirement`. The unused method can be removed from the `.mli` and
 the `.ml`. Our work here is done.

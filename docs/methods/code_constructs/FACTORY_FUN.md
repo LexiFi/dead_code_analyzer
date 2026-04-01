@@ -87,7 +87,7 @@ let () =
 Before looking at the analysis results, let's look at the code.
 
 The `Factory_fun_lib` declares and exports 1 factory function `get_stack` which
-takes `unit` as parameter and returns a fresh object. The return object has
+takes `unit` as parameter and returns a fresh object. The returned object has
 4 methods, manipulating the unexported value `stack`.
 1 of these methods is used by requirement : `push`.
 2 of these methods are explicitly referenced : `peek`, and `pop`.

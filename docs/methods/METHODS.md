@@ -60,7 +60,8 @@ A **use** is either :
 The analyzer reports unused exported public methods. The compiler does not
 report unused methods (private or public, exported or not, from a class, an
 immediate, or an object type), not instance vraiables. Thus, the 2 tools do not
-complement each other.
+complement each other, and unused unexported methods or unused exported private
+methods remain undetected.
 
 > [!WARNING]
 > Only a portion of the unused object-related code can be reported using the
@@ -79,7 +80,7 @@ constructs : warning 36.
 ### Warning 36: unused-ancestor
 
 This warning is disabled by default.
-I can be enabled by passing the `-w +36` to the compiler.
+It can be enabled by passing `-w +36` to the compiler.
 
 Description:
 ```
@@ -132,8 +133,10 @@ The expected resolution for an unused exported public method is to remove it
 from the `.mli` if there is one and the `.ml`.
 
 > [!IMPORTANT]
-> Removing unused methods or values from the codebase may trigger the detection
-> of new unused methods, or remove some for values of object types.
+> Removing unused methods from the codebase may trigger the detection of new
+> unused methods and new unused values. Removing unused values may trigger the
+> detection of new unused methods or remove some in the case of values of
+> object types.
 > Consequently, it is expected that a user might need to compile and analyze
 > their code multiple times when cleaning up their codebase.
 
@@ -142,7 +145,7 @@ from the `.mli` if there is one and the `.ml`.
 - The [code constructs](./code_constructs) directory contains a collection of
   examples dedicated to specific code constructs :
     - [Class](./code_constructs/CLASS.md)
-    - [Polymorphic class](./code_constructs/CLASS.md)
+    - [Polymorphic class](./code_constructs/POLYMORPHIC_CLASS.md)
     - [Constructor](./code_constructs/CONSTRUCTOR.md)
     - [Class type](./code_constructs/CLASS_TYPE.md)
     - [Inheritance](./code_constructs/INHERITANCE.md)

@@ -70,7 +70,7 @@ let () =
 Before looking at the analysis results, let's look at the code.
 
 This example is very similar to the [Class](./CLASS.md) example, without the
-`unused_class` class. Instead of using an definitive `int_stack` class, the
+`unused_class` class. Instead of using an monomorphic `int_stack` class, the
 `Polymorphic_class_lib` defines a polymorphic `['a] stack` class.
 
 Methods `push`, `peek`, and `pop` are used, leaving `reset` as the only unused method.
