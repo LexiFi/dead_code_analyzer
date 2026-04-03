@@ -219,6 +219,7 @@ argument as never used if its declaring function is never fully applied.
 - The [code constructs](./code_constructs) directory contains a collection of
   examples dedicated to specific code constructs :
     - [Total application](./code_constructs/TOTAL_APP.md)
+    - [Partial application](./code_constructs/PARTIAL_APP.md)
 
 # Limitations
 
