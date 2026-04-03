@@ -280,6 +280,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/code_constructs/partial_app/partial_app_bin.ml:2: ?x
+
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?x
 
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:2: ?x
@@ -627,7 +629,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 524
-Success: 517
+Total: 525
+Success: 518
 Failed: 7
-Ratio: 98.6641221374%
+Ratio: 98.6666666667%

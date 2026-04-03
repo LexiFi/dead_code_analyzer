@@ -320,6 +320,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/code_constructs/partial_app/partial_app_bin.ml:2: ?x
+
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?x
 
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:2: ?x
