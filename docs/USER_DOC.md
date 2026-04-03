@@ -56,6 +56,7 @@ This documentation is split accross different topics:
 - [Exported Values](exported_values/EXPORTED_VALUES.md) describes the semantics and usage of the "unused exported values" report section, and provides examples.
 - [Methods](methods/METHODS.md) describes the semantics and usage of the "unused methods" report section, and provides examples.
 - [Constructors/Record fields](fields_and_constructors/FIELDS_AND_CONSTRUCTORS.md) describes the semantics and usage of the "unused constructors/record fields" report section, and provides examples.
+- [Optional arguments](optional_arguments/OPTIONAL_ARGUMENTS.md) describes the semantics and usage of the optional arguments always/never used report sections, and provides examples.
 
 
 ## Footnotes
