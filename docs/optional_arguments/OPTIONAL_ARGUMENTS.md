@@ -7,6 +7,7 @@
     + [Usage](#usage)
         +[Optional arguments always used](#optional-arguments-always-used)
         +[Optional arguments never used](#optional-arguments-never-used)
++ [Examples](#examples)
 + [Limitations](#limitations)
     + [Relaying](#relaying)
 
@@ -212,6 +213,12 @@ argument as never used if its declaring function is never fully applied.
 > Removing an optional argument may trigger compilation errors.
 > In particular when the argument was explicitly discarded with the
 > `?x:None` syntax.
+
+# Examples
+
+- The [code constructs](./code_constructs) directory contains a collection of
+  examples dedicated to specific code constructs :
+    - [Total application](./code_constructs/TOTAL_APP.md)
 
 # Limitations
 
