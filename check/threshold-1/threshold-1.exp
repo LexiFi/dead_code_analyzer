@@ -169,6 +169,8 @@
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:8: alias
 
+./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:4: g
+
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_lib.mli:1: mark_used
 ./examples/using_dune/bin/use_preprocessed_lib/use_preprocessed_no_intf.mli:1: mark_used
@@ -716,6 +718,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:2: ?x
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?internally
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?always
@@ -861,6 +865,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:4: ?x
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?never

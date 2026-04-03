@@ -325,6 +325,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:2: ?x
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?internally
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?always
@@ -470,6 +472,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:4: ?x
+
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?never
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:59: ?never
@@ -664,7 +668,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 562
-Success: 555
+Total: 564
+Success: 557
 Failed: 7
-Ratio: 98.7544483986%
+Ratio: 98.7588652482%
