@@ -280,6 +280,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?x
+
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:2: ?x
 
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?always
@@ -427,6 +429,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?y
+
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:4: ?x
 
 ./examples/using_dune/preprocessed_lib/preprocessed.ml:53: ?externally
@@ -623,7 +627,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 522
-Success: 515
+Total: 524
+Success: 517
 Failed: 7
-Ratio: 98.6590038314%
+Ratio: 98.6641221374%
