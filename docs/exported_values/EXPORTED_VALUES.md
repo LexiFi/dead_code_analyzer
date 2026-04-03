@@ -75,7 +75,7 @@ unexported toplevel values.
 ### Warning 26: unused-var
 
 This warning is enabled by default.
-I can be disabled by passing the `-w -26` to the compiler.
+It can be disabled by passing the `-w -26` to the compiler.
 
 Description:
 ```
@@ -102,7 +102,7 @@ Warning 26 [unused-var]: unused variable x.
 ### Warning 27: unused-var-strict
 
 This warning is disabled by default.
-I can be enabled by passing the `-w +27` to the compiler.
+It can be enabled by passing the `-w +27` to the compiler.
 
 Description:
 ```
@@ -128,7 +128,7 @@ Warning 27 [unused-var-strict]: unused variable x.
 ### Warning 32: unused-value-declaration
 
 This warning is disabled by default.
-I can be enabled by passing the `-w +32` to the compiler.
+It can be enabled by passing the `-w +32` to the compiler.
 
 Description:
 ```
@@ -259,10 +259,10 @@ This is the case unless there is a substitution on the module type.
 ### Example
 
 The reference files for this example are in the
-[sigincl](../examples/docs/exported_values/limitations/sigincl) directory.
+[sigincl](../../examples/docs/exported_values/limitations/sigincl) directory.
 
 The reference takes place in `/tmp/docs/exported_values/limitations`, which
-is a copy of the [limitations](../examples/docs/exported_values/limitations)
+is a copy of the [limitations](../../examples/docs/exported_values/limitations)
 directory. Reported locations may differ depending on the location of the source
 files.
 
@@ -347,11 +347,11 @@ re-exporting compilation unit has the same name as the one included.
 ### Example
 
 The reference files for this example are in the
-[incl\_same\_name](../examples/docs/exported_values/limitations/incl_same_name)
+[incl\_same\_name](../../examples/docs/exported_values/limitations/incl_same_name)
 directory.
 
 The reference takes place in `/tmp/docs/exported_values/limitations`, which
-is a copy of the [limitations](../examples/docs/exported_values/limitations)
+is a copy of the [limitations](../../examples/docs/exported_values/limitations)
 directory. Reported locations may differ depending on the location of the source
 files.
 
