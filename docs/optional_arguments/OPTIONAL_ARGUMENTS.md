@@ -220,6 +220,7 @@ argument as never used if its declaring function is never fully applied.
   examples dedicated to specific code constructs :
     - [Total application](./code_constructs/TOTAL_APP.md)
     - [Partial application](./code_constructs/PARTIAL_APP.md)
+    - [Internal application](./code_constructs/INTERNAL_APPLICATION.md)
 
 # Limitations
 
