@@ -182,6 +182,6 @@ Our work here is done.
 > [!NOTE]
 > The clean-up focused on the reports and the warnings. Of course, in the
 > context, the `float_opt_of_gadt` became meaningless because it always
-> produces `None`. Thus a user could decide to simply remove it and fix the
+> produces `None`. Thus, a user could decide to simply remove it and fix the
 > call-sites by either replacing the function call by `None` or any better
 > suited improvement.
