@@ -6,6 +6,7 @@ build:
 	make -C polymorphic_type build
 	make -C polymorphic_variant build
 	make -C gadt build
+	make -C extensible_variant build
 	make -C inline_record build
 
 clean:
@@ -13,4 +14,5 @@ clean:
 	make -C polymorphic_type clean
 	make -C polymorphic_variant clean
 	make -C gadt clean
+	make -C extensible_variant clean
 	make -C inline_record clean

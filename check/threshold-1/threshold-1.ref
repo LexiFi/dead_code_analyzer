@@ -145,6 +145,9 @@
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
+./examples/docs/fields_and_constructors/code_constructs/extensible_variant/extensible_variant_bin.ml:5: to_string_opt
+./examples/docs/fields_and_constructors/code_constructs/extensible_variant/extensible_variant_lib.mli:7: to_string_opt
+
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:6: gadt_of_int
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:8: float_opt_of_gadt
 
@@ -1056,7 +1059,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 889
-Success: 881
+Total: 891
+Success: 883
 Failed: 8
-Ratio: 99.1001124859%
+Ratio: 99.1021324355%
