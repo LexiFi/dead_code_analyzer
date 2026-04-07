@@ -53,10 +53,10 @@ The `Polymorphic_type_lib` exports 1 variant type `either` with 2 constructors
 The constructor `Left` is used to build the value stored in `left`.
 The constructor `Right` is never built but matched upon. Thus, `Left` is used
 while `Right` is not.
-Both the fields `both.left` and `both.right` are written bu only the field
+Both the fields `both.left` and `both.right` are written but only the field
 `both.right` is read. This leaves `both.left` as unused.
 
-Compiler and analyze :
+Compile and analyze :
 ```
 $ make: Entering directory '/tmp/docs/fields_and_constructors/code_constructs/polymorphic_type'
 ocamlopt -w +37+69 -bin-annot polymorphic_type_lib.mli polymorphic_type_lib.ml polymorphic_type_bin.ml
@@ -269,17 +269,17 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/fields_and_constructors/code_constructs/polymorphic_type'
 ```
 
-The compiler warns us that the unuexported field `right` is unused.
+The compiler warns us that the unexported field `right` is unused.
 The analyzer does not report anything.
 
-Once again, the fix is to either make the type abstract or removing it from
+Once again, the fix is to either make the type abstract or remove it from
 the `.ml`. We can do the latter and neither the compiler nor the analyzer will
 report any unused constructor or field. Our work here is done.
 
 > [!TIP]
 > If we activated the compiler warning 34 `unused-type-declaration`
 > (by passing the argument `-w +34`), and made `both` abstract in the `.ml`,
-> then the compiler would have reported.
+> then the compiler would have reported it unused.
 > ```
 > File "polymorphic_type_lib.ml", line 3, characters 0-18:
 > 3 | type ('a, 'b) both

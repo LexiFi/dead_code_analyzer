@@ -68,12 +68,12 @@ let () =
 
 Before looking at the analysis results, let's look at the code.
 
-The `Extensible_variant_lib` deines 1 extensbile variant type `t` and adds 2
+The `Extensible_variant_lib` defines 1 extensbile variant type `t` and adds 2
 constructors to it : `Int` and `Float`. `Extensible_variant_bin` adds another
 constructor to `t` : `String`. Of the 3 constructors, only `Int` is used to
 build a value. All of the constructors are matched on.
 Following the classical variant constructor semantics, `Int` is used while
-`Float` and `String are not.
+`Float` and `String` are not.
 
 One could expect the analyzer to report `Float` and `String` as unused.
 However, the analyzer does not report unused extensible variant constructors.

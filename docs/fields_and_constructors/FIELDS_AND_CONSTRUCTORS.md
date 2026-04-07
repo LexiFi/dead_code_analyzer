@@ -69,7 +69,7 @@ A **use** is either :
 The analyzer reports unused exported fields and constructors, while the compiler
 reports unused unexported fields and constructors. They complement each other.
 The compiler also warns on unused private constructors (but not private fields
-since they can still be read). The analyzer's reports overlap with the compiler
+since they can still be read). The analyzer's reports overlap with the compiler's
 on unused exported private constructors.
 
 > [!TIP]
@@ -216,9 +216,6 @@ There can be any number of such lines.
 
 The expected resolution for an unused exported field or constructor is to remove
 it from its type's definition.
-
-The expected resolution for an unused exported value is to remove it from the
-`.mli` if there is one, and the `.ml`.
 
 > [!IMPORTANT]
 > Removing unused fields or constructors may lead to compilation errors, because
