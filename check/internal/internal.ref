@@ -284,6 +284,9 @@ Nothing else to report in this section
 
 ./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:9: ?max
 
+./examples/docs/optional_arguments/code_constructs/intext_app/intext_app_lib.ml:9: ?max
+./examples/docs/optional_arguments/code_constructs/intext_app/intext_app_lib.mli:2: ?min
+
 ./examples/docs/optional_arguments/code_constructs/partial_app/partial_app_bin.ml:2: ?x
 
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?x
@@ -438,6 +441,9 @@ Nothing else to report in this section
 ./examples/docs/optional_arguments/code_constructs/external_app/external_app_lib.mli:2: ?min
 
 ./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:2: ?min
+
+./examples/docs/optional_arguments/code_constructs/intext_app/intext_app_lib.ml:2: ?min
+./examples/docs/optional_arguments/code_constructs/intext_app/intext_app_lib.mli:3: ?max
 
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?y
 
@@ -637,7 +643,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 529
-Success: 522
+Total: 533
+Success: 526
 Failed: 7
-Ratio: 98.6767485822%
+Ratio: 98.6866791745%

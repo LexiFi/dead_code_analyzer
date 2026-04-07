@@ -222,6 +222,7 @@ argument as never used if its declaring function is never fully applied.
     - [Partial application](./code_constructs/PARTIAL_APP.md)
     - [Internal application](./code_constructs/INTERNAL_APPLICATION.md)
     - [External application](./code_constructs/EXTERNAL_APPLICATION.md)
+    - [Internal and external application](./code_constructs/INTEXT_APPLICATION.md)
 
 # Limitations
 

@@ -7,6 +7,7 @@ build:
 	make -C partial_app build
 	make -C internal_app build
 	make -C external_app build
+	make -C intext_app build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -14,4 +15,4 @@ clean:
 	make -C partial_app clean
 	make -C internal_app clean
 	make -C external_app clean
-
+	make -C intext_app clean
