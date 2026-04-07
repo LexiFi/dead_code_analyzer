@@ -174,6 +174,9 @@
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:8: alias
 
+./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.mli:2: max
+./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.mli:3: min
+
 ./examples/docs/optional_arguments/code_constructs/partial_app/partial_app_bin.ml:2: sum
 
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: sum
@@ -726,6 +729,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:9: ?max
+
 ./examples/docs/optional_arguments/code_constructs/partial_app/partial_app_bin.ml:2: ?x
 
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?x
@@ -877,6 +882,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:2: ?min
+
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?y
 
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:4: ?x
@@ -1075,7 +1082,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 899
-Success: 891
+Total: 903
+Success: 895
 Failed: 8
-Ratio: 99.1101223582%
+Ratio: 99.1140642303%

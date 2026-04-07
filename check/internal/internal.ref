@@ -280,6 +280,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:9: ?max
+
 ./examples/docs/optional_arguments/code_constructs/partial_app/partial_app_bin.ml:2: ?x
 
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?x
@@ -431,6 +433,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
+./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:2: ?min
+
 ./examples/docs/optional_arguments/code_constructs/total_app/total_app_bin.ml:2: ?y
 
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:4: ?x
@@ -629,7 +633,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 525
-Success: 518
+Total: 527
+Success: 520
 Failed: 7
-Ratio: 98.6666666667%
+Ratio: 98.6717267552%
