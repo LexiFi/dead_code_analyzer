@@ -5,6 +5,9 @@
     + [Useless binding](#useless-binding)
         + [Example](#bind-example)
         + [Limitation](#bind-limitation)
+    + [Optional arg in arg](#optional-arg-in-arg)
+        + [Example](#opt-example)
+        + [Limitation](#opt-limitation)
 
 # Coding style
 
@@ -144,3 +147,147 @@ let v = 42
 `bind` issues are always reported with the same content :
 `let x = ... in x (=> useless binding)`. The name of the variable is not
 adapted to fit the actual name found in code (`interm` in the example above).
+
+
+## Optional arg in arg
+
+A.k.a `opt`.
+
+This stylistic issue category can be selectively activated by using the
+`-S +opt` command line argument.
+It can be deactivated by using the `-S -opt` command line argument.
+
+This category targets patterns of the form:
+```OCaml
+val f: ... -> (... -> ?_:_ -> ...) -> ...
+```
+I.e. higher-order functions expecting a function with an optional argument.
+
+The expected resolution is to make the optional argument mandatory.
+
+### Example <a name="opt-example"></a>
+
+The reference files for this example are in the
+[bindopt/../examples/docs/coding_style/bind) directory.
+
+The reference takes place in `/tmp/docs/coding_style`, which
+is a copy of the [coding\_style](../../examples/docs/coding_style)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C opt build
+```
+
+The analysis command is :
+```
+make -C opt analyze
+```
+
+The compile + analyze command is :
+```
+make -C opt
+```
+
+Code:
+```OCaml
+(* opt.ml *)
+let map_with_index_on_negative (f : ?index:int -> int -> 'a) l =
+  let index = ref 0 in
+  let f' x =
+    let res =
+      if x < 0 then f ~index:(!index) x
+      else f x
+    in
+    incr index;
+    res
+  in
+  List.map f' l
+
+let add_index_to_negative l =
+  let add_index ?(index=0) x = x + index in
+  map_with_index_on_negative add_index l
+```
+
+Compile and analyze:
+```
+$ make -C opt
+make: Entering directory '/tmp/docs/coding_style/opt'
+ocamlopt -bin-annot opt.ml
+dead_code_analyzer --nothing -S +opt .
+Scanning files...
+ [DONE]
+
+.> CODING STYLE:
+===============
+/tmp/docs/coding_style/opt/opt.ml:2: val f: ... -> (... -> ?_:_ -> ...) -> ...
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/coding_style/opt'
+```
+
+The analyzer reports a coding style issue in `/tmp/docs/coding_style/opt/opt.ml`
+at line `2`. The reported issue is `val f: ... -> (... -> ?_:_ -> ...) -> ...`,
+aka an `opt` issue.
+
+The reported location points to `let map_with_index_on_negative ...` which
+expects a function as argument (`f`), which itself expects an optional argument (`?index`).
+Making `?index` mandatory, and updating the code accordingly, fixes the issue.
+
+Code:
+```OCaml
+(* opt.ml *)
+let map_with_index_on_negative f l =
+  let index = ref 0 in
+  let f' x =
+    let res =
+      if x < 0 then f ~index:(Some !index) x
+      else f ~index:None x
+    in
+    incr index;
+    res
+  in
+  List.map f' l
+
+let add_index_to_negative l =
+  let add_index ?(index=0) x = x + index in
+  let add_index ~index = add_index ?index in
+  map_with_index_on_negative add_index l
+```
+
+> [!NOTE]
+> We made `~index` madatory but changed its type to an option, and added a
+> redefinition of `add_index` to convert the mandatory argument into the
+> optional one. This is the "easiest" and most re-appliable solution for this
+> issue but not necessarily the best one. Context is key to decide on the
+> refactors that should help resolve the issue.
+> E.g. in this example, a possible refactor would be :
+> ```OCaml
+> (* opt.ml *)
+> let map_with_index f l =
+>   let index = ref 0 in
+>   let f' x =
+>     let res = f ~index:(!index) x in
+>     incr index;
+>     res
+>   in
+>   List.map f' l
+>
+> let add_index_to_negative l =
+>   let add_index_to_negative ~index x =
+>     if x < 0 then x + index
+>     else x
+>   in
+>   map_with_index add_index_to_negative l
+> ```
+
+### Limitation <a name="opt-limitation"></a>
+
+`opt` issues are always reported with the same content :
+`val f: ... -> (... -> ?_:_ -> ...) -> ...`. The name of the function is not
+adapted to fit the actual name found in code (`map_with_index_on_negative` in
+the example above).
