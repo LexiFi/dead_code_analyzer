@@ -1,5 +1,7 @@
 .> UNUSED EXPORTED VALUES:
 =========================
+./examples/docs/coding_style/bind/bind.ml:2: v
+
 ./examples/docs/exported_values/code_constructs/function/function_lib.mli:7: unused
 
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
@@ -1428,6 +1430,8 @@ Nothing else to report in this section
 
 .> CODING STYLE:
 ===============
+./examples/docs/coding_style/bind/bind.ml:3: let x = ... in x (=> useless binding)
+
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:21: unit pattern used_required
@@ -1508,7 +1512,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1236
-Success: 1228
+Total: 1238
+Success: 1230
 Failed: 8
-Ratio: 99.3527508091%
+Ratio: 99.3537964459%

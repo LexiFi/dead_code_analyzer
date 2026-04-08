@@ -7,6 +7,7 @@ build:
 	make -C methods
 	make -C fields_and_constructors
 	make -C optional_arguments
+	make -C coding_style
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -14,4 +15,5 @@ clean:
 	make -C methods clean
 	make -C fields_and_constructors clean
 	make -C optional_arguments clean
+	make -C coding_style clean
 
