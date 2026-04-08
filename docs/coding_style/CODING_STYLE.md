@@ -2,6 +2,9 @@
 
 + [Coding style](#coding-style)
     + [Usage](#usage)
+    + [Useless binding](#useless-binding)
+        + [Example](#bind-example)
+        + [Limitation](#bind-limitation)
 
 # Coding style
 
@@ -45,3 +48,99 @@ There can be any number of such lines.
 
 The expected resolution depends on the reported issue category. This is
 described in their respective sections.
+
+## Useless binding
+
+A.k.a `bind`.
+This issue is different from unused variables or unused values (for more
+details, see the  [Exported Values](../exported_values/EXPORTED_VALUES.md)
+documentation).
+
+This stylistic issue category can be selectively activated by using the
+`-S +bind` command line argument.
+It can be deactivated by using the `-S -bind` command line argument.
+
+This category targets patterns of the form:
+```OCaml
+let x = ... in x
+```
+I.e. the variable is immediately returned.
+
+The expected resolution is to remove the intermediate binding:
+```Diff
+- let x =
+    ...
+- in x
+```
+
+### Example <a name="bind-example"></a>
+
+The reference files for this example are in the
+[bind](../../examples/docs/coding_style/bind) directory.
+
+The reference takes place in `/tmp/docs/coding_style`, which
+is a copy of the [coding\_style](../../examples/docs/coding_style)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C bind build
+```
+
+The analysis command is :
+```
+make -C bind analyze
+```
+
+The compile + analyze command is :
+```
+make -C bind
+```
+
+Code:
+```OCaml
+(* bind.ml *)
+let v =
+  let interm = 42 in
+  interm
+```
+
+Compile and analyze:
+```
+$ make -C bind
+make: Entering directory '/tmp/docs/coding_style/bind'
+ocamlopt -bin-annot bind.ml
+dead_code_analyzer --nothing -S +bind .
+Scanning files...
+ [DONE]
+
+.> CODING STYLE:
+===============
+/tmp/docs/coding_style/bind/bind.ml:3: let x = ... in x (=> useless binding)
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/coding_style/bind'
+```
+
+The analyzer reports a coding style issue in `tmp/docs/coding_style/bind/bind.ml`
+at line `3`. The reported issue is `let x = ... in x (=> useless binding)`, aka
+a `bind` issue.
+
+The reported location points to `let interm = 42 in`. Removing the binding to
+`interm` and replacing its use by its value (`42`) fixes the issue.
+
+Code:
+```OCaml
+(* bind.ml *)
+let v = 42
+```
+
+### Limitation <a name="bind-limitation"></a>
+
+`bind` issues are always reported with the same content :
+`let x = ... in x (=> useless binding)`. The name of the variable is not
+adapted to fit the actual name found in code (`interm` in the example above).
