@@ -2,6 +2,8 @@
 =========================
 ./examples/docs/coding_style/bind/bind.ml:2: v
 
+./examples/docs/coding_style/opt/opt.ml:14: add_index_to_negative
+
 ./examples/docs/exported_values/code_constructs/function/function_lib.mli:7: unused
 
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:9: F.internally_used
@@ -332,6 +334,8 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: ALWAYS:
 =============================
+./examples/docs/coding_style/opt/opt.ml:15: ?index
+
 ./examples/docs/optional_arguments/code_constructs/external_app/external_app_lib.mli:3: ?max
 
 ./examples/docs/optional_arguments/code_constructs/hof/hof_bin.ml:2: ?index
@@ -622,6 +626,8 @@ Nothing else to report in this section
 ===============
 ./examples/docs/coding_style/bind/bind.ml:3: let x = ... in x (=> useless binding)
 
+./examples/docs/coding_style/opt/opt.ml:2: val f: ... -> (... -> ?_:_ -> ...) -> ...
+
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:21: unit pattern used_required
@@ -702,7 +708,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 583
-Success: 576
+Total: 586
+Success: 579
 Failed: 7
-Ratio: 98.7993138937%
+Ratio: 98.8054607509%
