@@ -4,6 +4,8 @@
 
 ./examples/docs/coding_style/opt/opt.ml:14: add_index_to_negative
 
+./examples/docs/coding_style/seq/seq.ml:2: compute_answer
+
 ./examples/docs/exported_values/code_constructs/function/function_lib.mli:7: unused
 
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
@@ -574,6 +576,8 @@ Nothing else to report in this section
 ./examples/docs/coding_style/bind/bind.ml:3: let x = ... in x (=> useless binding)
 
 ./examples/docs/coding_style/opt/opt.ml:2: val f: ... -> (... -> ?_:_ -> ...) -> ...
+
+./examples/docs/coding_style/seq/seq.ml:3: let () = ... in ... (=> use sequence)
 
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
