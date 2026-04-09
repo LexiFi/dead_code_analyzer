@@ -8,6 +8,8 @@
     + [Optional arg in arg](#optional-arg-in-arg)
         + [Example](#opt-example)
         + [Limitation](#opt-limitation)
+    + [Use sequence](#use-sequence)
+        + [Example](#seq-example)
 
 # Coding style
 
@@ -291,3 +293,98 @@ let add_index_to_negative l =
 `val f: ... -> (... -> ?_:_ -> ...) -> ...`. The name of the function is not
 adapted to fit the actual name found in code (`map_with_index_on_negative` in
 the example above).
+
+## Use sequence
+
+A.k.a `seq`.
+
+This stylistic issue category can be selectively activated by using the
+`-S +seq` command line argument.
+It can be deactivated by using the `-S -seq` command line argument.
+
+This category targets patterns of the form:
+```OCaml
+let () = e1 in e2
+```
+I.e. binding to unit instead of using a sequence.
+
+The expected resolution is to use a sequence instead of the intermediate binding:
+```OCaml
+e1;
+e2
+```
+
+> [!TIP]
+> If you are using this pattern to ensure `e1` is of type `unit`, the compiler
+> will report a warning 10 `non-unit-statement` when using the suggested
+> sequence pattern if `e1` is not `unit`. Alternatively, you may use a type
+> annotation `(e1 : unit)` to enforce it and the compiler will report an error
+> if `e1` is not `unit`.
+
+### Example <a name="seq-example"></a>
+
+The reference files for this example are in the
+[seq](../../examples/docs/coding_style/seq) directory.
+
+The reference takes place in `/tmp/docs/coding_style`, which
+is a copy of the [coding\_style](../../examples/docs/coding_style)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C seq build
+```
+
+The analysis command is :
+```
+make -C seq analyze
+```
+
+The compile + analyze command is :
+```
+make -C seq
+```
+
+Code:
+```OCaml
+(* seq.ml *)
+let compute_answer () =
+  let () = print_endline "Computing answer" in
+  42
+```
+
+Compile and analyze:
+```
+$ make -C seq
+make: Entering directory '/tmp/docs/coding_style/seq'
+ocamlopt -bin-annot seq.ml
+dead_code_analyzer --nothing -S +seq .
+Scanning files...
+ [DONE]
+
+.> CODING STYLE:
+===============
+/tmp/docs/coding_style/seq/seq.ml:3: let () = ... in ... (=> use sequence)
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/coding_style/seq'
+```
+
+The analyzer reports a coding style issue in `tmp/docs/coding_style/seq/seq.ml`
+at line `3`. The reported issue is `let () = ... in ... (=> use sequence)`, aka
+a `seq` issue.
+
+The reported location points to `let () = print_endline "Computing answer" in`
+which can be replaced by a sequence `print_endline "Computing answer;`
+
+Code:
+```OCaml
+(* seq.ml *)
+let compute_answer () =
+  print_endline "Computing answer";
+  42
+```
