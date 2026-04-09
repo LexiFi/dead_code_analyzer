@@ -10,6 +10,9 @@
         + [Limitation](#opt-limitation)
     + [Use sequence](#use-sequence)
         + [Example](#seq-example)
+    + [Unit pattern](#unit-pattern)
+        + [Example](#unit-example)
+        + [Limitation](#unit-limitation)
 
 # Coding style
 
@@ -388,3 +391,128 @@ let compute_answer () =
   print_endline "Computing answer";
   42
 ```
+
+## Unit pattern
+
+A.k.a `unit`.
+
+This stylistic issue category can be selectively activated by using the
+`-S +unit` command line argument.
+It can be deactivated by using the `-S -unit` command line argument.
+
+This category targets patterns giving a name to expressions of type `unit`.
+
+The expected resolution is to use `()` in place of the name.
+
+### Example <a name="unit-example"></a>
+
+The reference files for this example are in the
+[unit](../../examples/docs/coding_style/unit) directory.
+
+The reference takes place in `/tmp/docs/coding_style`, which
+is a copy of the [coding\_style](../../examples/docs/coding_style)
+directory. Reported locations may differ depending on the location of the source
+files.
+
+The compilation command is :
+```
+make -C unit build
+```
+
+The analysis command is :
+```
+make -C unit analyze
+```
+
+The compile + analyze command is :
+```
+make -C unit
+```
+
+Code:
+```OCaml
+(* unit.ml *)
+let compute_answer input =
+  let print = print_endline "Computing answer" in
+  match print with
+  | r when input = print -> 42
+  | _ -> assert false
+```
+
+Compile and analyze:
+```
+$ make -C unit
+make -C unit
+make: Entering directory '/tmp/docs/coding_style/unit'
+ocamlopt -bin-annot unit.ml
+dead_code_analyzer --nothing -S +unit .
+Scanning files...
+ [DONE]
+
+.> CODING STYLE:
+===============
+/tmp/docs/coding_style/unit/unit.ml:2: unit pattern input
+/tmp/docs/coding_style/unit/unit.ml:3: unit pattern print
+/tmp/docs/coding_style/unit/unit.ml:5: unit pattern other
+/tmp/docs/coding_style/unit/unit.ml:5: unit pattern r
+/tmp/docs/coding_style/unit/unit.ml:6: unit pattern other
+
+Nothing else to report in this section
+--------------------------------------------------------------------------------
+
+
+make: Leaving directory '/tmp/docs/coding_style/unit'
+```
+
+The analyzer reports 5 coding style issues in `tmp/docs/coding_style/unit/unit.ml`.
+They all have the form `unit pattern <name>`. Among them, the to reported
+`other` are actually duplicates due to a limitation. Let's ignore them.
+
+> [!IMPORTANT]
+> **Limitation**
+>
+> In some cases, the analyzer may report `other` instead of the actual pattern.
+> This happens for patterns matching more complex expressions than names.
+
+The names listed (`input`, `print, `r`) are the values of type `unit`.
+
+> [!TIP]
+> Using the `--underscore` command line argument of the `dead_code_analyzer`
+> will trigger the reports for values named `_` or with names prefixed by `_`.
+
+Fixing the reports be done by replacing the reported values by `()`.
+
+Code:
+```OCaml
+(* unit.ml *)
+let compute_answer () =
+  let () = print_endline "Computing answer" in
+  match () with
+  | () when () = () -> 42
+  | _ -> assert false
+```
+
+Now this code can be further simplified by removing the useless pattern matching.
+
+Code:
+```OCaml
+(* unit.ml *)
+let compute_answer () =
+  let () = print_endline "Computing answer" in
+  42
+```
+
+This can be further improved as detailed in the above
+[Use sequence example](#seq-example). To trigger the `seq` reports, add `+seq`
+to the `-S +unit` command line argument in the `Makefile` :
+```Diff
+analyze:
+-	dead_code_analyzer --nothing -S +unit .
++	dead_code_analyzer --nothing -S +unit+seq .
+```
+
+### Limitation <a name="unit-limitation"></a>
+
+As demonstrated in the example, in some cases, the analyzer may report `other`
+instead of the actual pattern of type `unit`. This happens for patterns that are
+more complex expressions than names.

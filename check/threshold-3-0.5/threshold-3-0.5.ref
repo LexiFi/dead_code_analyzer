@@ -6,6 +6,8 @@
 
 ./examples/docs/coding_style/seq/seq.ml:2: compute_answer
 
+./examples/docs/coding_style/unit/unit.ml:2: compute_answer
+
 ./examples/docs/exported_values/code_constructs/function/function_lib.mli:7: unused
 
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
@@ -1448,6 +1450,12 @@ Nothing else to report in this section
 
 ./examples/docs/coding_style/seq/seq.ml:3: let () = ... in ... (=> use sequence)
 
+./examples/docs/coding_style/unit/unit.ml:2: unit pattern input
+./examples/docs/coding_style/unit/unit.ml:3: let () = ... in ... (=> use sequence)
+./examples/docs/coding_style/unit/unit.ml:3: unit pattern print
+./examples/docs/coding_style/unit/unit.ml:5: unit pattern other: Should not be detected
+./examples/docs/coding_style/unit/unit.ml:5: unit pattern r
+./examples/docs/coding_style/unit/unit.ml:6: unit pattern other: Should not be detected
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:21: unit pattern used_required
@@ -1528,7 +1536,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1246
-Success: 1238
-Failed: 8
-Ratio: 99.3579454254%
+Total: 1253
+Success: 1243
+Failed: 10
+Ratio: 99.201915403%
