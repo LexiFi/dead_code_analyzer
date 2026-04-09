@@ -228,10 +228,10 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
       | Tpat_any -> if state.config.underscore then u "_"
       | Tpat_value tpat_arg ->
         begin match (tpat_arg :> value general_pattern) with
-        | {pat_desc=Tpat_construct _; _} -> ()
-        | _ -> u "other"
+        | {pat_desc=(Tpat_construct _ | Tpat_var _ | Tpat_any); _} -> ()
+        | _ -> u "!!pattern!!"
         end
-      | _ -> u ""
+      | _ -> u "!!pattern!!"
   end;
   begin match p.pat_desc with
   | Tpat_record (l, _) ->

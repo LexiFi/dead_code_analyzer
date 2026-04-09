@@ -1045,9 +1045,8 @@ Nothing else to report in this section
 ./examples/docs/coding_style/unit/unit.ml:2: unit pattern input
 ./examples/docs/coding_style/unit/unit.ml:3: let () = ... in ... (=> use sequence)
 ./examples/docs/coding_style/unit/unit.ml:3: unit pattern print
-./examples/docs/coding_style/unit/unit.ml:5: unit pattern other: Should not be detected
 ./examples/docs/coding_style/unit/unit.ml:5: unit pattern r
-./examples/docs/coding_style/unit/unit.ml:6: unit pattern other: Should not be detected
+
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:16: unit pattern used_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:17: unit pattern unused_required
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.ml:21: unit pattern used_required
@@ -1128,7 +1127,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 931
+Total: 929
 Success: 921
-Failed: 10
-Ratio: 98.9258861439%
+Failed: 8
+Ratio: 99.1388589882%
