@@ -8,6 +8,7 @@ build:
 	make -C internal_app build
 	make -C external_app build
 	make -C intext_app build
+	make -C hof build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -16,3 +17,4 @@ clean:
 	make -C internal_app clean
 	make -C external_app clean
 	make -C intext_app clean
+	make -C hof clean

@@ -223,6 +223,7 @@ argument as never used if its declaring function is never fully applied.
     - [Internal application](./code_constructs/INTERNAL_APPLICATION.md)
     - [External application](./code_constructs/EXTERNAL_APPLICATION.md)
     - [Internal and external application](./code_constructs/INTEXT_APPLICATION.md)
+    - [Higher-order function](./code_constructs/HIGHER_ORDER_FUNCTION.md)
 
 # Limitations
 
