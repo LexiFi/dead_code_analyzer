@@ -453,9 +453,7 @@ Scanning files...
 ===============
 /tmp/docs/coding_style/unit/unit.ml:2: unit pattern input
 /tmp/docs/coding_style/unit/unit.ml:3: unit pattern print
-/tmp/docs/coding_style/unit/unit.ml:5: unit pattern other
 /tmp/docs/coding_style/unit/unit.ml:5: unit pattern r
-/tmp/docs/coding_style/unit/unit.ml:6: unit pattern other
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -464,16 +462,8 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/coding_style/unit'
 ```
 
-The analyzer reports 5 coding style issues in `tmp/docs/coding_style/unit/unit.ml`.
-They all have the form `unit pattern <name>`. Among them, the to reported
-`other` are actually duplicates due to a limitation. Let's ignore them.
-
-> [!IMPORTANT]
-> **Limitation**
->
-> In some cases, the analyzer may report `other` instead of the actual pattern.
-> This happens for patterns matching more complex expressions than names.
-
+The analyzer reports 3 coding style issues in `tmp/docs/coding_style/unit/unit.ml`.
+They all have the form `unit pattern <name>`.
 The names listed (`input`, `print, `r`) are the values of type `unit`.
 
 > [!TIP]
@@ -513,6 +503,6 @@ analyze:
 
 ### Limitation <a name="unit-limitation"></a>
 
-As demonstrated in the example, in some cases, the analyzer may report `other`
-instead of the actual pattern of type `unit`. This happens for patterns that are
-more complex expressions than names.
+In some cases, the analyzer may report `!!pattern!!` instead of the actual
+pattern of type `unit`. This happens for patterns that are more complex patterns
+than names.
