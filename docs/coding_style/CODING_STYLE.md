@@ -35,7 +35,7 @@ Their reports can be activated by using the `--all` or `-S +all` command line
 arguments.
 They can be deactivated by using the `--nothing` or `-S -all` command line
 arguments.
-Each of the sylistic issue category can be selectively activated/decativated as
+Each of the sylistic issue category can be selectively activated/deactivated as
 described in their respective sections.
 For more details about the command line arguments see [the more general Usage
 documentation](../USAGE.md).
@@ -134,7 +134,7 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/coding_style/bind'
 ```
 
-The analyzer reports a coding style issue in `tmp/docs/coding_style/bind/bind.ml`
+The analyzer reports a coding style issue in `/tmp/docs/coding_style/bind/bind.ml`
 at line `3`. The reported issue is `let x = ... in x (=> useless binding)`, aka
 a `bind` issue.
 
@@ -162,7 +162,7 @@ This stylistic issue category can be selectively activated by using the
 `-S +opt` command line argument.
 It can be deactivated by using the `-S -opt` command line argument.
 
-This category targets patterns of the form:
+This category targets functions with types of the form:
 ```OCaml
 val f: ... -> (... -> ?_:_ -> ...) -> ...
 ```
@@ -173,7 +173,7 @@ The expected resolution is to make the optional argument mandatory.
 ### Example <a name="opt-example"></a>
 
 The reference files for this example are in the
-[bindopt/../examples/docs/coding_style/bind) directory.
+[opt](../../examples/docs/coding_style/opt) directory.
 
 The reference takes place in `/tmp/docs/coding_style`, which
 is a copy of the [coding\_style](../../examples/docs/coding_style)
@@ -295,7 +295,8 @@ let add_index_to_negative l =
 `opt` issues are always reported with the same content :
 `val f: ... -> (... -> ?_:_ -> ...) -> ...`. The name of the function is not
 adapted to fit the actual name found in code (`map_with_index_on_negative` in
-the example above).
+the example above), and the names of the parameters (`f` and `?index` in the
+example above) are not shown.
 
 ## Use sequence
 
@@ -377,7 +378,7 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/coding_style/seq'
 ```
 
-The analyzer reports a coding style issue in `tmp/docs/coding_style/seq/seq.ml`
+The analyzer reports a coding style issue in `/tmp/docs/coding_style/seq/seq.ml`
 at line `3`. The reported issue is `let () = ... in ... (=> use sequence)`, aka
 a `seq` issue.
 
@@ -462,15 +463,15 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/coding_style/unit'
 ```
 
-The analyzer reports 3 coding style issues in `tmp/docs/coding_style/unit/unit.ml`.
+The analyzer reports 3 coding style issues in `/tmp/docs/coding_style/unit/unit.ml`.
 They all have the form `unit pattern <name>`.
-The names listed (`input`, `print, `r`) are the values of type `unit`.
+The names listed (`input`, `print`, `r`) are the values of type `unit`.
 
 > [!TIP]
 > Using the `--underscore` command line argument of the `dead_code_analyzer`
 > will trigger the reports for values named `_` or with names prefixed by `_`.
 
-Fixing the reports be done by replacing the reported values by `()`.
+Fixing the reports is done by replacing the reported values by `()`.
 
 Code:
 ```OCaml
@@ -504,5 +505,5 @@ analyze:
 ### Limitation <a name="unit-limitation"></a>
 
 In some cases, the analyzer may report `!!pattern!!` instead of the actual
-pattern of type `unit`. This happens for patterns that are more complex patterns
+pattern of type `unit`. This happens for patterns that are more complex
 than names.
