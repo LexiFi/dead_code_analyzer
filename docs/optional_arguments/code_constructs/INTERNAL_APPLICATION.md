@@ -54,7 +54,7 @@ let () =
 Before looking at the analysis results, let's look at the code.
 
 There are 2 functions defined and exported by `Internal_app_lib`: `max` and
-`min. They both have an optional argument, and both functions are used
+`min`. They both have an optional argument, and both functions are used
 internally. Neither is used externally.
 Optional argument `?min` of `max` is never used. Optional argument `?max` of
 `min` is always used.
@@ -90,7 +90,8 @@ make: Leaving directory '/tmp/docs/opt_args/code_constructs/internal_app'
 As expected, `?max` is reported always used and `?min` never used.
 
 Because all the uses of the functions are inside their compilation unit, the
-analyzer reports locations in the `.ml` and not the `.mli`.
+analyzer reports locations in the `.ml` and not the `.mli`. This is the opposite
+of the [External application](./EXTERNAL_APPLICATION.md) example.
 
 ## Fixing the reports
 
@@ -123,8 +124,8 @@ The signatures of the functions in the `.mli` have been changed accordingly.
 
 > [!NOTE]
 > Because the functions `min` and `max` are exported but not used outside their
-> compilation unit, the analyzer can report them, and we could simply remove
-> them from the `.mli`. More details available in the
+> compilation unit, the analyzer can report them as _unused exported values_,
+> and we could simply remove them from the `.mli`. More details available in the
 > [Exported values](../../exported_values/EXPORTED_VALUES.md) documentation.
 
 Compile and analyze:

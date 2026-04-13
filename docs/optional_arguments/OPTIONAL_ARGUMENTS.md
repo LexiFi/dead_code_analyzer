@@ -15,7 +15,7 @@
 
 ## Definitions
 
-An **optional parameter** is a labeled parameter defined by prefixing the label
+An **optional parameter** is a labelled parameter defined by prefixing the label
 with `?`.
 
 An **optional argument** is the value given (explicitly or implicitly) to an
@@ -172,12 +172,13 @@ and `?arg` the name of the optional argument.
 There can be any number of such lines.
 
 The expected resolution for an optional argument always used is to transform it
-into a non-optional labeled argument.
+into a non-optional labelled argument.
 
 > [!CAUTION]
-> The analyzer tracks sperately optional arguments declared in `.ml` and in
-> `.mli` files. This implies that it is possible that an optional argument is
-> reported always used inside its compilation but not outside (and vice-versa).
+> The analyzer tracks separately optional arguments declared in a module's
+> structure and in a module's explicit signature. This implies that it is
+> possible for an optional argument to be reported as always used inside its
+> module but not outside (and vice-versa).
 > The examples should help understand the implication on the resolutions.
 
 > [!IMPORTANT]
@@ -201,9 +202,10 @@ The expected resolution for an optional argument never used is to remove it from
 the function's parameters.
 
 > [!CAUTION]
-> The analyzer tracks sperately optional arguments declared in `.ml` and in
-> `.mli` files. This implies that it is possible that an optional argument is
-> reported never used inside its compilation but not outside (and vice-versa).
+> The analyzer tracks separately optional arguments declared in a module's
+> structure and in a module's explicit signature. This implies that it is
+> possible for an optional argument to be reported as never used inside its
+> module but not outside (and vice-versa).
 > The examples should help understand the implication on the resolutions.
 
 In order to provide actionable reports, the analyzer does not report an optional
@@ -232,9 +234,9 @@ argument as never used if its declaring function is never fully applied.
 Following the current definition of use, relaying an optional argument to
 a callee counts as a use for the callee's. This may lead to optional arguments
 reported as always used although they are only used by relay. Because the
-analyzer's tracking of use is intransitive, some complex may arise with the
+analyzer's tracking of use is intransitive, some complex cases may arise with the
 caller's optional argument not being always used (or even never used), which
-would lead to complex resolutions, losing the benefit of using the analyzer in
+would lead to complex resolutions, losing the benefit of using the analyzer
 to clean up the code in the first place.
 
 A future improvement could be to ignore optional arguments if they are used by
