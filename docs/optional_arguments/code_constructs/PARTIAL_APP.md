@@ -34,14 +34,13 @@ let sum ?x ?y () =
   | None, None -> 0
 
 let () =
-  let x = 42 in
-  let sum_x = sum ~x in
-  ignore (_sum_x)
+  let _sum_x = sum ~x:42 in
+  ()
 ```
 
 Before looking at the analysis results, let's look at the code.
 
-There is one function defined `sum` with 2 optional arguments `?x` and `?y`, and
+There is one function defined: `sum` with 2 optional arguments `?x` and `?y`, and
 1 mandatory argument `()`. The function is called once without any mandatory
 argument provided. Thus, `sum` is partially applied. The only optional argument
 with a value is `?x`.

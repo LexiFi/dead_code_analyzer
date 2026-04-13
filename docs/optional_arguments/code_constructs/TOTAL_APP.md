@@ -41,7 +41,7 @@ let () =
 
 Before looking at the analysis results, let's look at the code.
 
-There is one function defined `sum` with 2 optional arguments `?x` and `?y`, and
+There is one function defined: `sum` with 2 optional arguments `?x` and `?y`, and
 1 mandatory argument `()`. The function is called once with all the mandatory
 arguments provided. Thus, `sum` is totally applied. The only optional argument
 with a value is `?x`.
@@ -80,7 +80,7 @@ As expected, `?x` is reported as always used and `?y` as never used.
 
 > [!NOTE]
 > Although the reported locations are the ones where the arguments are defined,
-> this is coincidental. In reality, the reported locaitons are those of the
+> this is coincidental. In reality, the reported locations are those of the
 > functions that declare the optional arguments.
 
 ## Fixing the always used report
@@ -108,7 +108,7 @@ simplify the code of `sum`.
 > [!TIP]
 > Alternatively, we could have kept the same `int option` type for `~x` and
 > updated its use in `sum ~x` by `sum ~x:(Some x)`, without changing the body of
-> `sum`. Anyway, making the argument optional implies changes in either the use
+> `sum`. Anyway, making the argument mandatory implies changes in either the use
 > or the definition of the function. Otherwise the compiler would reject the
 > code with a message like :
 > ```
@@ -171,7 +171,7 @@ With `?y` removed from the parameters, the body of `sum` can be simplified once 
 > necessary anymore. For the purpose of the example, we'll leave the code as it
 > is. It could not have been removed in the previous iteration, even by
 > switching the positions of `~x` and `?y` because the compiler relies on the
-> application of a non-labeled argument appearing after the optional argument in
+> application of a non-labelled argument appearing after the optional argument in
 > the function type to implicilty discard the optional argument.
 
 Compile and analyze:

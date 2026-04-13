@@ -51,7 +51,7 @@ the signature of `map_with_index`. The first `add_index` is not used anywhere
 else, so its `?index` optional argument is always used.
 
 Within `map_with_index`, `f`'s `?index` is always used. The analyzer tracks all
-optional arguments uses, regardless of the kind of their defining functions
+the optional arguments, regardless of the kind of their defining functions
 (exported, local, recursive, ...). Thus, it should report the parameter `f`'s
 `?index` as always used.
 
@@ -84,8 +84,8 @@ make: Leaving directory '/tmp/docs/optional_arguments/code_constructs/hof'
 ```
 
 As expected, the analyzer reports 2 `?index` as always used. The first one is
-locatted at line `2` and is the one in the signature of `map_with_index`.
-The second one is located at line 6 and isthe one of the first `add_index` function.
+located at line `2` and is the one in the signature of `map_with_index`.
+The second one is located at line 6 and is the one of the first `add_index` function.
 
 ## Fixing the reports
 

@@ -62,7 +62,7 @@ let () =
 Before looking at the analysis results, let's look at the code.
 
 There are 2 functions defined and exported by `Intext_app_lib`: `max` and
-`min. They both have an optional argument, and both functions are used
+`min`. They both have an optional argument, and both functions are used
 internally and externally.
 Optional argument `?min` of `max` is never used internally and always used
 externally. Optional argument `?max` of `min` is always used internally and
@@ -98,23 +98,25 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/opt_args/code_constructs/intext_app'
 ```
 
-The analyzer reports `?max` anbd `?min` as always used and as never used.
-The difference in the reports are locations. The optional argument `?max` is
-always used for the "internal" definition of `min` but never used by its
-exported version. Similarly, the optional argument `?min` is always used by the
-exported version of `max` but never used by for its "internal" definition.
+The analyzer reports `?max` and `?min` both as always used and as never used.
+The difference in the reports are locations. The optional argument `?max` of the
+internal `min` (in the `.ml`) is always used but its exported version (in the
+`.mli`) is never used. Similarly, the optional argument `?min` of the internal
+`max` (in the `.ml`) is never used but its exported version (in the `.mli`) is
+always used.
+
 > [!IMPORTANT]
-> If a compilation unit has a `.mli`, the analyzer tracks internal and external
-> uses of its optional arguments separately, and, thus, reports separately the
-> their internal and exported definitions.
-> For compilation units without `.mli`, the internal and exported definitions
+> If a module has an explicit signature, the analyzer tracks internal and external
+> uses of its optional arguments separately, and, thus, reports separately their
+> structure and signature definitions.
+> For modules without explicit signature, the structure and signature definitions
 > are the same so the analyzer does not distinguish internal and external uses.
 
 ## Fixing the reports on `?max`
 
 `?max` is always used internally and never used externally. We can simplify the
 signature of the exported function and split the `min` function in 2 :
-- `bounded_min` which expects a mandatory labeled argument `~max`;
+- `bounded_min` which expects a mandatory labelled argument `~max`;
 - `min` which only expects 2 arguments.
 
 Code:
@@ -188,7 +190,7 @@ As expected, the analyzer does not report `?max` anymore.
 
 `?min` is always used externally and never used internally. We can strengthen
 the signature of the exported function and split the `max` function in 2 :
-- `bounded_max` which expects a mandatory labeled argument `~min`;
+- `bounded_max` which expects a mandatory labelled argument `~min`;
 - `max` which only expects 2 arguments.
 
 Code:

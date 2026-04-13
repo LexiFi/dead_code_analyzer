@@ -57,7 +57,7 @@ let () =
 Before looking at the analysis results, let's look at the code.
 
 There are 2 functions defined and exported by `External_app_lib`: `max` and
-`min. They both have an optional argument, and both functions are used
+`min`. They both have an optional argument, and both functions are used
 externally. Neither is used internally.
 Optional argument `?min` of `max` is never used. Optional argument `?max` of
 `min` is always used.
@@ -124,7 +124,7 @@ let () =
 ```
 
 We removed `?min` from function `max` and simplified its body.
-We transformed `?max` into a mandatory labeled argument `~max` in function `min`.
+We transformed `?max` into a mandatory labelled argument `~max` in function `min`.
 
 The signatures of the functions in the `.mli` have been changed accordingly.
 
