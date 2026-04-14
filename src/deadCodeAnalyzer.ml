@@ -1,0 +1,1 @@
+let () = DeadLib.DeadCode.run ()

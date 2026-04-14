@@ -19,7 +19,9 @@ open Parsetree
 open Types
 open Typedtree
 
-open DeadCommon
+open DeadLib.DeadCommon
+
+module State = DeadLib.State
 
 
                 (********   ATTRIBUTES   ********)
@@ -159,4 +161,5 @@ let () =
   DeadLexiFi.type_decl := type_decl;
   DeadLexiFi.tstr_type := tstr_type;
   DeadLexiFi.ttype_of := ttype_of;
-  DeadLexiFi.prepare_report := prepare_report
+  DeadLexiFi.prepare_report := prepare_report;
+  DeadLib.DeadCode.run ()

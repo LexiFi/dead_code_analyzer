@@ -200,3 +200,5 @@ See option {b -E} for the syntax of <display>
 {b --help}  Display this list of options
 
   *)
+
+val run : unit -> unit

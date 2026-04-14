@@ -696,7 +696,7 @@ let run_analysis state =
     state.State.config.paths_to_analyze
     state
 
-let () =
+let run () =
 try
     let config = Config.parse_cli () in
     let state = State.init config in

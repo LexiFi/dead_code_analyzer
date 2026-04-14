@@ -1,6 +1,18 @@
+(library
+ (public_name dead_code_analyzer.lib)
+ (name deadLib)
+ (modules (:standard \ deadCodeAnalyzer deadLexiFi))
+ (libraries compiler-libs.common))
+
 (executable
  (public_name dead_code_analyzer)
- (name deadCode)
- (libraries compiler-libs.common))
+ (name deadCodeAnalyzer)
+ (modules DeadCodeAnalyzer)
+ (libraries dead_code_analyzer.lib))
+
+(executable
+ (name deadLexiFi)
+ (modules DeadLexiFi)
+ (libraries dead_code_analyzer.lib))
 
 (include_subdirs unqualified)
