@@ -25,6 +25,7 @@ type t =
   ; excluded_paths : Utils.StringSet.t
   ; references_paths : Utils.StringSet.t
   ; sections : Sections.t
+  ; lexifi : bool
   }
 
 let default_config =
@@ -35,6 +36,7 @@ let default_config =
   ; excluded_paths = Utils.StringSet.empty
   ; references_paths = Utils.StringSet.empty
   ; sections = Sections.default
+  ; lexifi = false
   }
 
 let must_report_main config =
@@ -75,6 +77,8 @@ let set_verbose config = {config with verbose = true}
 let set_underscore config = {config with underscore = true}
 
 let set_internal config = {config with internal = true}
+
+let set_lexifi config = {config with lexifi = true}
 
 
 let normalize_path path =
@@ -233,6 +237,10 @@ let parse_cli () =
         String (update_config update_types),
         "<display>  Enable/Disable unused constructors/records fields warnings.\n    \
         See option -E for the syntax of <display>"
+
+    ; "--lexifi",
+        Unit (update_config_unit set_lexifi),
+        " Use lexifi's internal extension"
 
     ]
     (
