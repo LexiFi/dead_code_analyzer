@@ -29,6 +29,7 @@ type t = private
   ; references_paths : Utils.StringSet.t
       (** Cmi and cmt filepaths to explore for references only *)
   ; sections : Sections.t (** Config for the different report sections *)
+  ; lexifi : bool (** Use lexifi's extension *)
   }
 
 val default_config : t

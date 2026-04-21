@@ -700,6 +700,7 @@ let () =
 try
     let config = Config.parse_cli () in
     let state = State.init config in
+    if config.lexifi then DeadLexiFi.set_hooks ();
     let state = run_analysis state in
     let run_on_references_only state =
       DeadCommon.declarations := false;
