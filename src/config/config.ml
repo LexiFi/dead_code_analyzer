@@ -21,6 +21,7 @@ type t =
   { verbose : bool
   ; internal : bool
   ; underscore : bool
+  ; cmt_cache_size : int
   ; paths_to_analyze : Utils.StringSet.t
   ; excluded_paths : Utils.StringSet.t
   ; references_paths : Utils.StringSet.t
@@ -32,6 +33,7 @@ let default_config =
   { verbose = false
   ; internal = false
   ; underscore = false
+  ; cmt_cache_size = 64
   ; paths_to_analyze = Utils.StringSet.empty
   ; excluded_paths = Utils.StringSet.empty
   ; references_paths = Utils.StringSet.empty
@@ -79,6 +81,11 @@ let set_underscore config = {config with underscore = true}
 let set_internal config = {config with internal = true}
 
 let set_lexifi config = {config with lexifi = true}
+
+let update_cmt_cache_size size config =
+  if size <= 0 then
+    raise (Arg.Bad "cmt_cache_size: must be >= 1");
+  {config with cmt_cache_size = size}
 
 
 let normalize_path path =
@@ -178,6 +185,11 @@ let parse_cli () =
         Unit (update_config_unit set_internal),
         " Keep internal uses as exported values uses when the interface is given. \
           This is the default behaviour when only the implementation is found"
+
+    ; "--cmt_cache_size",
+        Int (update_config update_cmt_cache_size),
+        " <integer>. Cache up to <integer> cmt/cmti files at any given moment. \
+         Must be >=1. The default is 64."
 
     ; "--nothing",
         Unit (update_config_unit (update_all "nothing")),
