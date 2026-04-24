@@ -7,6 +7,7 @@ type t =
   }
 
 let init config =
+  Cmt.set_cache_size config.Config.cmt_cache_size;
   let comp_unit_to_path =
     let tbl = Hashtbl.create 32 in
     Utils.StringSet.iter (fun filepath ->
@@ -21,6 +22,7 @@ let init config =
   }
 
 let update_config config state =
+  Cmt.set_cache_size config.Config.cmt_cache_size;
   {state with config}
 
 
