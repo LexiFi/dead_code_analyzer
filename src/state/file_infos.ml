@@ -1,211 +1,152 @@
 type t = {
-  cmti_file : string;
-  sourcepath : string option;
-  builddir : string option;
+  builddir : string;
+  cm_file : string;
+  cmi_sign : Types.signature option;
+  cmt_struct : Typedtree.structure option;
+  cmti_uid_to_decl : Location_dependencies.uid_to_decl option;
+  location_dependencies : Location_dependencies.t;
   modname : string;
-  cmi_infos : Cmi_format.cmi_infos option;
-  cmt_infos : Cmt_format.cmt_infos option;
+  sourcepath : string option;
 }
 
 let empty = {
-  cmti_file = "";
-  sourcepath = None;
-  builddir = None;
+  builddir = "!!UNKNOWN_BUILDDIR!!";
+  cm_file = "";
+  cmi_sign = None;
+  cmt_struct = None;
+  cmti_uid_to_decl = None;
+  location_dependencies = Location_dependencies.empty;
   modname = "!!UNKNOWN_MODNAME!!";
-  cmi_infos = None;
-  cmt_infos = None;
+  sourcepath = None;
 }
 
-(** [init_from_cmt_infos cmt_infos cmt_file] creates a [t] with:
-    - information from [cmt_infos];
-    - [cmti_file = cmt_file];
-    - [cmt_infos = Some cmt_infos]. *)
-let init_from_cmt_infos cmt_infos cmt_file =
+(** [init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos] creates a [t] with:
+    - information from [cmt_infos] : [builddir], [modname], [sourcepath];
+    - [cm_file];
+    - [cmi_sign = Some cm_infos.cmi_sign] if [cmi_infos = Some _]; *)
+  let init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
   let sourcepath =
     Option.map Utils.Filepath.remove_pp cmt_infos.cmt_sourcefile
     |> Option.map (Filename.concat builddir)
   in
   let modname = cmt_infos.cmt_modname in
-  {empty with cmti_file = cmt_file;
-              builddir = Some builddir;
-              sourcepath;
+  let cmi_sign = Option.map (fun Cmi_format.{cmi_sign; _} -> cmi_sign) cmi_infos in
+  {empty with builddir;
+              cm_file;
+              cmi_sign;
               modname;
-              cmt_infos = Some cmt_infos;
-  }
+              sourcepath}
 
-(** [init_from_cmt cmt_file] returns an [Ok t] with [t] filled using
-    the [cmt_file] (see [init_from_cmt_infos]).
+(** [init_from_cm_file cm_file] returns an [Ok t] with [t] filled with general
+    info expected for both cmt and cmti files, using the [cm_file] (see
+    [init_from_all_cm_infos]).
     In case the file does not exist or it cannot be read (see
     [Cmt_format.read_cmt]) then it returns an [Err msg] with msg a string
     describing the issue. *)
-let init_from_cmt cmt_file =
-  if not (Sys.file_exists cmt_file) then Result.error (cmt_file ^ ": file not found")
+let init_from_cm_file cm_file =
+  if not (Sys.file_exists cm_file) then Result.error (cm_file ^ ": file not found")
   else
-    try
-      let cmt_infos = Cmt_format.read_cmt cmt_file in
-      init_from_cmt_infos cmt_infos cmt_file
-      |> Result.ok
-    with _ -> Result.error (cmt_file ^ ": cannot read cmt file")
+    match Cmt.read cm_file with
+    | Error _ as err -> err
+    | Ok (cmi_infos, cmt_infos) ->
+        let file_infos =
+          init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos
+        in
+        Result.ok (file_infos, cmt_infos)
 
+let ( let* ) x f = Result.bind x f
+let ( let+ ) x f = Result.map f x
 
-let sourcefname_of_cmi_infos cmi_unit cmi_infos =
-  let candidate_of_fname fname =
-    let src_unit = Utils.Filepath.unit fname in
-    if String.equal src_unit cmi_unit then
-      `Identical fname
-    else if String.ends_with ~suffix:src_unit cmi_unit then
-      `Suffix fname
-    else `Different
+let init_from_cmti_file cmti_file =
+  let+ file_infos, cmt_infos = init_from_cm_file cmti_file in
+  let cmti_uid_to_decl = Some cmt_infos.cmt_uid_to_decl in
+  {file_infos with cmti_uid_to_decl}
+
+let init_from_cmt_file ~comp_unit_to_path cmt_file =
+  let* file_infos, cmt_infos = init_from_cm_file cmt_file in
+  let* cmt_struct =
+    match cmt_infos.cmt_annots with
+    | Implementation structure -> Result.ok structure
+    | _ -> Result.error (cmt_file ^ ": does not contain an implementation")
   in
-  let fname_of_candidate = function
-    | `Different -> None
-    | `Identical fname
-    | `Suffix fname -> Some fname
+  let cmt_struct = Some cmt_struct in
+  (* Read the cmti if it exists. We always want to do it in case a user
+     specified the cmt before the cmti to ensure the location_dependencies
+     are idempotent. *)
+  let cmti_uid_to_decl =
+    let cmti_file = Filename.remove_extension cmt_file ^ ".cmti" in
+    match init_from_cmti_file cmti_file with
+    | Error _ -> None
+    | Ok file_infos -> file_infos.cmti_uid_to_decl
   in
-  let get_item_loc (sig_item : Types.signature_item) =
-    match sig_item with
-    | Sig_value (_, {val_loc = loc; _}, _)
-    | Sig_type (_, {type_loc = loc; _}, _, _)
-    | Sig_typext (_, {ext_loc = loc; _}, _, _)
-    | Sig_module (_, _, {md_loc = loc; _}, _, _)
-    | Sig_modtype (_,  {mtd_loc = loc; _}, _)
-    | Sig_class (_,  {cty_loc = loc; _}, _, _)
-    | Sig_class_type (_,  {clty_loc = loc; _}, _, _) ->
-      loc
+  let+ location_dependencies =
+    Location_dependencies.init ~comp_unit_to_path cmt_infos cmti_uid_to_decl
   in
-  let rec find_sourcename candidate = function
-  | [] -> fname_of_candidate candidate
-  | sig_item::items ->
-    let loc = get_item_loc sig_item in
-    if loc.Location.loc_ghost then find_sourcename candidate items
-    else
-      let fname = loc.Location.loc_start.pos_fname in
-      match candidate, candidate_of_fname fname with
-      | (`Identical _ as candidate), _
-      | _, (`Identical _ as candidate) ->
-        (* best candidate found *)
-        fname_of_candidate candidate
-      | `Different, candidate
-      | candidate, `Different
-      | _, candidate ->
-        find_sourcename candidate items
+  let file_infos =
+    {file_infos with cmt_struct; cmti_uid_to_decl; location_dependencies}
   in
-  find_sourcename `Different cmi_infos.Cmi_format.cmi_sign
+  file_infos, cmt_infos
 
-(** [init_from_cmi_infos ?with_cmt cmi_infos cmi_file] creates a [t] with:
-    - information from [cmt_infos];
-    - [cmti_file = cmt_file];
-    - [cmi_infos = Some cmi_infos].
-    Because the [cmi_infos] is not as complete as [cmt_infos] (e.g. it does not
-    specify the [builddir]), an existing [t] filled using the correpsonding
-    [cmt_infos] can be passed as argument. In this case, information unavailable
-    in the [cmi_infos] is read from [with_cmt]. Otherwise, default values are
-    set for [builddir] and eventually [sourcepath]. *)
-let init_from_cmi_infos ?with_cmt cmi_infos cmi_file =
-  let builddir = Option.bind with_cmt (fun {builddir; _} -> builddir) in
-  let sourcepath =
-    let sourcepath =
-      (* Try to find a sourcepath in the cmi_infos *)
-      let cmi_unit = Utils.Filepath.unit cmi_file in
-      let sourcefname = sourcefname_of_cmi_infos cmi_unit cmi_infos in
-      match sourcefname, builddir with
-      | Some fname, Some builddir -> Some (Filename.concat builddir fname)
-      | _, _ -> sourcefname
-    in
-    match sourcepath with
-    | Some _ -> sourcepath
-    | None ->
-      (* There is no satisfying sourcepath in the cmi_infos.
-         Try to retrieve the sourecpath using with_cmt.
-      *)
-      let sourcepath_of_cmt cmt_file sourcepath =
-        (* When producing .cmt files for .ml files, the compiler also produces
-           .cmti files for .mli files. Hence, if a .cmti exists, we assume the
-           .mli does.
-        *)
-        if Sys.file_exists (cmt_file ^ "i") then sourcepath ^ "i"
-        else sourcepath
-      in
-      Option.bind with_cmt
-        (fun {sourcepath; cmti_file; _} ->
-          Option.map (sourcepath_of_cmt cmti_file) sourcepath
-        )
-
-  in
-  let modname = cmi_infos.cmi_name in
-  {empty with cmti_file = cmi_file;
-              builddir;
-              sourcepath;
-              modname;
-              cmi_infos = Some cmi_infos;
-  }
-
-(** [init_from_cmi cmi_file] returns an [Ok t] with [t] filled using
-    the [cmi_file] (see [init_from_cmi_infos]).
-    In case the file does not exist or it cannot be read (see
-    [Cmi_format.read_cmi]) then it returns an [Err msg] with msg a string
-    describing the issue. *)
-let init_from_cmi ?with_cmt cmi_file =
-  if not (Sys.file_exists cmi_file) then Result.error (cmi_file ^ ": file not found")
-  else
-    try
-      let cmi_infos = Cmi_format.read_cmi cmi_file in
-      init_from_cmi_infos ?with_cmt cmi_infos cmi_file
-      |> Result.ok
-    with _ -> Result.error (cmi_file ^ ": cannot read cmi file")
-
-let init cmti_file =
-  let no_ext = Filename.remove_extension cmti_file in
-  match Filename.extension cmti_file with
-  | ".cmi" ->
-    let with_cmt = init_from_cmt (no_ext ^ ".cmt") |> Result.to_option in
-    init_from_cmi ?with_cmt cmti_file
+let init ~comp_unit_to_path cm_file =
+  match Filename.extension cm_file with
   | ".cmt" ->
-    let with_cmi_infos with_cmt =
-      match init_from_cmi ~with_cmt (no_ext ^ ".cmi") with
-      | Error _ -> with_cmt
-      | Ok {cmi_infos; _} -> {with_cmt with cmi_infos}
-    in
-    init_from_cmt cmti_file |> Result.map with_cmi_infos
-  | _ -> Result.error (cmti_file ^ ": not a .cmi or .cmt file")
+      let+ file_infos, _ = init_from_cmt_file ~comp_unit_to_path cm_file in
+      file_infos
+  | ".cmti" -> (
+      (* Using cmt_infos is not critical. The intent is to mirror the behavior
+         on cmt files, where both cmt and cmti are read. *)
+      let filled_with_cmt_infos =
+        let cmt_file = Filename.remove_extension cm_file ^ ".cmt" in
+        let* file_infos, cmt_infos = init_from_cmt_file ~comp_unit_to_path cmt_file in
+        let+ location_dependencies =
+          Location_dependencies.init ~comp_unit_to_path cmt_infos file_infos.cmti_uid_to_decl
+        in
+        {file_infos with location_dependencies}
+      in
+      match filled_with_cmt_infos with
+      | Ok {cmt_struct; cmti_uid_to_decl; location_dependencies; _} ->
+          let+ res, _ = init_from_cm_file cm_file in
+          {res with cmt_struct; cmti_uid_to_decl; location_dependencies}
+      | Error _ -> init_from_cmti_file cm_file
+  )
+  | _ -> Result.error (cm_file ^ ": not a .cmti or .cmt file")
 
-let change_file file_infos cmti_file =
-  let no_ext = Filename.remove_extension cmti_file in
-  assert(no_ext = Filename.remove_extension file_infos.cmti_file);
-  match Filename.extension cmti_file, file_infos with
-  | ".cmi", {cmi_infos=Some cmi_infos; _} ->
-    let res = init_from_cmi_infos ~with_cmt:file_infos cmi_infos cmti_file in
-    Result.ok res
-  | ".cmt", {cmt_infos = Some cmt_infos; cmi_infos; _} ->
-    let res = init_from_cmt_infos cmt_infos cmti_file in
-    Result.ok {res with cmi_infos}
-  | _ -> (* corresponding info is None *)
-    init cmti_file
-
-let has_builddir file_infos = Option.is_some file_infos.builddir
+let change_file ~comp_unit_to_path file_infos cm_file =
+  let no_ext = Filename.remove_extension cm_file in
+  assert(no_ext = Filename.remove_extension file_infos.cm_file);
+  match Filename.extension cm_file, file_infos with
+  | ".cmt", {cmt_struct = (Some _ as cs); cmi_sign; cmti_uid_to_decl; _} ->
+      let* res, cmt_infos = init_from_cm_file cm_file in
+      let+ location_dependencies =
+        match file_infos.location_dependencies with
+        | [] -> Location_dependencies.init ~comp_unit_to_path cmt_infos cmti_uid_to_decl
+        | loc_dep -> (* They have already been computed *)
+            Result.ok loc_dep
+      in
+      {res with cmt_struct = cs; cmi_sign; cmti_uid_to_decl; location_dependencies}
+  | ".cmti", {cmti_uid_to_decl = (Some _ as cutd); cmt_struct; location_dependencies; _} ->
+      let+ res, _ = init_from_cm_file cm_file in
+      {res with cmti_uid_to_decl = cutd; cmt_struct; location_dependencies}
+  | _ ->
+      (* invalid extension or the corresponding info is None *)
+      init ~comp_unit_to_path cm_file
 
 let has_sourcepath file_infos = Option.is_some file_infos.sourcepath
 
-let get_builddir t =
-  match t.builddir with
-  | Some builddir -> builddir
-  | None -> "!!UNKNOWN_BUILDDIR_FOR<" ^ t.cmti_file ^ ">!!"
+let get_builddir t = t.builddir
 
 let get_sourcepath t =
   match t.sourcepath with
-  | Some sourcepath ->
-      sourcepath
-  | None -> match t.builddir with
-    | Some builddir ->
+  | Some sourcepath -> sourcepath
+  | None ->
       Printf.sprintf "!!UNKNOWN_SOURCEPATH_IN<%s>_FOR_<%s>!!"
-        builddir
-        t.cmti_file
-    | None -> "!!UNKNOWN_SOURCEPATH_FOR<" ^ t.cmti_file ^ ">!!"
+        t.builddir
+        t.cm_file
 
 let get_sourceunit t =
   match t.sourcepath with
   | Some sourcepath -> Utils.Filepath.unit sourcepath
-  | None -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cmti_file ^ ">!!"
+  | None -> "!!UNKNOWN_SOURCEUNIT_FOR<" ^ t.cm_file ^ ">!!"
 
 let get_modname t = t.modname

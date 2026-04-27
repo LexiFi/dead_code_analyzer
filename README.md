@@ -8,7 +8,7 @@ Dead-code analyzer for OCaml
 
 The tool assumes that **.mli** files are compiled with **-keep-locs** (activated
 by default) and **.ml** files with **-bin-annot**.
-Tracked elements of code are collected by reading **.cmi** and **.cmt** files.
+Tracked elements of code are collected by reading **.cmti** and **.cmt** files.
 Uses of such elements are collected by reading typed trees from **.cmt** files
 
 
@@ -48,7 +48,7 @@ For more information, see the [User documentation](docs/USER_DOC.md)
 
 ## Requirements
 
-- Currently tested and working on **OCaml 5.2**
+- Currently tested and working on **OCaml 5.3**
 - **dune >= 3.20**
 
 

@@ -21,6 +21,7 @@ type t = private
   { verbose : bool (** Display additional information during the analaysis *)
   ; internal : bool (** Keep track of internal uses for exported values *)
   ; underscore : bool (** Keep track of elements with names starting with [_] *)
+  ; cmt_cache_size : int (** Max number of cmt/cmti files in cache *)
   ; paths_to_analyze : Utils.StringSet.t
       (** Cmi and cmt filepaths found by exploring the paths provided in the
           command line and considered for analysis *)

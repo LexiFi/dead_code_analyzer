@@ -20,15 +20,14 @@ without any external use.
 The reference file for this example is
 [`hello_world_without_intf.ml`](../../examples/docs/exported_values/hello_world/hello_world_without_intf.ml).
 
-The compilation command to produce `hello_world_without_intf.cmi` and
-`hello_world_without_intf.cmt` is :
+The compilation command to produce `hello_world_without_intf.cmt` is :
 ```
 ocamlopt -bin-annot hello_world_without_intf.ml
 ```
 
 The analysis command is :
 ```
-dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
+dead_code_analyzer --nothing -E all hello_world_without_intf.cmt
 ```
 
 ## First run
@@ -62,7 +61,7 @@ reported location: `File "hello_world_without_intf.ml", line 8`
 
 Analyze :
 ```
-$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
+$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmt
 Scanning files...
  [DONE]
 
@@ -100,7 +99,7 @@ Compile and analyze :
 ```
 $ ocamlopt -bin-annot hello_world_without_intf.ml
 
-$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
+$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmt
 Scanning files...
  [DONE]
 
@@ -136,7 +135,7 @@ Compile and analyze :
 ```
 $ ocamlopt -bin-annot hello_world_without_intf.ml
 
-$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmi hello_world_without_intf.cmt
+$ dead_code_analyzer --nothing -E all hello_world_without_intf.cmt
 Scanning files...
  [DONE]
 
@@ -160,14 +159,14 @@ The reference files for this example are
 [`hello_world_with_intf.mli`](../../examples/docs/exported_values/hello_world/hello_world_with_intf.mli) and
 [`hello_world_with_intf.ml`](../../examples/docs/exported_values/hello_world/hello_world_with_intf.ml)
 
-The compilation command to produce `hello_world.cmi` and `hello_world.cmt` is :
+The compilation command to produce `hello_world.cmti` and `hello_world.cmt` is :
 ```
 ocamlopt -bin-annot hello_world_with_intf.mli hello_world_with_intf.ml
 ```
 
 The analysis command is :
 ```
-dead_code_analyzer --nothing -E all hello_world.cmi hello_world.cmt
+dead_code_analyzer --nothing -E all hello_world.cmti hello_world.cmt
 ```
 
 ## First run
@@ -199,7 +198,7 @@ File "hello_world_with_intf.ml", line 8, characters 6-19:
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
 
-$ dead_code_analyzer --nothing -E all hello_world.cmi hello_world.cmt
+$ dead_code_analyzer --nothing -E all hello_world.cmti hello_world.cmt
 Scanning files...
  [DONE]
 
@@ -246,7 +245,7 @@ let () =
 Compile and analyze :
 ```
 $ ocamlopt -bin-annot hello_world_with_intf.ml
-$ dead_code_analyzer --nothing -E all hello_world.cmi hello_world.cmt
+$ dead_code_analyzer --nothing -E all hello_world.cmti hello_world.cmt
 Scanning files...
  [DONE]
 
@@ -284,14 +283,14 @@ The reference files for this example are
 [`hello_world_lib.ml`](../../examples/docs/exported_values/hello_world/hello_world_lib.ml), and
 [`hello_world_bin.ml`](../../examples/docs/exported_values/hello_world/hello_world_bin.ml)
 
-The compilation command to produce the necessary `.cmi` and `.cmt` files is :
+The compilation command to produce the necessary `.cmti` and `.cmt` files is :
 ```
 ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
 ```
 
 The analysis command is :
 ```
-dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+dead_code_analyzer --nothing -E all hello_world_lib.cmti hello_world_lib.cmt hello_world_bin.cmti hello_world_bin.cmt
 ```
 
 > [!NOTE]
@@ -330,7 +329,7 @@ File "hello_world_bin.ml", line 5, characters 6-19:
           ^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable goodbye_world.
 
-$ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+$ dead_code_analyzer --nothing -E all hello_world_lib.cmti hello_world_lib.cmt hello_world_bin.cmti hello_world_bin.cmt
 Scanning files...
  [DONE]
 
@@ -383,7 +382,7 @@ Compile and analyze :
 ```
 $ ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
 
-$ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+$ dead_code_analyzer --nothing -E all hello_world_lib.cmti hello_world_lib.cmt hello_world_bin.cmti hello_world_bin.cmt
 Scanning files...
  [DONE]
 
@@ -425,7 +424,7 @@ Compile and analyze :
 ```
 $ ocamlopt -bin-annot hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
 
-$ dead_code_analyzer --nothing -E all hello_world_lib.cmi hello_world_lib.cmt hello_world_bin.cmi hello_world_bin.cmt
+$ dead_code_analyzer --nothing -E all hello_world_lib.cmti hello_world_lib.cmt hello_world_bin.cmti hello_world_bin.cmt
 Scanning files...
  [DONE]
 
@@ -458,7 +457,7 @@ reach a satisfying codebase.
 
 The reference files for this example are all those listed previously.
 
-The compilation command to produce the necessary `.cmi` and `.cmt` files,
+The compilation command to produce the necessary `.cmti` and `.cmt` files,
 and the desired warnings is the combination of all the previous ones :
 ```
 ocamlopt -w +32 -bin-annot hello_world_without_intf.ml hello_world_with_intf.mli hello_world_with_intf.ml hello_world_lib.mli hello_world_lib.ml hello_world_bin.ml
@@ -476,7 +475,7 @@ dead_code_analyzer --nothing -E all .
 
 > [!TIP]
 > As we can see in the compilation command, there is a large number of files to
-> list. Instead of listing all the `.cmi` and `.cmt` files in the command line,
+> list. Instead of listing all the `.cmti` and `.cmt` files in the command line,
 > the analyzer accepts directories as arguments and will analyze all the
 > relevant files it can find in them.
 
