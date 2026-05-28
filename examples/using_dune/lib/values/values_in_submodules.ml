@@ -16,6 +16,10 @@ module Exported = struct
 
 end
 
+module _ = struct
+  let unused_int = 42
+end
+
 let () = ignore Unexported.used_int
 
 let () = ignore Exported.Private.used_int

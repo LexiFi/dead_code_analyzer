@@ -208,7 +208,7 @@ let structure_item super self i =
   end;
   let r = super.Tast_mapper.structure_item self i in
   begin match i.str_desc with
-  | Tstr_module _ -> mods := List.tl !mods
+  | Tstr_module {mb_name = {txt = Some _; _}; _} -> mods := List.tl !mods
   | _ -> ()
   end;
   r
