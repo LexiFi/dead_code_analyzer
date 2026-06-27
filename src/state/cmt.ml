@@ -46,11 +46,22 @@ let print_cache_stats () =
 
 
 let read_no_cache filepath =
+  let error ?tip msg =
+    let tip =
+      Option.map (( ^ ) " Tip: ") tip
+      |> Option.value ~default:""
+    in
+    Printf.sprintf "%s: %s.%s" filepath msg tip
+    |> Result.error
+  in
   match Cmt_format.read filepath with
-  | exception _ -> Result.error (filepath ^ ": error reading file")
-  | _, None -> Result.error (filepath ^ ": cmt_infos not found")
-  | cmi_infos, Some cmt_infos ->
-    Result.ok (cmi_infos, cmt_infos)
+  | exception Cmi_format.(Error (Not_an_interface _)) ->
+      let tip =
+        "the file must be compiled with the same OCaml version as the dead_code_analyzer."
+      in
+      error ~tip "invalid magic number"
+  | _, None -> error "missing cmt_infos"
+  | cmi_infos, Some cmt_infos -> Result.ok (cmi_infos, cmt_infos)
 
 let read filepath =
   let comp_unit = Utils.Filepath.unit filepath in
