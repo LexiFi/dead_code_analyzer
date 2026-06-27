@@ -24,7 +24,7 @@ open DeadCommon
 
                 (********   ATTRIBUTES   ********)
 
-let bad_files = ref []                (* unreadable cmti/cmt files *)
+let bad_files_counter = ref 0                 (* unreadable cmti/cmt files *)
 
 let main_files = Hashtbl.create 256   (* names -> paths *)
 
@@ -472,10 +472,15 @@ let eof loc_dep =
 
 (* Starting point *)
 let load_file fn state =
+  let report_error err =
+    if state.State.config.verbose then
+      Printf.eprintf "ERROR: %s\n%!" err;
+    incr bad_files_counter
+  in
   let init_and_continue state fn f =
     match State.change_file state fn with
     | Error msg ->
-      Printf.eprintf "%s\n%!" msg;
+      report_error msg;
       state
     | Ok state ->
         State.update state;
@@ -483,18 +488,13 @@ let load_file fn state =
         (* TODO: stateful computations should take and return the state when possible *)
         state
   in
-  let add_bad_file err fn =
-    if state.State.config.verbose then
-      Printf.eprintf "%s\n%!" err;
-    bad_files := fn :: !bad_files
-  in
   let process_interface fn =
     last_loc := Lexing.dummy_pos;
       if state.State.config.verbose then
         Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
     match state.file_infos.cmi_sign with
-    | None -> add_bad_file "Missing cmi_sign" fn
+    | None -> report_error (fn ^ ": missing cmi_sign")
     | Some cmi_sign ->
         read_interface fn cmi_sign state
     )
@@ -505,7 +505,7 @@ let load_file fn state =
       Printf.eprintf "Scanning implementation from %s\n%!" fn;
     init_and_continue state fn (fun state ->
     match state.file_infos.cmt_struct with
-    | None -> add_bad_file "Missing cmt_struct" fn
+    | None -> report_error (fn ^ ": missing cmt_struct")
     | Some structure ->
         regabs state;
         let prepare (loc1, loc2) =
@@ -724,6 +724,16 @@ try
 
     Printf.eprintf " [DONE]\n\n%!";
 
+    let _report_bad_files =
+      let bad_files_count = !bad_files_counter in
+      if bad_files_count > 0 && not state.State.config.verbose then
+        let file_string = if bad_files_count = 1 then "file" else "files" in
+        Printf.eprintf
+          "*** WARNING: %d %s cannot be read. Run with `--verbose` for more details.\n\n%!"
+          bad_files_count
+          file_string;
+    in
+
     !DeadLexiFi.prepare_report DeadType.decs;
     let sections = state.config.sections in
     if Config.must_report_section sections.exported_values then report_unused_exported ();
@@ -737,16 +747,6 @@ try
     let style = sections.style in
     if style.opt_arg || style.unit_pat || style.seq || style.binding then
       report_style ();
-
-    if !bad_files <> [] then begin
-      let oc = open_out_bin "remove_bad_files.sh" in
-      Printf.fprintf oc "#!/bin/sh\n";
-      List.iter
-        (fun x -> Printf.fprintf oc "rm %s\n" x)
-        !bad_files;
-      close_out oc;
-      Printf.eprintf "*** INFO: Several binary files cannot be read.  Please run ./remove_bad_files.sh to remove them.\n%!"
-    end
   with exn ->
     Location.report_exception Format.err_formatter exn;
     exit 2
