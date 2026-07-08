@@ -244,9 +244,10 @@
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:4: externally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: equal_constr_with_eq: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:4: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:5: externally_used
-
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: equal_constr_with_eq: Should not be detected
 ./examples/using_dune/reduced_lib/reduced_lib.mli:2: Values.used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:5: Values.externally_used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:9: Values_no_intf.used
@@ -1127,7 +1128,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 929
+Total: 931
 Success: 921
-Failed: 8
-Ratio: 99.1388589882%
+Failed: 10
+Ratio: 98.9258861439%

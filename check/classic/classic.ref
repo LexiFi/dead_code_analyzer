@@ -52,6 +52,8 @@
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:1: unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: equal_constr_with_eq: Should not be detected
+./examples/using_dune/preprocessed_lib/preprocessed.mli:29: equal_record_with_eq: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:38: internally_used_f
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:2: unused
 
@@ -719,7 +721,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 593
+Total: 595
 Success: 586
-Failed: 7
-Ratio: 98.8195615514%
+Failed: 9
+Ratio: 98.487394958%

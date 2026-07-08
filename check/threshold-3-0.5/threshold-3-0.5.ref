@@ -244,9 +244,10 @@
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:3: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:4: externally_used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:19: equal_constr_with_eq: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:4: internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:5: externally_used
-
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:30: equal_constr_with_eq: Should not be detected
 ./examples/using_dune/reduced_lib/reduced_lib.mli:2: Values.used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:5: Values.externally_used
 ./examples/using_dune/reduced_lib/reduced_lib.mli:9: Values_no_intf.used
@@ -415,10 +416,12 @@
 ./examples/docs/optional_arguments/limitations/relaying/relaying_bin.ml:2: f
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:2: used
+./examples/using_dune/preprocessed_lib/preprocessed.mli:29: equal_record_with_eq: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:31: exported_f
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:38: internally_used_f
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:44: externally_used_f
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:3: used
+./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:45: equal_record_with_eq: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:53: f
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:59: internally_used_f
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:64: externally_used_f
@@ -1531,7 +1534,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1251
+Total: 1255
 Success: 1243
-Failed: 8
-Ratio: 99.3605115907%
+Failed: 12
+Ratio: 99.0438247012%
