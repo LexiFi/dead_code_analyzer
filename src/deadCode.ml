@@ -323,7 +323,7 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
-let read_interface fn signature state =
+let read_interface fn (cm_sign : State.File_infos.signature) state =
   regabs state;
   if Config.must_report_main state.config then
     let comp_unit =
@@ -336,13 +336,20 @@ let read_interface fn signature state =
       State.File_infos.get_modname state.file_infos
       |> Ident.create_persistent
     in
-    let f =
-      let context = DeadSign.Toplevel in
-      let path = [module_id] in
-      let stock = decs in
-      DeadSign.collect_export ~context ~path ~comp_unit ~stock
-    in
-    List.iter f signature;
+    let context = DeadSign.Toplevel in
+    let path = [module_id] in
+    let stock = decs in
+    begin match cm_sign with
+    | Cmi_sign signature ->
+        let f =
+          DeadSign.collect_export ~context ~path ~comp_unit ~stock
+        in
+        List.iter f signature
+    | Cmti_sign signature ->
+        DeadSign.collect_export_from_typedtree
+          ~context ~path ~comp_unit ~stock
+          signature
+    end;
     last_loc := Lexing.dummy_pos
 
 
@@ -428,10 +435,10 @@ let load_file fn state =
       if state.State.config.verbose then
         Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.cmi_sign with
+    match state.file_infos.cm_sign with
     | None -> report_error (fn ^ ": missing cmi_sign")
-    | Some cmi_sign ->
-        read_interface fn cmi_sign state
+    | Some cm_sign ->
+        read_interface fn cm_sign state
     )
   in
   let process_implementation fn =

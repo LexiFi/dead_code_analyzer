@@ -1,9 +1,14 @@
 (** Information about a analyzable file ([.cmti] or [.cmt] file) *)
 
+type signature =
+  | Cmi_sign of Types.signature
+  | Cmti_sign of Typedtree.signature
+
 type t = {
   builddir : string; (** The [cmt_builddir] *)
   cm_file : string; (** The filepath currently analyzed *)
-  cmi_sign : Types.signature option; (** Extracted from [cmi_infos] *)
+  cm_sign : signature option;
+    (** Extracted from [cmt_infos] in cmti files and [cmi_infos] in cmt files *)
   cmt_struct : Typedtree.structure option;
     (** Extracted from a cmt's [cmt_infos.cmt_annots] *)
   cmti_uid_to_decl : Location_dependencies.uid_to_decl option;

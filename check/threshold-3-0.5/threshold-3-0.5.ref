@@ -23,9 +23,7 @@
 
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
 
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:2: unused: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.ml:2: unused: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
 
 ./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
@@ -169,9 +167,7 @@
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
 
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:3: used: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:5: redefined_used
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.ml:3: used: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:5: redefined_used
 
 ./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:5: redefined_used
@@ -432,10 +428,6 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:4: world
 
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.always: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.f: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.o: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.x: Should not be detected
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original
 
 ./examples/docs/optional_arguments/code_constructs/intext_app/intext_app_lib.mli:2: max
@@ -577,20 +569,6 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: Ftor_with.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: Incl.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: Incl_with.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: With.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: Ftor_with.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: Incl.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: Incl_with.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: With.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: Subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: Subst.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: Ftor_subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: Ftor_subst.o#m: Should not be detected
 ./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Ftor_with.o#m: Should not be detected
 ./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Incl.o#m: Should not be detected
 ./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Incl_with.o#m: Should not be detected
@@ -750,7 +728,6 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#used_fun
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#used_int
 
-./examples/using_make/advanced/func.mli:3: M.c#f: Should not be detected
 ./examples/using_make/advanced/mod.mli:4: p#f
 
 ./examples/using_make/obj/class.mli:1: c#f
@@ -830,14 +807,6 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: Ftor_with.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: Incl.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: Incl_with.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: With.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: Ftor_with.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: Incl.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: Incl_with.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: With.field.field: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
@@ -991,12 +960,6 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 2 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: Subst.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: Subst.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: Ftor_subst.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: Ftor_subst.field.field: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:15: constructors.Used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:24: record.used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:26: constructors.Used
@@ -1616,7 +1579,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1331
+Total: 1294
 Success: 1257
-Failed: 74
-Ratio: 94.4402704733%
+Failed: 37
+Ratio: 97.1406491499%

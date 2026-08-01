@@ -33,9 +33,7 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:2: unused: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.ml:2: unused: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
 
 ./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
@@ -183,20 +181,6 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: Ftor_with.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: Incl.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: Incl_with.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:7: With.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: Ftor_with.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: Incl.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: Incl_with.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:8: With.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: Subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: Subst.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: Incl_subst.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: Ftor_subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: Ftor_subst.o#m: Should not be detected
 ./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Ftor_with.o#m: Should not be detected
 ./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Incl.o#m: Should not be detected
 ./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Incl_with.o#m: Should not be detected
@@ -304,14 +288,6 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: Ftor_with.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: Incl.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: Incl_with.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:4: With.ctor.Ctor: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: Ftor_with.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: Incl.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: Incl_with.field.field: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:5: With.field.field: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
@@ -781,7 +757,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 653
+Total: 629
 Success: 595
-Failed: 58
-Ratio: 91.1179173047%
+Failed: 34
+Ratio: 94.5945945946%
