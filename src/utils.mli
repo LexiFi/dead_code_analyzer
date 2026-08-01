@@ -32,4 +32,11 @@ val signature_of_modtype :
           [false] after looking for the parameter of the first functor.
           There is currently no way to select the parameter of a parameter.  *)
 
+val typedtree_signature_of_modtype :
+  ?select_param:bool -> Typedtree.module_type -> Typedtree.signature option
+(** [signature_of_modtype ?select_param modtype] returns the selected
+    Typedtree.signature of [modtype] when possible.
+    See {!signature_of_modtype} above for more information
+*)
+
 module StringSet : Set.S with type elt = String.t

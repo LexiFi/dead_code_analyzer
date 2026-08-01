@@ -43,4 +43,12 @@ let rec signature_of_modtype ?(select_param = false) modtype =
   | Mty_functor (Named (_, t), _) -> signature_of_modtype t
   | _ -> []
 
+let rec typedtree_signature_of_modtype ?(select_param = false) modtype =
+  let open Typedtree in
+  match modtype.mty_desc with
+  | Tmty_signature sg -> Some sg
+  | Tmty_functor (_, t) when not select_param -> typedtree_signature_of_modtype t
+  | Tmty_functor (Named (_, _, t), _) -> typedtree_signature_of_modtype t
+  | _ -> None
+
 module StringSet = Set.Make(String)

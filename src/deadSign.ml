@@ -74,3 +74,49 @@ let collect_export ~context ~path ~comp_unit ~stock sig_item =
     | _ -> ()
   in
   collect_export context path stock sig_item
+
+let collect_export_from_typedtree ~context ~path ~comp_unit ~stock signature =
+  let rec collect_signature context path stock Typedtree.{sig_items; _} =
+    List.iter (collect_item context path stock) sig_items
+  and collect_item context path stock sig_item =
+    match sig_item.Typedtree.sig_desc with
+
+    | Tsig_value {val_id; val_loc; val_val; _}
+      when not val_loc.Location.loc_ghost ->
+        if should_export_value ~context ~stock val_loc then
+          DeadCommon.export path comp_unit stock val_id val_loc;
+        let path = Ident.create_persistent (Ident.name val_id ^ "*") :: path in
+        let obj = val_val.val_type in
+        DeadObj.collect_export path comp_unit stock ~obj val_loc;
+        !DeadLexiFi.sig_value val_val
+
+    | Tsig_type (_, type_decls) when stock == DeadCommon.decs->
+        let export_type (td : Typedtree.type_declaration) =
+          let path = td.typ_id :: path in
+          DeadType.collect_export path comp_unit stock td.typ_type
+        in
+        List.iter export_type type_decls
+
+    | Tsig_class class_descs ->
+        let export_class (cd : Typedtree.class_description) =
+          let path = cd.ci_id_class :: path in
+          let cltyp = cd.ci_expr.cltyp_type in
+          DeadObj.collect_export path comp_unit stock ~cltyp cd.ci_loc
+        in
+        List.iter export_class class_descs
+
+    | (Tsig_module {md_id = Some id; md_loc = loc; md_type = t; _}
+    | Tsig_modtype {mtd_id = id; mtd_loc = loc; mtd_type = Some t; _}) as s ->
+        let stock, context =
+          match s, context with
+          | _, Include -> stock, Include
+          | Tsig_modtype _, _ -> DeadCommon.in_modtype, In_modtyp (id, loc)
+          | _, _ -> stock, In_module (id, loc)
+        in
+        let path = id :: path in
+        Utils.typedtree_signature_of_modtype t
+        |> Option.iter (collect_signature context path stock)
+
+    | _ -> ()
+  in
+  collect_signature context path stock signature

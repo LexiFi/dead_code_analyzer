@@ -21,3 +21,16 @@ val collect_export :
       [Toplevel] of the current compilation unit, in a module, a modtype,
       or an [Include]
 *)
+
+val collect_export_from_typedtree :
+  context:context ->
+  path:Ident.t list ->
+  comp_unit:string ->
+  stock:(Lexing.position, string * string) Hashtbl.t ->
+  Typedtree.signature
+  -> unit
+(** [collect_export_from_typedtree ~context ~path ~comp_unit ~stock sigature]
+    recursively traverse the [signature] items and store exported elements
+    (values, constructors, ...) in [stock].
+    See {!collect_export} above for more information.
+*)
