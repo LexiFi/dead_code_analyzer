@@ -3,8 +3,8 @@
 all: build
 
 build:
-	make -C sigincl build
+	make -C modtype build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
-	make -C sigincl clean
+	make -C modtype clean
