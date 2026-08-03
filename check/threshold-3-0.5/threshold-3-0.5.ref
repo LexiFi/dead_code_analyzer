@@ -693,7 +693,7 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#used_fun
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#used_int
 
-./examples/using_make/advanced/func.mli:3: M.c#f
+./examples/using_make/advanced/func.mli:3: M.c#f: Should not be detected
 ./examples/using_make/advanced/mod.mli:4: p#f
 
 ./examples/using_make/obj/class.mli:1: c#f
@@ -1532,6 +1532,6 @@ Nothing else to report in this section
 
 
 Total: 1251
-Success: 1243
-Failed: 8
-Ratio: 99.3605115907%
+Success: 1242
+Failed: 9
+Ratio: 99.2805755396%
