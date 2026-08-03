@@ -6,7 +6,7 @@ build:
 	ocamlopt -bin-annot ${SRC}
 
 analyze:
-	dead_code_analyzer --nothing -E all .
+	dead_code_analyzer .
 
 clean:
 	rm -f *.cm* *.o a.out

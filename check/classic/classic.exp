@@ -660,7 +660,7 @@ Nothing else to report in this section
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:6: unit pattern unused
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
 
-./examples/docs/exported_values/limitations/sigincl/sigincl_lib.ml:9: unit pattern x
+./examples/docs/limitations/sigincl/sigincl_lib.ml:9: unit pattern x
 
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:3: let x = ... in x (=> useless binding)
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:12: let x = ... in x (=> useless binding)

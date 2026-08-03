@@ -8,6 +8,7 @@ build:
 	make -C fields_and_constructors
 	make -C optional_arguments
 	make -C coding_style
+	make -C limitations
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -16,4 +17,5 @@ clean:
 	make -C fields_and_constructors clean
 	make -C optional_arguments clean
 	make -C coding_style clean
+	make -C limitations clean
 

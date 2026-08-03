@@ -3,8 +3,8 @@
 all: build
 
 build:
-	make -C incl_same_name build
+	make -C sigincl build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
-	make -C incl_same_name clean
+	make -C sigincl clean
