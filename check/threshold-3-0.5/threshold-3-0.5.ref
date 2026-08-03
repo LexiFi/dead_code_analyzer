@@ -569,20 +569,6 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
-./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Ftor_with.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Incl.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:7: Incl_with.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:7: With.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:8: Ftor_with.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:8: Incl.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:8: Incl_with.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:8: With.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:36: Subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:36: Subst.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:74: Incl_subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:74: Incl_subst.o#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:108: Ftor_subst.c#m: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:108: Ftor_subst.o#m: Should not be detected
 ./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
 
@@ -1007,14 +993,6 @@ Nothing else to report in this section
 =============================
 ./examples/docs/coding_style/opt/opt.ml:15: ?index
 
-./examples/docs/limitations/modtype/modtype_with_intf.mli:9: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:9: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:36: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:74: ?always: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:108: ?always: Should not be detected
 ./examples/docs/optional_arguments/code_constructs/external_app/external_app_lib.mli:3: ?max
 
 ./examples/docs/optional_arguments/code_constructs/hof/hof_bin.ml:2: ?index
@@ -1273,14 +1251,6 @@ Nothing else to report in this section
 
 .> OPTIONAL ARGUMENTS: NEVER:
 ============================
-./examples/docs/limitations/modtype/modtype_with_intf.mli:9: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:18: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:29: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_with_intf.mli:36: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:9: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:36: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:74: ?never: Should not be detected
-./examples/docs/limitations/modtype/modtype_without_intf.ml:108: ?never: Should not be detected
 ./examples/docs/optional_arguments/code_constructs/external_app/external_app_lib.mli:2: ?min
 
 ./examples/docs/optional_arguments/code_constructs/internal_app/internal_app_lib.ml:2: ?min
@@ -1579,7 +1549,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1294
+Total: 1264
 Success: 1257
-Failed: 37
-Ratio: 97.1406491499%
+Failed: 7
+Ratio: 99.4462025316%

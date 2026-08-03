@@ -32,6 +32,9 @@ val collect_export :
   -> Types.type_declaration
   -> unit
 
+val correct_export : Types.type_declaration -> unit
+(** Undo export collection for the specified type_decl *)
+
 val collect_references :
   Lexing.position -> Lexing.position -> unit
 

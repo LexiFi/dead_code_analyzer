@@ -215,6 +215,8 @@ let collect_export path u stock ~obj ~cltyp loc =
         treat_fields save typ
     | None -> ()
 
+let correct_export loc = DeadCommon.unexport decs loc
+
 
 let collect_references ~meth ~call_site expr =
   let loc = locate expr in

@@ -291,6 +291,11 @@ let collect_references =                          (* Tast_mapper *)
       (fun self x -> DeadMod.expr x; super.Tast_mapper.module_expr self x)
       (fun x -> x.mod_loc)
   in
+  let module_type =
+    wrap
+      (fun self x -> DeadMod.type_ x; super.Tast_mapper.module_type self x)
+      (fun x -> x.mty_loc)
+  in
   let class_structure =
     (fun self x ->
      DeadObj.class_structure x; super.Tast_mapper.class_structure self x)
@@ -310,9 +315,11 @@ let collect_references =                          (* Tast_mapper *)
     super.Tast_mapper.type_declaration self x
   in
   Tast_mapper.{ super with
-                structure_item; expr; pat; value_binding;
-                module_expr; class_structure; class_field; typ;
-                type_declaration
+                structure_item;
+                expr; pat; value_binding;
+                module_expr; module_type;
+                class_structure; class_field;
+                typ; type_declaration
               }
 
 
@@ -494,7 +501,11 @@ let load_file fn state =
 (* Prepare the list of opt_args for report *)
 let analyze_opt_args () =
   DeadArg.eocb ();
-  let dec_loc loc = Hashtbl.mem main_files (Utils.Filepath.unit loc.Lexing.pos_fname) in
+  let dec_loc loc =
+    (* Is the location among the analyzed code and not part of a module type *)
+    Hashtbl.mem main_files (Utils.Filepath.unit loc.Lexing.pos_fname)
+    && not (Hashtbl.mem DeadCommon.in_modtype loc)
+  in
   let all = ref [] in
   let opt_args_tbl = Hashtbl.create 256 in
 

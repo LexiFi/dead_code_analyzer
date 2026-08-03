@@ -22,6 +22,11 @@ val collect_export :
       or an [Include]
 *)
 
+val correct_export : Types.signature_item -> unit
+(** Unexport the signature_item. This is used to correct wrongful exports from
+    {!collect_export} above
+*)
+
 val collect_export_from_typedtree :
   path:Ident.t list ->
   comp_unit:string ->
@@ -32,3 +37,12 @@ val collect_export_from_typedtree :
     (values, constructors, ...) in {!DeadCommon.desc}.
     See {!collect_export} above for more information.
 *)
+
+val modtype :
+  on_mismatch: (Types.signature -> unit) ->
+  Typedtree.module_type
+  -> unit
+(** [modtype ~on_mismatch mt] checks that the Typedtree and Types signatures
+    for [mt] agree. I.e. if the first one is explicit when the second one is.
+    If not, then the first one is implicit and [on_mismatch] is called on the
+    second. *)

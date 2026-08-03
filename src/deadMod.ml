@@ -76,6 +76,13 @@ let expr m = match m.mod_desc with
   | _ -> ()
 
 
+let type_ mt =
+  let on_mismatch signature =
+    List.iter DeadSign.correct_export signature
+  in
+  DeadSign.modtype ~on_mismatch mt
+
+
                 (********   WRAPPING  ********)
 
 let expr m =

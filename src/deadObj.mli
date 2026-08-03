@@ -24,6 +24,9 @@ val collect_export :
   -> Location.t
   -> unit
 
+val correct_export : Location.t -> unit
+(** Undo export collection for the specified location *)
+
 
 val collect_references :
   meth: string

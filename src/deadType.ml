@@ -94,6 +94,19 @@ let collect_export path u stock t =
         List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
     | _ -> ()
 
+let correct_export t =
+  let unexport loc = DeadCommon.unexport decs loc in
+  match t.type_kind with
+    | Type_record (l, _) ->
+        List.iter
+          (fun {Types.ld_loc; _} ->
+            unexport ld_loc;
+          )
+          l
+    | Type_variant (l, _) ->
+        List.iter (fun {Types.cd_loc; _} -> unexport cd_loc) l
+    | _ -> ()
+
 
 let collect_references loc exp_loc =
   LocHash.add_set references loc exp_loc
