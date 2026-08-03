@@ -23,14 +23,12 @@ val collect_export :
 *)
 
 val collect_export_from_typedtree :
-  context:context ->
   path:Ident.t list ->
   comp_unit:string ->
-  stock:(Lexing.position, string * string) Hashtbl.t ->
   Typedtree.signature
   -> unit
-(** [collect_export_from_typedtree ~context ~path ~comp_unit ~stock sigature]
+(** [collect_export_from_typedtree ~path ~comp_unit sigature]
     recursively traverse the [signature] items and store exported elements
-    (values, constructors, ...) in [stock].
+    (values, constructors, ...) in {!DeadCommon.desc}.
     See {!collect_export} above for more information.
 *)

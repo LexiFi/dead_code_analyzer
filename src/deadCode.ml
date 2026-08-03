@@ -346,9 +346,7 @@ let read_interface fn (cm_sign : State.File_infos.signature) state =
         in
         List.iter f signature
     | Cmti_sign signature ->
-        DeadSign.collect_export_from_typedtree
-          ~context ~path ~comp_unit ~stock
-          signature
+        DeadSign.collect_export_from_typedtree ~path ~comp_unit signature
     end;
     last_loc := Lexing.dummy_pos
 
