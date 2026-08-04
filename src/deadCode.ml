@@ -504,7 +504,7 @@ let analyze_opt_args () =
   let dec_loc loc =
     (* Is the location among the analyzed code and not part of a module type *)
     Hashtbl.mem main_files (Utils.Filepath.unit loc.Lexing.pos_fname)
-    && not (Hashtbl.mem DeadCommon.in_modtype loc)
+    && not (Hashtbl.mem DeadCommon.implicit_decs loc)
   in
   let all = ref [] in
   let opt_args_tbl = Hashtbl.create 256 in

@@ -35,12 +35,18 @@ let should_export_value ~context ~stock loc =
         && md_end > v_end
   in
   Config.must_report_section state.config.sections.exported_values
-  && (* do not add the loc in decs if it belongs to a module type
-        or if it is not actually declared in the current context *)
-    ( stock != DeadCommon.decs
-      || (not (Hashtbl.mem DeadCommon.in_modtype loc.Location.loc_start)
-          && belongs_to_context loc)
-    )
+  && (* do not add the loc in decs if it is not actually declared in
+        the current context *)
+    (stock != DeadCommon.decs || belongs_to_context loc)
+
+let wrongful_export loc =
+  (* For optional arguments, every use is stored during the analysis.
+     The uses are then filtered before reporting. Thus, we need to
+     remember "wrong" exports until then.
+  *)
+  let state = State.get_current () in
+  if Config.must_report_opt_args state.config then
+    Hashtbl.add DeadCommon.implicit_decs loc.Location.loc_start ("", "")
 
 let collect_export ~context ~path ~comp_unit ~stock sig_item =
   let rec collect_export context path stock : Types.signature_item -> unit =
@@ -60,13 +66,11 @@ let collect_export ~context ~path ~comp_unit ~stock sig_item =
     | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _, _) ->
         DeadObj.collect_export (id :: path) comp_unit stock ~cltyp:t loc
 
-    | (Sig_module (id, _, {Types.md_type = t; md_loc = loc; _}, _, _)
-    | Sig_modtype (id, {Types.mtd_type = Some t; mtd_loc = loc; _}, _)) as s ->
-        let stock, context =
-          match s, context with
-          | _, Include -> stock, Include
-          | Sig_modtype _, _ -> DeadCommon.in_modtype, In_modtyp (id, loc)
-          | _, _ -> stock, In_module (id, loc)
+    | Sig_module (id, _, {Types.md_type = t; md_loc = loc; _}, _, _) ->
+        let context =
+          match context with
+          | Include -> context
+          | _ -> In_module (id, loc)
         in
         Utils.signature_of_modtype t
         |> List.iter (collect_export context (id::path) stock)
@@ -78,19 +82,10 @@ let collect_export ~context ~path ~comp_unit ~stock sig_item =
 let correct_export sig_item =
   let state = State.get_current () in
   let rec correct_export : Types.signature_item -> unit = function
-    | Sig_value (id, {Types.val_loc; _}, _) ->
+    | Sig_value (_, {Types.val_loc; _}, _) ->
         DeadCommon.unexport DeadCommon.decs val_loc;
         DeadObj.correct_export val_loc;
-        (* For optional arguments, every use is stored during the analysis.
-           The uses are then filtered before reporting. Thus, we need to
-           remember "wrong" exports until then.
-        *)
-        if Config.must_report_opt_args state.config then
-          let comp_unit =
-            Utils.Filepath.unit val_loc.Location.loc_start.Lexing.pos_fname
-          in
-          let path = Ident.create_persistent "DUMMY_PATH":: [] in
-          DeadCommon.export path comp_unit DeadCommon.in_modtype id val_loc
+        wrongful_export val_loc
     | Sig_type (_, t, _, _) -> DeadType.correct_export t
     | Sig_class (_, {cty_loc; _}, _, _) -> DeadObj.correct_export cty_loc
     | Sig_module (_, _, {Types.md_type = t; _}, _, _)
@@ -129,7 +124,7 @@ let collect_export_from_typedtree ~path ~comp_unit signature =
         | id :: _ -> id
       in
       let context = In_modtyp (id, loc) in
-      let stock = DeadCommon.in_modtype in
+      let stock = DeadCommon.implicit_decs in
       List.iter
         (collect_export ~context ~path ~comp_unit ~stock)
         signature
