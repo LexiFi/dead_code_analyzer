@@ -48,6 +48,8 @@
 ./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:4: redefined_unused
 ./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:5: redefined_used
 
+./examples/docs/limitations/modtype_of/modtype_of_with_intf.mli:6: M.x: Should not be detected
+./examples/docs/limitations/modtype_of/modtype_of_with_intf.mli:7: M.o: Should not be detected
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj
@@ -181,6 +183,8 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
+./examples/docs/limitations/modtype_of/modtype_of_with_intf.mli:7: M.o#m: Should not be detected
+./examples/docs/limitations/modtype_of/modtype_of_with_intf.mli:8: M.c#m: Should not be detected
 ./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
 
@@ -274,6 +278,8 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
 
+./examples/docs/limitations/modtype_of/modtype_of_with_intf.mli:4: M.ctor.Ctor: Should not be detected
+./examples/docs/limitations/modtype_of/modtype_of_with_intf.mli:5: M.field.field: Should not be detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:23: record.unused
@@ -727,7 +733,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 599
+Total: 605
 Success: 595
-Failed: 4
-Ratio: 99.3322203673%
+Failed: 10
+Ratio: 98.347107438%

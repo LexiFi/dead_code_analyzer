@@ -1,14 +1,14 @@
-(* modtype_with_intf.ml *)
-module type T = sig
-  type t
+(* modtype_of_with_intf.ml *)
+module M = struct
+  type t = int
   type ctor = Ctor
   type field = {field : unit}
-  val x : t
-  val o : < m : t >
-  class c : object method m : t end
-  val f : ?always:t -> ?never:t -> unit -> t
+  let x = 0
+  let o = object method m = 0 end
+  class c = object method m = 0 end
+  let f ?always:_ ?never:_ () = 0
   (* to use as [always] in call to [f] *)
-  val always : t
+  let always = 0
 end
 
 module Regular = struct
