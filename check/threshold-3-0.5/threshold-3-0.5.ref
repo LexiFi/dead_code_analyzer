@@ -23,10 +23,23 @@
 
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
 
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:20: copy: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:25: id: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:40: new_method: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:41: public_method_label: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.ml:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
+
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.mli:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:4: redefined_unused
+
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:2: unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:5: redefined_used
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:2: unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:5: redefined_used
+
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj
@@ -155,6 +168,19 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
+
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:3: used: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:5: redefined_used
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.ml:3: used: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:5: redefined_used
+
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:5: redefined_used
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.mli:3: used: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:3: used: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:5: redefined_used
+
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:3: used
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:3: used
 
 ./examples/docs/fields_and_constructors/code_constructs/extensible_variant/extensible_variant_bin.ml:5: to_string_opt
 ./examples/docs/fields_and_constructors/code_constructs/extensible_variant/extensible_variant_lib.mli:7: to_string_opt
@@ -1590,7 +1616,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1311
-Success: 1241
-Failed: 70
-Ratio: 94.6605644546%
+Total: 1331
+Success: 1257
+Failed: 74
+Ratio: 94.4402704733%

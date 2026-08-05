@@ -1,0 +1,5 @@
+(* to_incl/without_intf.ml *)
+let unused = 0
+let used = 0
+let redefined_unused = 0
+let redefined_used = 0

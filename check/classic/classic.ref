@@ -33,10 +33,23 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:4: world
 
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:20: copy: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:25: id: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:40: new_method: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/oo.mli:41: public_method_label: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.ml:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
+
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.mli:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:2: unused: Should not be detected
+./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:4: redefined_unused
+
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:2: unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:5: redefined_used
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:2: unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:4: redefined_unused
+./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:5: redefined_used
+
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory
 
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj
@@ -768,7 +781,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 643
-Success: 585
+Total: 653
+Success: 595
 Failed: 58
-Ratio: 90.9797822706%
+Ratio: 91.1179173047%
