@@ -1,7 +1,6 @@
 type context =
   | Toplevel
   | In_module of (Ident.t * Location.t)
-  | In_modtyp of (Ident.t * Location.t)
   | Include
 
 val collect_export :

@@ -1,96 +1,100 @@
 type context =
   | Toplevel
   | In_module of (Ident.t * Location.t)
-  | In_modtyp of (Ident.t * Location.t)
   | Include
+
+
+let export_value should_export ~path ~comp_unit ~stock id value =
+  let loc = value.Types.val_loc in
+  if should_export then
+    DeadCommon.export path comp_unit stock id loc;
+  let path = Ident.create_persistent (Ident.name id ^ "*") :: path in
+  let obj = value.Types.val_type in
+  DeadObj.collect_export path comp_unit stock ~obj loc;
+  !DeadLexiFi.sig_value value
+
+let export_type ~path ~comp_unit ~stock id t =
+  let path = id :: path in
+  DeadType.collect_export path comp_unit stock t
+
+let export_class ~path ~comp_unit ~stock id cd =
+  let path = id :: path in
+  let cltyp = cd.Types.cty_type in
+  let loc = cd.Types.cty_loc in
+  DeadObj.collect_export path comp_unit stock ~cltyp loc
 
 let should_export_value ~context ~stock loc =
   let state = State.get_current () in
   let belongs_to_context loc =
     match context with
     | Toplevel | Include -> true
-    | In_module (_, md_loc)
-    | In_modtyp (_, md_loc) ->
-        (* When a value is part of a module sig because of:
-           - an include, then its location precedes that of the current module;
-           - a module type with substitution, then its location ends
-             with the current module's sig.
-           Checking that the value's location is striclty within the
-           module's rules out these 2 cases.
-          *)
+    | In_module (_, md_loc) ->
+        (* When a value is part of a module sig because of an include,
+           then its location precedes that of the current module.
+        *)
         let get_pos_info loc =
-          let fname, start_l, start_c =
             Location.get_pos_info loc.Location.loc_start
-          in
-          let _, end_l, end_c = Location.get_pos_info loc.loc_end in
-          fname, (start_l, start_c), (end_l, end_c)
         in
-        let v_fname, v_start, v_end = get_pos_info loc in
-        let md_fname, md_start, md_end = get_pos_info md_loc in
-        let ( > ) (l1, c1) (l2, c2) =
-          l1 > l2 || (l1 = l2 && c1 > c2)
-        in
+        let v_fname, v_line, v_col = get_pos_info loc in
+        let md_fname, md_line, md_col = get_pos_info md_loc in
         String.equal v_fname md_fname
-        && v_start > md_start
-        && md_end > v_end
+        && (v_line, v_col) > (md_line, md_col)
   in
   Config.must_report_section state.config.sections.exported_values
   && (* do not add the loc in decs if it is not actually declared in
         the current context *)
     (stock != DeadCommon.decs || belongs_to_context loc)
 
-let wrongful_export loc =
-  (* For optional arguments, every use is stored during the analysis.
-     The uses are then filtered before reporting. Thus, we need to
-     remember "wrong" exports until then.
-  *)
-  let state = State.get_current () in
-  if Config.must_report_opt_args state.config then
-    Hashtbl.replace DeadCommon.implicit_decs loc.Location.loc_start ()
+let rec collect_export ~context ~path ~comp_unit ~stock sig_item =
+  match (sig_item : Types.signature_item) with
 
-let collect_export ~context ~path ~comp_unit ~stock sig_item =
-  let rec collect_export context path stock : Types.signature_item -> unit =
-    function
+  | Sig_value (id, ({val_loc; _} as value), _)
+    when not val_loc.Location.loc_ghost ->
+      let should_export = should_export_value ~context ~stock val_loc in
+      export_value should_export ~path ~comp_unit ~stock id value
 
-    | Sig_value (id, ({Types.val_loc; val_type; _} as value), _)
-      when not val_loc.Location.loc_ghost ->
-        if should_export_value ~context ~stock val_loc then
-          DeadCommon.export path comp_unit stock id val_loc;
-        let path = Ident.create_persistent (Ident.name id ^ "*") :: path in
-        DeadObj.collect_export path comp_unit stock ~obj:val_type val_loc;
-        !DeadLexiFi.sig_value value
+  | Sig_type (id, t, _, _) when stock == DeadCommon.decs ->
+      export_type ~path ~comp_unit ~stock id t
 
-    | Sig_type (id, t, _, _) when stock == DeadCommon.decs ->
-        DeadType.collect_export (id :: path) comp_unit stock t
+  | Sig_class (id, cd, _, _) ->
+      export_class ~path ~comp_unit ~stock id cd
 
-    | Sig_class (id, {Types.cty_type = t; cty_loc = loc; _}, _, _) ->
-        DeadObj.collect_export (id :: path) comp_unit stock ~cltyp:t loc
+  | Sig_module (id, _, {Types.md_type = t; md_loc = loc; _}, _, _) ->
+      let context =
+        match context with
+        | Include -> context
+        | _ -> In_module (id, loc)
+      in
+      let path = id :: path in
+      Utils.signature_of_modtype t
+      |> List.iter (collect_export ~context ~path ~comp_unit ~stock)
 
-    | Sig_module (id, _, {Types.md_type = t; md_loc = loc; _}, _, _) ->
-        let context =
-          match context with
-          | Include -> context
-          | _ -> In_module (id, loc)
-        in
-        Utils.signature_of_modtype t
-        |> List.iter (collect_export context (id::path) stock)
+  | _ -> ()
 
-    | _ -> ()
-  in
-  collect_export context path stock sig_item
 
 let rec correct_export : Types.signature_item -> unit = function
-  | Sig_value (_, {Types.val_loc; _}, _) ->
+  | Sig_value (_, {Types.val_loc; _}, _)
+    when not val_loc.Location.loc_ghost ->
       DeadCommon.unexport DeadCommon.decs val_loc;
       DeadObj.correct_export val_loc;
-      wrongful_export val_loc
+      (* For optional arguments, every use is stored during the analysis.
+         The uses are then filtered before reporting. Thus, we need to
+         remember "wrong" exports until then.
+      *)
+      let state = State.get_current () in
+      if Config.must_report_opt_args state.config then
+        Hashtbl.replace DeadCommon.implicit_decs val_loc.Location.loc_start ()
+
   | Sig_type (_, t, _, _) -> DeadType.correct_export t
+
   | Sig_class (_, {cty_loc; _}, _, _) -> DeadObj.correct_export cty_loc
+
   | Sig_module (_, _, {Types.md_type = t; _}, _, _)
   | Sig_modtype (_, {Types.mtd_type = Some t; _}, _) ->
       Utils.signature_of_modtype t
       |> List.iter correct_export
   | _ -> ()
+
 
 let modtype ~on_mismatch (mt : Typedtree.module_type) =
   let types_sig = Utils.signature_of_modtype mt.mty_type in
@@ -98,6 +102,7 @@ let modtype ~on_mismatch (mt : Typedtree.module_type) =
   match types_sig, typedtree_sig with
   | _::_, None -> on_mismatch types_sig
   | _ -> ()
+
 
 let collect_export_from_typedtree ~path ~comp_unit signature =
   let state = State.get_current () in
@@ -120,27 +125,24 @@ let collect_export_from_typedtree ~path ~comp_unit signature =
 
     | Tsig_value {val_id; val_loc; val_val; _}
       when not val_loc.Location.loc_ghost ->
-        if should_export_value then
-          DeadCommon.export path comp_unit DeadCommon.decs val_id val_loc;
-        let path = Ident.create_persistent (Ident.name val_id ^ "*") :: path in
-        let obj = val_val.val_type in
-        DeadObj.collect_export path comp_unit DeadCommon.decs ~obj val_loc;
-        !DeadLexiFi.sig_value val_val
+        let stock = DeadCommon.decs in
+        export_value should_export_value ~path ~comp_unit ~stock val_id val_val
 
     | Tsig_type (_, type_decls)->
-        let export_type (td : Typedtree.type_declaration) =
-          let path = td.typ_id :: path in
-          DeadType.collect_export path comp_unit DeadCommon.decs td.typ_type
-        in
-        List.iter export_type type_decls
+        let stock = DeadCommon.decs in
+        List.iter
+          (fun Typedtree.{typ_id; typ_type; _} ->
+            export_type ~path ~comp_unit ~stock typ_id typ_type
+          )
+          type_decls
 
     | Tsig_class class_descs ->
-        let export_class (cd : Typedtree.class_description) =
-          let path = cd.ci_id_class :: path in
-          let cltyp = cd.ci_expr.cltyp_type in
-          DeadObj.collect_export path comp_unit DeadCommon.decs ~cltyp cd.ci_loc
-        in
-        List.iter export_class class_descs
+        let stock = DeadCommon.decs in
+        List.iter
+          (fun {Typedtree.ci_id_class; ci_decl; _} ->
+            export_class ~path ~comp_unit ~stock ci_id_class ci_decl
+          )
+          class_descs
 
     | Tsig_module {md_id = Some id; md_type; _} ->
         let path = id :: path in
@@ -154,6 +156,7 @@ let collect_export_from_typedtree ~path ~comp_unit signature =
     | _ -> ()
   in
   collect_signature path signature
+
 
 let correct_export sig_item =
   let state = State.get_current () in
