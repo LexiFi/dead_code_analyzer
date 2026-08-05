@@ -39,9 +39,8 @@ let abspath : (string, string) Hashtbl.t = Hashtbl.create 256
 (* all exported value declarations *)
 let decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
 
-(* all value declarations re-exported by module types uses.
-   The [(string * string)] is only to match the type of other stocks *)
-let implicit_decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
+(* all value declarations re-exported by module types uses *)
+let implicit_decs : (Lexing.position, unit) Hashtbl.t = Hashtbl.create 256
 
 (* all exported value declarations *)
 let incl : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256

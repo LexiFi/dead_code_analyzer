@@ -46,7 +46,7 @@ let wrongful_export loc =
   *)
   let state = State.get_current () in
   if Config.must_report_opt_args state.config then
-    Hashtbl.add DeadCommon.implicit_decs loc.Location.loc_start ("", "")
+    Hashtbl.replace DeadCommon.implicit_decs loc.Location.loc_start ()
 
 let collect_export ~context ~path ~comp_unit ~stock sig_item =
   let rec collect_export context path stock : Types.signature_item -> unit =
@@ -79,26 +79,18 @@ let collect_export ~context ~path ~comp_unit ~stock sig_item =
   in
   collect_export context path stock sig_item
 
-let correct_export sig_item =
-  let state = State.get_current () in
-  let rec correct_export : Types.signature_item -> unit = function
-    | Sig_value (_, {Types.val_loc; _}, _) ->
-        DeadCommon.unexport DeadCommon.decs val_loc;
-        DeadObj.correct_export val_loc;
-        wrongful_export val_loc
-    | Sig_type (_, t, _, _) -> DeadType.correct_export t
-    | Sig_class (_, {cty_loc; _}, _, _) -> DeadObj.correct_export cty_loc
-    | Sig_module (_, _, {Types.md_type = t; _}, _, _)
-    | Sig_modtype (_, {Types.mtd_type = Some t; _}, _) ->
-        Utils.signature_of_modtype t
-        |> List.iter correct_export
-    | _ -> ()
-  in
-  match state.file_infos.cm_sign with
-  | Some (Cmti_sign _) ->
-      (* Typedtree signatures found in .cmti files do not need correction *)
-      ()
-  | _ -> correct_export sig_item
+let rec correct_export : Types.signature_item -> unit = function
+  | Sig_value (_, {Types.val_loc; _}, _) ->
+      DeadCommon.unexport DeadCommon.decs val_loc;
+      DeadObj.correct_export val_loc;
+      wrongful_export val_loc
+  | Sig_type (_, t, _, _) -> DeadType.correct_export t
+  | Sig_class (_, {cty_loc; _}, _, _) -> DeadObj.correct_export cty_loc
+  | Sig_module (_, _, {Types.md_type = t; _}, _, _)
+  | Sig_modtype (_, {Types.mtd_type = Some t; _}, _) ->
+      Utils.signature_of_modtype t
+      |> List.iter correct_export
+  | _ -> ()
 
 let modtype ~on_mismatch (mt : Typedtree.module_type) =
   let types_sig = Utils.signature_of_modtype mt.mty_type in
@@ -112,23 +104,12 @@ let collect_export_from_typedtree ~path ~comp_unit signature =
   let should_export_value =
     Config.must_report_section state.config.sections.exported_values
   in
-  let mark_modtype_elements ~path ~loc mt =
+  let mark_modtype_elements mt =
     (* For optional arguments, every use is stored during the analysis.
        The uses are then filtered before reporting. Thus, we need to
        remember "wrong" exports until then.
     *)
-    let on_mismatch signature =
-      let id =
-        match path with
-        | [] -> Ident.create_persistent "DUMMY_ID"
-        | id :: _ -> id
-      in
-      let context = In_modtyp (id, loc) in
-      let stock = DeadCommon.implicit_decs in
-      List.iter
-        (collect_export ~context ~path ~comp_unit ~stock)
-        signature
-    in
+    let on_mismatch signature = List.iter correct_export signature in
     if Config.must_report_opt_args state.config then
       modtype ~on_mismatch mt
   in
@@ -161,15 +142,23 @@ let collect_export_from_typedtree ~path ~comp_unit signature =
         in
         List.iter export_class class_descs
 
-    | Tsig_module {md_id = Some id; md_type; md_loc; _} ->
+    | Tsig_module {md_id = Some id; md_type; _} ->
         let path = id :: path in
         Utils.typedtree_signature_of_modtype md_type
         |> Option.iter (collect_signature path);
-        mark_modtype_elements ~path ~loc:md_loc md_type
+        mark_modtype_elements md_type
 
-    | Tsig_include {incl_mod; incl_loc; _} ->
-        mark_modtype_elements ~path ~loc:incl_loc incl_mod
+    | Tsig_include {incl_mod; _} ->
+        mark_modtype_elements incl_mod
 
     | _ -> ()
   in
   collect_signature path signature
+
+let correct_export sig_item =
+  let state = State.get_current () in
+  match state.file_infos.cm_sign with
+  | Some (Cmti_sign _) ->
+      (* Typedtree signatures found in .cmti files do not need correction *)
+      ()
+  | _ -> correct_export sig_item
