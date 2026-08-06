@@ -45,3 +45,9 @@ val modtype :
     for [mt] agree. I.e. if the first one is explicit when the second one is.
     If not, then the first one is implicit and [on_mismatch] is called on the
     second. *)
+
+val collect_export_from_structure :
+  path:Ident.t list ->
+  comp_unit:string ->
+  Typedtree.structure
+  -> unit
