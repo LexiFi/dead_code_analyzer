@@ -44,14 +44,14 @@ let defined = Hashtbl.create 16
 let repr_loc loc =
   let met = Hashtbl.create 8 in
   let rec loop loc =
-    if Hashtbl.mem equals loc then
+    if not (Hashtbl.mem equals loc) then loc
+    else
       let next = Hashtbl.find equals loc in
-      if not (Hashtbl.mem met next) then begin
+      if Hashtbl.mem met next then loc
+      else begin
         Hashtbl.add met loc ();
         loop next
       end
-      else loc
-    else loc
   in
   Hashtbl.add met loc ();
   loop loc
@@ -174,8 +174,7 @@ let collect_export path u stock ~obj ~cltyp loc =
   let pos = loc.Location.loc_start in
 
   begin match List.rev_map (fun id -> Ident.name id) path with
-  | h :: t
-    when !last_class == Lexing.dummy_pos || !last_class <= pos || decs != incl ->
+  | h :: t ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
       Hashtbl.add defined short path;
@@ -184,17 +183,12 @@ let collect_export path u stock ~obj ~cltyp loc =
   end;
 
   let stock =
-    if stock != DeadCommon.decs then begin
+    if stock == DeadCommon.decs then decs
+    else begin
       export (List.tl path) u stock (List.hd path) loc;
       stock
     end
-    else begin
-      decs
-    end
   in
-
-  last_class := pos;
-
 
   let save id =
     let state = State.get_current () in
@@ -240,7 +234,9 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
   let path = modname ^ "." ^ short in
   if not (Hashtbl.mem defined short) then
     Hashtbl.add defined short path
-  else
+  else begin
+    (* using begin ... end because otherwise make_dep below is considered
+       part of this else *)
     let loc =
       if know_path short then get_loc short
       else if know_path path then get_loc path
@@ -249,7 +245,8 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
     if loc != Lexing.dummy_pos && loc <> !last_class then
       add_equal !last_class loc
     else
-      add_path path !last_class;
+      add_path path !last_class
+  end;
 
   let rec make_dep ci_expr =
     match ci_expr.cl_desc with
