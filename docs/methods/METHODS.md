@@ -7,10 +7,10 @@
     + [Usage](#usage)
 + [Examples](#examples)
 + [Limitations](#limitations)
-    +[Class type](#class-type)
-    +[Object type](#object-type)
-    +[Alias](#alias)
-    +[Factory function](#factory-function)
+    + [Class type](#class-type)
+    + [Object type](#object-type)
+    + [Alias](#alias)
+    + [Factory function](#factory-function)
 
 # Methods
 
