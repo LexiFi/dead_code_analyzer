@@ -27,8 +27,6 @@
 ./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
 
 ./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.mli:2: unused: Should not be detected
-./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:2: unused: Should not be detected
 ./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:4: redefined_unused
 
 ./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:2: unused
@@ -154,8 +152,7 @@ Nothing else to report in this section
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m: Not detected
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m
-
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
@@ -191,11 +188,13 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
 ./examples/using_dune/wrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
 
+./examples/using_make/advanced/mod.mli:4: p#f: Should not be detected
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/coerce.mli:6: p#f
 ./examples/using_make/obj/coerce.mli:6: p#h
 ./examples/using_make/obj/constraint.ml:1: p#g
+./examples/using_make/obj/depend.ml:8: M.c#f: Should not be detected
 ./examples/using_make/obj/fooCl.mli:1: p1#g
 ./examples/using_make/obj/fooCl.mli:1: p1#h
 ./examples/using_make/obj/fooCl.mli:7: p2#h
@@ -204,7 +203,7 @@ Nothing else to report in this section
 ./examples/using_make/obj/inher.mli:1: p#h
 ./examples/using_make/obj/named.mli:10: c#g
 ./examples/using_make/obj/obj_inher.ml:1: c#g
-./examples/using_make/obj/obj_inher.ml:1: c#h
+./examples/using_make/obj/obj_inher.ml:1: c#h: Not detected
 ./examples/using_make/obj/obj_inher.ml:19: o3#k
 ./examples/using_make/obj/object.ml:1: o#h
 ./examples/using_make/obj/overr.mli:1: p1#g
@@ -680,6 +679,6 @@ Nothing else to report in this section
 
 
 Total: 555
-Success: 551
-Failed: 4
-Ratio: 99.2792792793%
+Success: 549
+Failed: 6
+Ratio: 98.9189189189%

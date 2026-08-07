@@ -1,13 +1,13 @@
 (** Information about a analyzable file ([.cmti] or [.cmt] file) *)
 
 type signature =
-  | Cmi_sign of Types.signature
-  | Cmti_sign of Typedtree.signature
+  | Structure of Typedtree.structure
+  | Signature of Typedtree.signature
 
 type t = {
   builddir : string; (** The [cmt_builddir] *)
   cm_file : string; (** The filepath currently analyzed *)
-  cm_sign : signature option;
+  signature : signature option;
     (** Extracted from [cmt_infos] in cmti files and [cmi_infos] in cmt files *)
   cmt_struct : Typedtree.structure option;
     (** Extracted from a cmt's [cmt_infos.cmt_annots] *)

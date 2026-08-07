@@ -1,11 +1,11 @@
 type signature =
-  | Cmi_sign of Types.signature
-  | Cmti_sign of Typedtree.signature
+  | Structure of Typedtree.structure
+  | Signature of Typedtree.signature
 
 type t = {
   builddir : string;
   cm_file : string;
-  cm_sign : signature option;
+  signature : signature option;
   cmt_struct : Typedtree.structure option;
   cmti_uid_to_decl : Location_dependencies.uid_to_decl option;
   location_dependencies : Location_dependencies.t;
@@ -16,7 +16,7 @@ type t = {
 let empty = {
   builddir = "!!UNKNOWN_BUILDDIR!!";
   cm_file = "";
-  cm_sign = None;
+  signature = None;
   cmt_struct = None;
   cmti_uid_to_decl = None;
   location_dependencies = Location_dependencies.empty;
@@ -24,29 +24,27 @@ let empty = {
   sourcepath = None;
 }
 
-(** [init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos] creates a [t] with:
+(** [init_from_all_cm_infos ~cm_file cmt_infos] creates a [t] with:
     - information from [cmt_infos] : [builddir], [modname], [sourcepath];
     - [cm_file];
-    - [sign] is extracted from either:
-        - [cmt_infos.cmt_annots] is it is an [Interface]
-        - [cmi_infos.cmi_sign] if [cmi_infos = Some _]
+    - [signature] is extracted from [cmt_infos.cmt_annots]
 *)
-  let init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos =
+let init_from_all_cm_infos ~cm_file cmt_infos =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
   let sourcepath =
     Option.map Utils.Filepath.remove_pp cmt_infos.cmt_sourcefile
     |> Option.map (Filename.concat builddir)
   in
   let modname = cmt_infos.cmt_modname in
-  let cm_sign =
+  let signature =
     match cmt_infos.cmt_annots with
-    | Interface sign -> Some (Cmti_sign sign)
-    | _ ->
-        Option.map (fun Cmi_format.{cmi_sign; _} -> Cmi_sign cmi_sign) cmi_infos
+    | Interface sign -> Some (Signature sign)
+    | Implementation str -> Some (Structure str)
+    | _ -> None
   in
   {empty with builddir;
               cm_file;
-              cm_sign;
+              signature;
               modname;
               sourcepath}
 
@@ -61,9 +59,9 @@ let init_from_cm_file cm_file =
   else
     match Cmt.read cm_file with
     | Error _ as err -> err
-    | Ok (cmi_infos, cmt_infos) ->
+    | Ok (_, cmt_infos) ->
         let file_infos =
-          init_from_all_cm_infos ~cm_file ~cmi_infos cmt_infos
+          init_from_all_cm_infos ~cm_file cmt_infos
         in
         Result.ok (file_infos, cmt_infos)
 
@@ -128,7 +126,7 @@ let change_file ~comp_unit_to_path file_infos cm_file =
   let no_ext = Filename.remove_extension cm_file in
   assert(no_ext = Filename.remove_extension file_infos.cm_file);
   match Filename.extension cm_file, file_infos with
-  | ".cmt", {cmt_struct = (Some _ as cs); cm_sign; cmti_uid_to_decl; _} ->
+  | ".cmt", {cmt_struct = (Some _ as cs); signature; cmti_uid_to_decl; _} ->
       let* res, cmt_infos = init_from_cm_file cm_file in
       let+ location_dependencies =
         match file_infos.location_dependencies with
@@ -136,7 +134,7 @@ let change_file ~comp_unit_to_path file_infos cm_file =
         | loc_dep -> (* They have already been computed *)
             Result.ok loc_dep
       in
-      {res with cmt_struct = cs; cm_sign; cmti_uid_to_decl; location_dependencies}
+      {res with cmt_struct = cs; signature; cmti_uid_to_decl; location_dependencies}
   | ".cmti", {cmti_uid_to_decl = (Some _ as cutd); cmt_struct; location_dependencies; _} ->
       let+ res, _ = init_from_cm_file cm_file in
       {res with cmti_uid_to_decl = cutd; cmt_struct; location_dependencies}

@@ -293,8 +293,8 @@ let collect_export_from_structure ~path ~comp_unit structure =
 
 let correct_export sig_item =
   let state = State.get_current () in
-  match state.file_infos.cm_sign with
-  | Some (Cmti_sign _) ->
+  match state.file_infos.signature with
+  | Some (Signature _) ->
       (* Typedtree signatures found in .cmti files do not need correction *)
       ()
   | _ -> correct_export sig_item
