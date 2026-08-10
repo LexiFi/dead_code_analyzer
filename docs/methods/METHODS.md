@@ -269,9 +269,10 @@ Related issue :
 
 Factory functions' methods analysis is currently very limited to situations like
 the one in the [Factory function](./code_constructs/FACTORY_FUN.md) example :
-functions without intermediate binding to the returned object in at least one
-branch. I.e. if in all the branches, the result object is bound to a name, then
-the analyzer fails to track its methods. This leads to **false negatives**.
+functions without intermediate binding to the returned object and without
+alternative return values. I.e. if the returned object is in an if-expressions
+or bound to a name, then the analyzer fails to track its methods.
+This leads to **false negatives**.
 
 ### Example
 
@@ -326,7 +327,6 @@ Scanning files...
 
 .> UNUSED METHODS:
 =================
-/tmp/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m
 
 Nothing else to report in this section
 --------------------------------------------------------------------------------
@@ -335,12 +335,5 @@ Nothing else to report in this section
 make: Leaving directory '/tmp/docs/methods/limitations/factory_fun_indir'
 ```
 
-The analyzer correctly reports `random_factory#m` because its last expression in
-the `if` branch is the object's definition. It does not report
-`factory_with_intermediate_binding#m` because the returned object is bound
-inside the function.
-
-> [!NOTE]
-> The analyzer does not distinguish which object is actually returned when there
-> are alternatives like in `random_factory`. Only uses outside of the function
-> are accounted for. E.g. using `res#m` in the `else` branch does not count.
+The analyzer does not report `random_factory#m` nor
+`factory_with_intermediate_binding#m`.
