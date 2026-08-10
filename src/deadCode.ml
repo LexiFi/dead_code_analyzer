@@ -116,12 +116,9 @@ let structure_item super self i =
           State.File_infos.get_modname state.file_infos
           |> Ident.create_persistent
         in
-        let context = DeadSign.Include in
         let path = [module_id] in
-        let comp_unit = _include in
-        let stock = incl in
         List.iter
-          (DeadSign.collect_export ~context ~path ~comp_unit ~stock)
+          (DeadSign.collect_export_from_include ~path)
           signature;
         last_loc := prev_last_loc;
       in
@@ -348,7 +345,7 @@ let read_interface fn (sign : State.File_infos.signature) state =
     | Structure structure ->
         DeadSign.collect_export_from_structure ~path ~comp_unit structure
     | Signature signature ->
-        DeadSign.collect_export_from_typedtree ~path ~comp_unit signature
+        DeadSign.collect_export_from_signature ~path ~comp_unit signature
     end;
     last_loc := Lexing.dummy_pos
 
@@ -436,7 +433,7 @@ let load_file fn state =
         Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
     match state.file_infos.signature with
-    | None -> report_error (fn ^ ": missing cmi_sign")
+    | None -> report_error (fn ^ ": missing signature")
     | Some sign ->
         read_interface fn sign state
     )
