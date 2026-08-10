@@ -149,3 +149,11 @@ make: Leaving directory '/tmp/docs/exported_values/code_constructs/include'
 
 Now, neither the compiler nor the analyzer report any unused value.
 Our work here is done.
+
+## Including a module with the same name
+
+An example where the includer and the includee have the same name is
+available in the
+[incl_same_name](../../../examples/docs/exported_values/code_constructs/incl_same_name)
+directory.
+The analyzer semantics are the same as if the names were distinct.

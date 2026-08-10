@@ -9,6 +9,7 @@ build:
 	make -C modtyp build
 	make -C modsig build
 	make -C include build
+	make -C incl_same_name build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -18,4 +19,5 @@ clean:
 	make -C modtyp clean
 	make -C modsig clean
 	make -C include clean
+	make -C incl_same_name clean
 

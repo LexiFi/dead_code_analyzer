@@ -12,3 +12,4 @@ clean:
 	rm -f *.cm* *.o a.out
 	make -C to_incl clean
 	make -C incl_without_intf clean
+	make -C incl_with_intf clean

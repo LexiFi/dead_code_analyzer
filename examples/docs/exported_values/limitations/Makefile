@@ -2,9 +2,7 @@
 
 all: build
 
-build:
-	make -C incl_same_name build
+build: ;
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
-	make -C incl_same_name clean

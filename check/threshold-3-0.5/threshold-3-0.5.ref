@@ -13,6 +13,19 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:10: F.unused
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:26: Internal_app.unused
 
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_with_intf/with_intf.mli:4: redefined_unused
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
+
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_without_intf/without_intf.ml:4: redefined_unused
+
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/with_intf.mli:2: unused
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/with_intf.mli:4: redefined_unused
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/with_intf.mli:5: redefined_used
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/without_intf.ml:2: unused
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/without_intf.ml:4: redefined_unused
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/without_intf.ml:5: redefined_used
+
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:5: Original.unused
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:15: Redefine.unused
 
@@ -22,19 +35,6 @@
 ./examples/docs/exported_values/code_constructs/modtyp/modtyp_lib.mli:19: M_redef.unused
 
 ./examples/docs/exported_values/code_constructs/module/module_lib.mli:6: M.unused
-
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:4: redefined_unused
-
-./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:4: redefined_unused
-
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:2: unused
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:5: redefined_used
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:2: unused
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:4: redefined_unused
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:5: redefined_used
 
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory
 
@@ -144,6 +144,15 @@
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:24: Internal_app.externally_used
 ./examples/docs/exported_values/code_constructs/functor/functor_lib.mli:25: Internal_app.internally_used
 
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_with_intf/with_intf.mli:5: redefined_used
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_with_intf/without_intf.mli:5: redefined_used
+
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_without_intf/with_intf.ml:5: redefined_used
+./examples/docs/exported_values/code_constructs/incl_same_name/incl_without_intf/without_intf.ml:5: redefined_used
+
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/with_intf.mli:3: used
+./examples/docs/exported_values/code_constructs/incl_same_name/to_incl/without_intf.ml:3: used
+
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:3: Original.used_directly
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:4: Original.used_indirectly
 ./examples/docs/exported_values/code_constructs/include/include_lib.ml:14: Redefine.used_directly
@@ -164,15 +173,6 @@
 ./examples/docs/exported_values/hello_world/hello_world_with_intf.mli:3: goodbye
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:2: hello
 ./examples/docs/exported_values/hello_world/hello_world_without_intf.ml:3: goodbye
-
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/with_intf.mli:5: redefined_used
-./examples/docs/exported_values/limitations/incl_same_name/incl_with_intf/without_intf.mli:5: redefined_used
-
-./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/with_intf.ml:5: redefined_used
-./examples/docs/exported_values/limitations/incl_same_name/incl_without_intf/without_intf.ml:5: redefined_used
-
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/with_intf.mli:3: used
-./examples/docs/exported_values/limitations/incl_same_name/to_incl/without_intf.ml:3: used
 
 ./examples/docs/fields_and_constructors/code_constructs/extensible_variant/extensible_variant_bin.ml:5: to_string_opt
 ./examples/docs/fields_and_constructors/code_constructs/extensible_variant/extensible_variant_lib.mli:7: to_string_opt
