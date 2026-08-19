@@ -454,7 +454,14 @@ let load_file fn state =
           DeadObj.add_equal loc1 loc2;
           VdNode.merge_locs ~force:true loc2 loc1
         in
-        List.iter prepare state.file_infos.location_dependencies;
+        let location_dependencies =
+          match state.file_infos.location_dependencies with
+          | Set location_dependencies -> location_dependencies
+          | _ ->
+              (* TODO: better error handling *)
+              assert false
+        in
+        List.iter prepare location_dependencies;
         collect_references.Tast_mapper.structure collect_references strc
         |> ignore;
         let loc_dep =
@@ -471,7 +478,7 @@ let load_file fn state =
                    Some (loc1, loc2)
                  else None
               )
-              state.file_infos.location_dependencies
+              location_dependencies
           else []
         in
         eof loc_dep

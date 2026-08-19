@@ -9,14 +9,24 @@ type annots =
       (* both the .cmti and .cmt were read *)
   | Neither (* no file read or the content was discarded *)
 
+(** Dependencies similar to [cmt_infos.cmt_value_dependencies] in OCaml 5.2.
+    Because the .cmti file is processed before its correpsonding .cmt file,
+    they are In_progress when processing the .cmti, and Set when processing
+    the .cmt.
+*)
+type loc_dep =
+  | In_progress of Location_dependencies.uid_to_decl
+      (** Extracted from a .cmti's [cmt_infos.cmt_uid_to_decl].
+          Temporary storage before processing the corresponding .cmt file.*)
+  | Set of Location_dependencies.t
+  | Unset (* no file read *)
+
 type t = {
   builddir : string; (** The [cmt_builddir] *)
   cm_file : string; (** The filepath currently analyzed *)
   annots : annots;
     (** Extracted from [cmt_infos.cmt_annots] in .cmti and .cmt files. *)
-  cmti_uid_to_decl : Location_dependencies.uid_to_decl option;
-    (** Extracted from a cmti's [cmt_infos] *)
-  location_dependencies : Location_dependencies.t;
+  location_dependencies : loc_dep;
     (** Dependencies similar to [cmt_infos.cmt_value_dependencies] in OCaml 5.2 *)
   modname : string; (** Either [cmti_name] or [cmt_modname] *)
   sourcepath : string option; (** The path to the associated source file *)

@@ -15,12 +15,16 @@ let merge_annots sign strc =
   | (Signature sign | Both {sign; _}), (Structure strc | Both {strc; _}) ->
       Both {sign; strc}
 
+type loc_dep =
+  | In_progress of Location_dependencies.uid_to_decl
+  | Set of Location_dependencies.t
+  | Unset
+
 type t = {
   builddir : string;
   cm_file : string;
   annots : annots;
-  cmti_uid_to_decl : Locdep.uid_to_decl option;
-  location_dependencies : Locdep.t;
+  location_dependencies : loc_dep;
   modname : string;
   sourcepath : string option;
 }
@@ -29,8 +33,7 @@ let empty = {
   builddir = "!!UNKNOWN_BUILDDIR!!";
   cm_file = "";
   annots = Neither;
-  cmti_uid_to_decl = None;
-  location_dependencies = Locdep.empty;
+  location_dependencies = Unset;
   modname = "!!UNKNOWN_MODNAME!!";
   sourcepath = None;
 }
@@ -81,10 +84,10 @@ let ( let+ ) x f = Result.map f x
 
 let init_from_cmti_file cmti_file =
   let* file_infos, cmt_infos = init_from_cm_file cmti_file in
-  let cmti_uid_to_decl = Some cmt_infos.cmt_uid_to_decl in
+  let location_dependencies = In_progress cmt_infos.cmt_uid_to_decl in
   match file_infos.annots with
   | Signature _ ->
-      let file_infos = {file_infos with cmti_uid_to_decl} in
+      let file_infos = {file_infos with location_dependencies} in
       Result.ok file_infos
   | _ -> Result.error (cmti_file ^ ": does not contain an interface")
 
@@ -95,6 +98,7 @@ let init_from_cmt_file ~comp_unit_to_path cmt_file =
       let+ location_dependencies =
         Locdep.init ~comp_unit_to_path cmt_infos None
       in
+      let location_dependencies = Set location_dependencies in
       {file_infos with location_dependencies}
   | _ -> Result.error (cmt_file ^ ": does not contain an implementation")
 
@@ -108,13 +112,14 @@ let change_file ~comp_unit_to_path file_infos cm_file =
   let no_ext = Filename.remove_extension cm_file in
   assert(no_ext = Filename.remove_extension file_infos.cm_file);
   match Filename.extension cm_file, file_infos with
-  | ".cmt", {annots; cmti_uid_to_decl; _} ->
+  | ".cmt", {annots; location_dependencies = In_progress uid_to_decl; _} ->
       let* res, cmt_infos = init_from_cm_file cm_file in
       let+ location_dependencies =
-        Locdep.init ~comp_unit_to_path cmt_infos cmti_uid_to_decl
+        Locdep.init ~comp_unit_to_path cmt_infos (Some uid_to_decl)
       in
+      let location_dependencies = Set location_dependencies in
       let annots = merge_annots annots res.annots in
-      {res with annots; cmti_uid_to_decl; location_dependencies}
+      {res with annots; location_dependencies}
   | ".cmti", _ ->
       (* .cmti files are alwasy read before the correpsonding.cmt *)
       Result.error (cm_file ^ ": must be read before its correpsonding .cmt")
