@@ -327,7 +327,8 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
-let read_interface fn (sign : State.File_infos.signature) state =
+(* annots must not be Neither *)
+let read_interface fn (annots : State.File_infos.annots) state =
   regabs state;
   if Config.must_report_main state.config then
     let comp_unit =
@@ -341,11 +342,14 @@ let read_interface fn (sign : State.File_infos.signature) state =
       |> Ident.create_persistent
     in
     let path = [module_id] in
-    begin match sign with
-    | Structure structure ->
-        DeadSign.collect_export_from_structure ~path ~comp_unit structure
-    | Signature signature ->
-        DeadSign.collect_export_from_signature ~path ~comp_unit signature
+    begin match annots with
+    | Structure strc ->
+        DeadSign.collect_export_from_structure ~path ~comp_unit strc
+    | Signature sign | Both {sign; _} ->
+        DeadSign.collect_export_from_signature ~path ~comp_unit sign
+    | Neither ->
+        (* TODO: better error handling *)
+        assert false
     end;
     last_loc := Lexing.dummy_pos
 
@@ -432,10 +436,9 @@ let load_file fn state =
       if state.State.config.verbose then
         Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.signature with
-    | None -> report_error (fn ^ ": missing signature")
-    | Some sign ->
-        read_interface fn sign state
+    match state.file_infos.annots with
+    | Neither -> report_error (fn ^ ": missing signature")
+    | annots -> read_interface fn annots state
     )
   in
   let process_implementation fn =
@@ -443,16 +446,16 @@ let load_file fn state =
     if state.State.config.verbose then
       Printf.eprintf "Scanning implementation from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.cmt_struct with
-    | None -> report_error (fn ^ ": missing cmt_struct")
-    | Some structure ->
+    match state.file_infos.annots with
+    | Neither | Signature _ -> report_error (fn ^ ": missing structure")
+    | Structure strc | Both {strc; _} ->
         regabs state;
         let prepare (loc1, loc2) =
           DeadObj.add_equal loc1 loc2;
           VdNode.merge_locs ~force:true loc2 loc1
         in
         List.iter prepare state.file_infos.location_dependencies;
-        collect_references.Tast_mapper.structure collect_references structure
+        collect_references.Tast_mapper.structure collect_references strc
         |> ignore;
         let loc_dep =
           if Config.must_report_section state.config.sections.exported_values then

@@ -1,12 +1,21 @@
-type signature =
+type annots =
   | Structure of Typedtree.structure
   | Signature of Typedtree.signature
+  | Both of { sign: Typedtree.signature; strc: Typedtree.structure }
+  | Neither
+
+let merge_annots sign strc =
+  match sign, strc with
+  | Structure _, _ -> Result.error "expected a signature first"
+  | _, Signature _ -> Result.error "expected a structure second"
+  | Neither, annots | annots, Neither -> Result.ok annots
+  | (Signature sign | Both {sign; _}), (Structure strc | Both {strc; _}) ->
+      Result.ok (Both {sign; strc})
 
 type t = {
   builddir : string;
   cm_file : string;
-  signature : signature option;
-  cmt_struct : Typedtree.structure option;
+  annots : annots;
   cmti_uid_to_decl : Location_dependencies.uid_to_decl option;
   location_dependencies : Location_dependencies.t;
   modname : string;
@@ -16,8 +25,7 @@ type t = {
 let empty = {
   builddir = "!!UNKNOWN_BUILDDIR!!";
   cm_file = "";
-  signature = None;
-  cmt_struct = None;
+  annots = Neither;
   cmti_uid_to_decl = None;
   location_dependencies = Location_dependencies.empty;
   modname = "!!UNKNOWN_MODNAME!!";
@@ -27,7 +35,7 @@ let empty = {
 (** [init_from_all_cm_infos ~cm_file cmt_infos] creates a [t] with:
     - information from [cmt_infos] : [builddir], [modname], [sourcepath];
     - [cm_file];
-    - [signature] is extracted from [cmt_infos.cmt_annots]
+    - [annots] is extracted from [cmt_infos.cmt_annots]
 *)
 let init_from_all_cm_infos ~cm_file cmt_infos =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
@@ -36,15 +44,15 @@ let init_from_all_cm_infos ~cm_file cmt_infos =
     |> Option.map (Filename.concat builddir)
   in
   let modname = cmt_infos.cmt_modname in
-  let signature =
+  let annots =
     match cmt_infos.cmt_annots with
-    | Interface sign -> Some (Signature sign)
-    | Implementation str -> Some (Structure str)
-    | _ -> None
+    | Interface sign -> Signature sign
+    | Implementation strc -> Structure strc
+    | _ -> Neither
   in
   {empty with builddir;
               cm_file;
-              signature;
+              annots;
               modname;
               sourcepath}
 
@@ -69,32 +77,43 @@ let ( let* ) x f = Result.bind x f
 let ( let+ ) x f = Result.map f x
 
 let init_from_cmti_file cmti_file =
-  let+ file_infos, cmt_infos = init_from_cm_file cmti_file in
+  let* file_infos, cmt_infos = init_from_cm_file cmti_file in
   let cmti_uid_to_decl = Some cmt_infos.cmt_uid_to_decl in
-  {file_infos with cmti_uid_to_decl}
+  match file_infos.annots with
+  | Signature _ | Both _ ->
+      let file_infos = {file_infos with cmti_uid_to_decl} in
+      Result.ok file_infos
+  | _ -> Result.error (cmti_file ^ ": does not contain an interface")
 
 let init_from_cmt_file ~comp_unit_to_path cmt_file =
   let* file_infos, cmt_infos = init_from_cm_file cmt_file in
-  let* cmt_struct =
-    match cmt_infos.cmt_annots with
-    | Implementation structure -> Result.ok structure
+  let* annots =
+    match file_infos.annots with
+    | Structure _ | Both _ -> Result.ok file_infos.annots
     | _ -> Result.error (cmt_file ^ ": does not contain an implementation")
   in
-  let cmt_struct = Some cmt_struct in
   (* Read the cmti if it exists. We always want to do it in case a user
      specified the cmt before the cmti to ensure the location_dependencies
      are idempotent. *)
-  let cmti_uid_to_decl =
+  let cmti_uid_to_decl, annots =
     let cmti_file = Filename.remove_extension cmt_file ^ ".cmti" in
     match init_from_cmti_file cmti_file with
-    | Error _ -> None
-    | Ok file_infos -> file_infos.cmti_uid_to_decl
+    | Error _ -> None, annots
+    | Ok file_infos ->
+        let annots =
+          match merge_annots file_infos.annots annots with
+          | Error _ ->
+              (* TODO: better error handling *)
+              assert false
+          | Ok annots -> annots
+        in
+        file_infos.cmti_uid_to_decl, annots
   in
   let+ location_dependencies =
     Location_dependencies.init ~comp_unit_to_path cmt_infos cmti_uid_to_decl
   in
   let file_infos =
-    {file_infos with cmt_struct; cmti_uid_to_decl; location_dependencies}
+    {file_infos with annots; cmti_uid_to_decl; location_dependencies}
   in
   file_infos, cmt_infos
 
@@ -115,9 +134,9 @@ let init ~comp_unit_to_path cm_file =
         {file_infos with location_dependencies}
       in
       match filled_with_cmt_infos with
-      | Ok {cmt_struct; cmti_uid_to_decl; location_dependencies; _} ->
+      | Ok {annots; cmti_uid_to_decl; location_dependencies; _} ->
           let+ res, _ = init_from_cm_file cm_file in
-          {res with cmt_struct; cmti_uid_to_decl; location_dependencies}
+          {res with annots; cmti_uid_to_decl; location_dependencies}
       | Error _ -> init_from_cmti_file cm_file
   )
   | _ -> Result.error (cm_file ^ ": not a .cmti or .cmt file")
@@ -126,7 +145,7 @@ let change_file ~comp_unit_to_path file_infos cm_file =
   let no_ext = Filename.remove_extension cm_file in
   assert(no_ext = Filename.remove_extension file_infos.cm_file);
   match Filename.extension cm_file, file_infos with
-  | ".cmt", {cmt_struct = (Some _ as cs); signature; cmti_uid_to_decl; _} ->
+  | ".cmt", {annots; cmti_uid_to_decl; _} ->
       let* res, cmt_infos = init_from_cm_file cm_file in
       let+ location_dependencies =
         match file_infos.location_dependencies with
@@ -134,10 +153,17 @@ let change_file ~comp_unit_to_path file_infos cm_file =
         | loc_dep -> (* They have already been computed *)
             Result.ok loc_dep
       in
-      {res with cmt_struct = cs; signature; cmti_uid_to_decl; location_dependencies}
-  | ".cmti", {cmti_uid_to_decl = (Some _ as cutd); cmt_struct; location_dependencies; _} ->
+      let annots =
+        match merge_annots annots res.annots with
+        | Error _ ->
+            (* TODO: better error handling *)
+            assert false
+        | Ok annots -> annots
+      in
+      {res with annots; cmti_uid_to_decl; location_dependencies}
+  | ".cmti", {cmti_uid_to_decl = (Some _ as cutd); annots; location_dependencies; _} ->
       let+ res, _ = init_from_cm_file cm_file in
-      {res with cmti_uid_to_decl = cutd; cmt_struct; location_dependencies}
+      {res with cmti_uid_to_decl = cutd; annots; location_dependencies}
   | _ ->
       (* invalid extension or the corresponding info is None *)
       init ~comp_unit_to_path cm_file

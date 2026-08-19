@@ -1,16 +1,19 @@
 (** Information about a analyzable file ([.cmti] or [.cmt] file) *)
 
-type signature =
+(** binary_annots of the compialtion unit *)
+type annots =
   | Structure of Typedtree.structure
-  | Signature of Typedtree.signature
+      (* only a .cmt was read (i.e. no .cmti available) *)
+  | Signature of Typedtree.signature (* only a .cmti was read *)
+  | Both of { sign: Typedtree.signature; strc: Typedtree.structure }
+      (* both the .cmti and .cmt were read *)
+  | Neither (* no file read or the content was discarded *)
 
 type t = {
   builddir : string; (** The [cmt_builddir] *)
   cm_file : string; (** The filepath currently analyzed *)
-  signature : signature option;
-    (** Extracted from [cmt_infos] in cmti files and [cmi_infos] in cmt files *)
-  cmt_struct : Typedtree.structure option;
-    (** Extracted from a cmt's [cmt_infos.cmt_annots] *)
+  annots : annots;
+    (** Extracted from [cmt_infos.cmt_annots] in .cmti and .cmt files. *)
   cmti_uid_to_decl : Location_dependencies.uid_to_decl option;
     (** Extracted from a cmti's [cmt_infos] *)
   location_dependencies : Location_dependencies.t;
