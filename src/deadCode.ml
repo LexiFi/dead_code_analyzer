@@ -327,8 +327,7 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
-(* annots must not be Neither *)
-let read_interface fn (annots : State.File_infos.annots) state =
+let read_interface fn export_collector state =
   regabs state;
   if Config.must_report_main state.config then
     let comp_unit =
@@ -342,15 +341,7 @@ let read_interface fn (annots : State.File_infos.annots) state =
       |> Ident.create_persistent
     in
     let path = [module_id] in
-    begin match annots with
-    | Structure strc ->
-        DeadSign.collect_export_from_structure ~path ~comp_unit strc
-    | Signature sign | Both {sign; _} ->
-        DeadSign.collect_export_from_signature ~path ~comp_unit sign
-    | Neither ->
-        (* TODO: better error handling *)
-        assert false
-    end;
+    export_collector ~path ~comp_unit;
     last_loc := Lexing.dummy_pos
 
 
@@ -433,12 +424,17 @@ let load_file fn state =
   in
   let process_interface fn =
     last_loc := Lexing.dummy_pos;
-      if state.State.config.verbose then
-        Printf.eprintf "Scanning interface from %s\n%!" fn;
+    if state.State.config.verbose then
+      Printf.eprintf "Scanning interface from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.annots with
+    match state.file_infos.cm_infos with
     | Neither -> report_error (fn ^ ": missing signature")
-    | annots -> read_interface fn annots state
+    | Cmti {sign; _} | Cmt {sign = Some sign; _} ->
+        let export_collector = DeadSign.collect_export_from_signature sign in
+        read_interface fn export_collector state
+    | Cmt {strc; _} ->
+        let export_collector = DeadSign.collect_export_from_structure strc in
+        read_interface fn export_collector state
     )
   in
   let process_implementation fn =
@@ -446,20 +442,13 @@ let load_file fn state =
     if state.State.config.verbose then
       Printf.eprintf "Scanning implementation from %s\n%!" fn;
     init_and_continue state fn (fun state ->
-    match state.file_infos.annots with
-    | Neither | Signature _ -> report_error (fn ^ ": missing structure")
-    | Structure strc | Both {strc; _} ->
+    match state.file_infos.cm_infos with
+    | Neither | Cmti _ -> report_error (fn ^ ": missing structure")
+    | Cmt {strc; location_dependencies; _} ->
         regabs state;
         let prepare (loc1, loc2) =
           DeadObj.add_equal loc1 loc2;
           VdNode.merge_locs ~force:true loc2 loc1
-        in
-        let location_dependencies =
-          match state.file_infos.location_dependencies with
-          | Set location_dependencies -> location_dependencies
-          | _ ->
-              (* TODO: better error handling *)
-              assert false
         in
         List.iter prepare location_dependencies;
         collect_references.Tast_mapper.structure collect_references strc

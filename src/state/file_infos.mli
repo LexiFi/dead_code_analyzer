@@ -1,33 +1,27 @@
-(** Information about a analyzable file ([.cmti] or [.cmt] file) *)
+(** Information about an analyzable file ([.cmti] or [.cmt] file) *)
 
-(** binary_annots of the compialtion unit *)
-type annots =
-  | Structure of Typedtree.structure
-      (* only a .cmt was read (i.e. no .cmti available) *)
-  | Signature of Typedtree.signature (* only a .cmti was read *)
-  | Both of { sign: Typedtree.signature; strc: Typedtree.structure }
-      (* both the .cmti and .cmt were read *)
+(** Data specific to the file type (.cmt or .cmti) *)
+type cm_infos =
+  | Cmti of {
+        sign : Typedtree.signature;
+        cmti_uid_to_decl : Location_dependencies.uid_to_decl;
+          (** Extracted from [cmt_infos.cmt_uid_to_decl] *)
+      } (* only a .cmti was read *)
+  | Cmt of {
+        strc : Typedtree.structure;
+        sign : Typedtree.signature option;
+          (** signature read in the corresponding .cmti (if available) *)
+        location_dependencies : Location_dependencies.t;
+          (** Dependencies similar to [cmt_infos.cmt_value_dependencies]
+              in OCaml 5.2. *)
+      } (* infos coming from a .cmt *)
   | Neither (* no file read or the content was discarded *)
-
-(** Dependencies similar to [cmt_infos.cmt_value_dependencies] in OCaml 5.2.
-    Because the .cmti file is processed before its correpsonding .cmt file,
-    they are In_progress when processing the .cmti, and Set when processing
-    the .cmt.
-*)
-type loc_dep =
-  | In_progress of Location_dependencies.uid_to_decl
-      (** Extracted from a .cmti's [cmt_infos.cmt_uid_to_decl].
-          Temporary storage before processing the corresponding .cmt file.*)
-  | Set of Location_dependencies.t
-  | Unset (* no file read *)
 
 type t = {
   builddir : string; (** The [cmt_builddir] *)
   cm_file : string; (** The filepath currently analyzed *)
-  annots : annots;
-    (** Extracted from [cmt_infos.cmt_annots] in .cmti and .cmt files. *)
-  location_dependencies : loc_dep;
-    (** Dependencies similar to [cmt_infos.cmt_value_dependencies] in OCaml 5.2 *)
+  cm_infos : cm_infos;
+    (** Data specific to the file type (.cmt or .cmti) *)
   modname : string; (** Either [cmti_name] or [cmt_modname] *)
   sourcepath : string option; (** The path to the associated source file *)
 }

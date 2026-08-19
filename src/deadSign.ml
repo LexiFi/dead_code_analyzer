@@ -258,8 +258,8 @@ let rec collect_export_from_include ~path sig_item =
 
 let correct_export sig_item =
   let state = State.get_current () in
-  match state.file_infos.annots with
-  | Structure _ -> correct_export sig_item
+  match state.file_infos.cm_infos with
+  | Cmt {sign = None; _} -> correct_export sig_item
   | _ ->
       (* Typedtree signatures found in .cmti files do not need correction *)
       ()
