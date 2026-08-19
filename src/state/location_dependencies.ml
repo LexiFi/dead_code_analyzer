@@ -42,12 +42,11 @@ let find_opt_external_uid_loc ~comp_unit_to_path = function
         in
         Cmt.read cm_path |> Result.to_option
       in
-      let* cmi_cmt_infos =
+      let* cmt_infos =
         match cached with
         | Some _ as some -> some
         | None  -> read_from_path ()
       in
-      let cmt_infos = snd cmi_cmt_infos in
       let cmt_uid_to_decl = cmt_infos.cmt_uid_to_decl in
       let* item_decl = UidTbl.find_opt cmt_uid_to_decl uid in
       loc_opt_of_item_decl item_decl

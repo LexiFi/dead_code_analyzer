@@ -34,9 +34,8 @@ module Cache = struct
 
 end
 
-type cmi_cmt_infos = Cmi_format.cmi_infos option * Cmt_format.cmt_infos
-
-let cache_cmt : ((string * string), (string * cmi_cmt_infos)) Cache.t = Cache.create 64
+let cache_cmt : ((string * string), (string * Cmt_format.cmt_infos)) Cache.t =
+  Cache.create 64
 
 let set_cache_size capacity = Cache.update_capacity cache_cmt capacity
 
@@ -51,17 +50,21 @@ let read_no_cache filepath =
       Option.map (( ^ ) " Tip: ") tip
       |> Option.value ~default:""
     in
-    Printf.sprintf "%s: %s.%s" filepath msg tip
+    Printf.sprintf "%s: %s. %s" filepath msg tip
     |> Result.error
   in
-  match Cmt_format.read filepath with
+  match Cmt_format.read_cmt filepath with
   | exception Cmi_format.(Error (Not_an_interface _)) ->
       let tip =
-        "the file must be compiled with the same OCaml version as the dead_code_analyzer."
+        "The file must be compiled with the same OCaml version as the dead_code_analyzer."
       in
       error ~tip "invalid magic number"
-  | _, None -> error "missing cmt_infos"
-  | cmi_infos, Some cmt_infos -> Result.ok (cmi_infos, cmt_infos)
+  | exception Cmt_format.(Error (Not_a_typedtree _)) ->
+      let tip =
+        "The file must be a .cmt or .cmti file compiled with the same OCaml version as the dead_code_analyzer."
+      in
+      error ~tip "does not contain a typedtree"
+  | cmt_infos -> Result.ok cmt_infos
 
 let read filepath =
   let comp_unit = Utils.Filepath.unit filepath in
@@ -70,9 +73,9 @@ let read filepath =
   | Some (fp, res) when String.equal fp filepath -> Result.ok res
   | _ ->
       read_no_cache filepath
-      |> Result.map (fun cmi_cmt_infos ->
-        Cache.add cache_cmt (ext, comp_unit) (filepath, cmi_cmt_infos);
-        cmi_cmt_infos)
+      |> Result.map (fun cmt_infos ->
+        Cache.add cache_cmt (ext, comp_unit) (filepath, cmt_infos);
+        cmt_infos)
 
 let find_cached_from_comp_unit comp_unit ext =
   Cache.find_opt cache_cmt (ext, comp_unit)

@@ -70,7 +70,7 @@ let init_from_cm_file cm_file =
   else
     match Cmt.read cm_file with
     | Error _ as err -> err
-    | Ok (_, cmt_infos) ->
+    | Ok cmt_infos ->
         let file_infos =
           init_from_all_cm_infos ~cm_file cmt_infos
         in
