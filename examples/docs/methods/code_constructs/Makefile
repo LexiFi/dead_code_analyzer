@@ -12,6 +12,7 @@ build:
 	make -C factory_fun build
 	make -C object_type build
 	make -C coercion build
+	make -C alias build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -24,4 +25,5 @@ clean:
 	make -C factory_fun clean
 	make -C object_type clean
 	make -C coercion clean
+	make -C alias clean
 

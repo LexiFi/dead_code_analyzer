@@ -185,6 +185,8 @@
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:4: poly_of_int
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_variant/polymorphic_variant_lib.mli:6: float_opt_of_poly
 
+./examples/docs/methods/code_constructs/alias/alias_lib.mli:8: alias
+
 ./examples/docs/methods/code_constructs/class/class_bin.ml:4: push_n_times
 
 ./examples/docs/methods/code_constructs/class_type/class_type_bin.ml:4: push_n_times
@@ -200,8 +202,6 @@
 ./examples/docs/methods/code_constructs/object_type/object_type_bin.ml:4: push_n_times
 
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_bin.ml:2: push_n_times
-
-./examples/docs/methods/limitations/alias/alias_lib.mli:8: alias
 
 ./examples/docs/optional_arguments/code_constructs/external_app/external_app_lib.mli:2: max
 ./examples/docs/optional_arguments/code_constructs/external_app/external_app_lib.mli:3: min
@@ -422,6 +422,8 @@ Nothing else to report in this section
 
 .> UNUSED METHODS:
 =================
+./examples/docs/methods/code_constructs/alias/alias_lib.mli:2: original#unused
+
 ./examples/docs/methods/code_constructs/class/class_bin.ml:2: unused_class#unused_method
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#reset
 
@@ -439,8 +441,6 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
-
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
 
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m: Not detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m: Not detected
@@ -504,6 +504,9 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED METHODS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/methods/code_constructs/alias/alias_lib.mli:2: original#used
+./examples/docs/methods/code_constructs/alias/alias_lib.mli:2: original#used_by_alias
+
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#peek
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#pop
 ./examples/docs/methods/code_constructs/class/class_lib.mli:2: int_stack#push
@@ -528,9 +531,6 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#peek
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#pop
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#push
-
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#externally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#internally_used

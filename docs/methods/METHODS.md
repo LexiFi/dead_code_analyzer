@@ -9,7 +9,6 @@
 + [Limitations](#limitations)
     + [Class type](#class-type)
     + [Object type](#object-type)
-    + [Alias](#alias)
     + [Factory function](#factory-function)
 
 # Methods
@@ -153,6 +152,7 @@ from the `.mli` if there is one and the `.ml`.
     - [Factory function](./code_constructs/FACTORY_FUN.md)
     - [Object type](./code_constructs/OBJECT_TYPE.md)
     - [Coercion](./code_constructs/COERCION.md)
+    + [Alias](./code_constructus/ALIAS.md)
 
 # Limitations
 
@@ -167,16 +167,6 @@ type definitions.
 As explained in the [Object type](./code_constructs/OBJECT_TYPE.md) example, the
 analyzer is currently restricted to not reporting methods declared in object
 types.
-
-## Alias
-
-Related issue :
-[issue #66](https://github.com/LexiFi/dead_code_analyzer/issues/66).
-
-In the presence of multiple bindings to the same object, the analyzer corrctly
-avoids tracking their methods individually. However, it fails at unifying them
-and only keeps track of the methods used through the original binding, where the
-methods are defined. This leads to **false positives**.
 
 ### Example
 
