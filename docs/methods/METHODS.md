@@ -9,7 +9,6 @@
 + [Limitations](#limitations)
     + [Class type](#class-type)
     + [Object type](#object-type)
-    + [Factory function](#factory-function)
 
 # Methods
 
@@ -251,79 +250,3 @@ make: Leaving directory '/tmp/docs/methods/limitations/alias'
 
 The analyzer reports `original#used_by_alias` although it is used by
 `alias#used_by_alias`.
-
-## Factory function
-
-Related issue :
-[issue #67](https://github.com/LexiFi/dead_code_analyzer/issues/67).
-
-Factory functions' methods analysis is currently very limited to situations like
-the one in the [Factory function](./code_constructs/FACTORY_FUN.md) example :
-functions without intermediate binding to the returned object and without
-alternative return values. I.e. if the returned object is in an if-expressions
-or bound to a name, then the analyzer fails to track its methods.
-This leads to **false negatives**.
-
-### Example
-
-The reference files for this example are in the
-[factory\_fun\_indir](../../examples/docs/methods/limitations/factory_fun_indir) directory.
-
-The reference takes place in `/tmp/docs/methods/limitations`, which
-is a copy of the [limitations](../../../examples/docs/methods/limitations)
-directory. Reported locations may differ depending on the location of the source
-files.
-
-The compilation command is :
-```
-make -C factory_fun_indir build
-```
-
-The analysis command is :
-```
-make -C factory_fun_indir analyze
-```
-
-The compile + analyze command is :
-```
-make -C factory_fun_indir
-```
-
-Code:
-```OCaml
-(* factoy_fun_indir.ml *)
-let factory_with_intermediate_binding () =
-  let res =
-    object method m = () end
-  in
-  res
-
-let random_factory () =
-  if Random.bool () then
-    object method m = () end
-  else
-    let res = object method m = () end in
-    res
-```
-
-Compile and analyze:
-```
-$ make -C factory_fun_indir
-make: Entering directory '/tmp/docs/methods/limitations/factory_fun_indir'
-ocamlopt -bin-annot factory_fun_indir.ml
-dead_code_analyzer --nothing -M all .
-Scanning files...
- [DONE]
-
-.> UNUSED METHODS:
-=================
-
-Nothing else to report in this section
---------------------------------------------------------------------------------
-
-
-make: Leaving directory '/tmp/docs/methods/limitations/factory_fun_indir'
-```
-
-The analyzer does not report `random_factory#m` nor
-`factory_with_intermediate_binding#m`.

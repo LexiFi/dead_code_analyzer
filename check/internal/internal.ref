@@ -141,15 +141,15 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_bin.ml:2: unused_factory#unused_method
 ./examples/docs/methods/code_constructs/factory_fun/factory_fun_lib.mli:2: get_stack#reset
 
+./examples/docs/methods/code_constructs/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#unused
+./examples/docs/methods/code_constructs/factory_fun_indir/factory_fun_indir.ml:13: random_factory#unused
+
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_bin.ml:2: unused_obj#unused_method
 ./examples/docs/methods/code_constructs/immediate_object/immediate_object_lib.mli:2: int_stack#reset
 
 ./examples/docs/methods/code_constructs/inheritance/inheritance_lib.mli:2: parent#unused
 
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
-
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#unused
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:13: random_factory#unused
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
@@ -622,7 +622,7 @@ Nothing else to report in this section
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:6: unit pattern unused
 ./examples/docs/exported_values/code_constructs/module/module_lib.ml:7: unit pattern unused_unexported
 
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:20: let x = ... in x (=> useless binding)
+./examples/docs/methods/code_constructs/factory_fun_indir/factory_fun_indir.ml:20: let x = ... in x (=> useless binding)
 
 ./examples/docs/optional_arguments/code_constructs/hof/hof_bin.ml:2: val f: ... -> (... -> ?_:_ -> ...) -> ...
 

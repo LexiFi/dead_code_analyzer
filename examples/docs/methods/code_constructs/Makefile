@@ -10,6 +10,7 @@ build:
 	make -C inheritance build
 	make -C immediate_object build
 	make -C factory_fun build
+	make -C factory_fun_indir build
 	make -C object_type build
 	make -C coercion build
 	make -C alias build
@@ -23,6 +24,7 @@ clean:
 	make -C inheritance clean
 	make -C immediate_object clean
 	make -C factory_fun clean
+	make -C factory_fun_indir clean
 	make -C object_type clean
 	make -C coercion clean
 	make -C alias clean

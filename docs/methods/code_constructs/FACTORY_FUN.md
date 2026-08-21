@@ -21,20 +21,6 @@ The compile + analyze command is :
 make -C factory_fun
 ```
 
-> [!IMPORTANT]
-> **LIMITATION**
->
-> Only factory functions that return the object without intermediate binding
-> in at least one branch are understood by the analyzer. This may lead to
-> **false negatives**.
-> See [Factory function | Limitations](../METHODS.md#factory-function).
->
-> Storing the result of a factory function in a new binding breaks the analysis.
-> Although 2 calls to the same factory function may produce different objects,
-> they are considered to be the same by the analyzer. Hence, storing the result
-> in a new binding is similar to an alias, which may lead to **false positives**.
-> See [Alias | Limitations](../METHODS.md#alias)
-
 ## First run
 
 Code:
@@ -126,3 +112,10 @@ functions, making the functions behave similarly to class constructors.
 
 The reported methods can be removed from the `.mli` and `.ml`.
 Our work here is done.
+
+## Complex factory functions
+
+An example where the factory function may return different values or
+manipulate the return value is available in the
+[factory_fun_indir](../../../examples/docs/methods/code_constructs/factory_fun_indir)
+directory.
