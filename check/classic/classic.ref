@@ -198,7 +198,7 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
+
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m: Not detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
@@ -724,7 +724,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 597
+Total: 596
 Success: 594
-Failed: 3
-Ratio: 99.4974874372%
+Failed: 2
+Ratio: 99.6644295302%

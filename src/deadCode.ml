@@ -76,7 +76,8 @@ let value_binding super self x =
           _};
       _
     } ->
-      VdNode.merge_locs loc1 loc2
+      VdNode.merge_locs loc1 loc2;
+      DeadObj.add_equal loc1 loc2
   | { vb_pat =
         { pat_desc = Tpat_var (
             _,

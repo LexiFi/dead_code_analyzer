@@ -584,7 +584,7 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#unused
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Should not be detected
+
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#m: Not detected
 ./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:8: random_factory#m: Not detected
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
@@ -673,7 +673,8 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#push
 
 ./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used
-./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias: Not detected
+./examples/docs/methods/limitations/alias/alias_lib.mli:2: original#used_by_alias
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#externally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#externally_used
@@ -1544,7 +1545,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1260
-Success: 1256
-Failed: 4
-Ratio: 99.6825396825%
+Total: 1259
+Success: 1257
+Failed: 2
+Ratio: 99.8411437649%
