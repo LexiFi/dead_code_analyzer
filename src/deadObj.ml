@@ -147,6 +147,7 @@ let rec repr_exp expr f =
     | Texp_sequence (_, expr)
     | Texp_function (_, Tfunction_cases { cases = {c_rhs=expr; _}::_ ; _ })
     | Texp_function (_, Tfunction_body expr)
+    | Texp_let (_, _, expr)
     | Texp_apply (expr, _) -> repr_exp expr f
     | _ -> f expr
 
@@ -262,16 +263,49 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
 
 
 let add_var loc expr =
-  let kind expr =
+  let rec kind expr =
+    let find_first_kind exprs =
+      (* For alternative results: find the first non-`Ignore kind *)
+      List.find_map
+        (fun expr ->
+          match repr_exp expr kind with
+          | `Ignore -> None
+          | res -> Some res
+        )
+        exprs
+      |> Option.value ~default:`Ignore
+    in
+    let find_first_case_kind cases =
+      List.map (fun {c_rhs; _} -> c_rhs) cases
+      |> find_first_kind
+    in
     match expr.exp_desc with
-    | Texp_object _ -> `Obj
-    | Texp_new (_, _, {cty_loc = {Location.loc_start = cty_loc; _}; _}) -> `New cty_loc
+    (* Result identified *)
+    | Texp_object _ ->
+        `Obj
+    | Texp_new (_, _, {cty_loc = {Location.loc_start = cty_loc; _}; _}) ->
+        `New cty_loc
+    | Texp_ident (_, _, {Types.val_loc; _}) ->
+        `Ident val_loc.Location.loc_start
+    (* Cases not traversed by repr_exp *)
+    | Texp_match (_, cases, _, _) ->
+        find_first_case_kind cases
+    | Texp_try (_, cases, _) ->
+        find_first_case_kind cases
+    | Texp_ifthenelse (_, then_, Some else_) ->
+        find_first_kind [then_; else_]
+    (* Default *)
     | _ -> `Ignore
   in
   match repr_exp expr kind with
   | `Obj ->
       last_class := loc;
   | `New cty_loc -> add_equal loc cty_loc
+  | `Ident id_loc ->
+      let expr_loc : Location.t = expr.exp_loc in
+      if id_loc >= expr_loc.loc_start && id_loc <= expr_loc.loc_end then
+        (* ident is defined within expr *)
+        add_equal id_loc loc
   | `Ignore -> ()
 
 

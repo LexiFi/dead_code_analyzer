@@ -585,8 +585,9 @@ Nothing else to report in this section
 
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#reset
 
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#unused: Not detected
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:13: random_factory#unused: Not detected
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#unused
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:13: random_factory#unused
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
@@ -675,9 +676,10 @@ Nothing else to report in this section
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#pop
 ./examples/docs/methods/code_constructs/polymorphic_class/polymorphic_class_lib.mli:2: stack#push
 
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#used: Not detected
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#used_locally: Not detected
-./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:13: random_factory#used: Not detected
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#used
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:2: factory_with_intermediate_binding#used_locally
+./examples/docs/methods/limitations/factory_fun_indir/factory_fun_indir.ml:13: random_factory#used
+
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#externally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#externally_used
@@ -1548,6 +1550,6 @@ Nothing else to report in this section
 
 
 Total: 1261
-Success: 1256
-Failed: 5
-Ratio: 99.6034892942%
+Success: 1261
+Failed: 0
+Ratio: 100.%
