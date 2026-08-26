@@ -78,10 +78,11 @@ let collect_export path u stock t =
   in
 
   let save id loc =
+    let id = Ident.name id in
     if t.type_manifest = None then
       (* do not export t1 when there is an explicit equation t1 = t2 *)
       export path u stock id loc;
-    let path = String.concat "." @@ List.rev_map (fun id -> Ident.name id) (id::path) in
+    let path = String.concat "." @@ List.rev (id::path) in
     Hashtbl.replace fields path loc.Location.loc_start
   in
 
@@ -139,15 +140,7 @@ let add_type_eq component_path eq_type_path component_name =
   let eq_path = eq_type_path ^ "." ^ component_name in
   equivalences := (component_path, eq_path) :: !equivalences
 
-(** Attempt to find a valid path by shortening [internal_path] until
-    only the head is left.
-    [internal_path] is built in reverse: that head is equivalent to the
-    external path (in the right order), the end is the current compilation
-    unit's name, and the whole path is initially the longest to the
-    point of equivalence.
-    Thus, when only the head is left, this function is equivalent to
-    adding an external type_eq..
-*)
+
 let rec add_type_eq_internal ~internal_path ~component_path ~component_name =
   match internal_path with
   | [] -> assert false (* There must be at least one element *)
@@ -165,34 +158,44 @@ let rec add_type_eq_internal ~internal_path ~component_path ~component_name =
           let internal_path =
             match rev_internal_path with
             | [] | _::[] -> external_type_path :: []
-            | _::rev_internal_path -> external_type_path ::rev_internal_path
+            | _::rev_internal_path -> external_type_path :: rev_internal_path
           in
           add_type_eq_internal ~internal_path ~component_path ~component_name
 
-let collect_equivalence_from_module_alias
-    ~is_internal ~rev_alias_path ~original_path ~sub_path type_decl
+
+let normalize_mod_path rev_current_path mod_path =
+  let sub_path = Path.name mod_path in
+  if Path.head mod_path |> Ident.global then
+    (* External mod_path. Keep as is *)
+    sub_path :: []
+  else
+    (* Internal mod_path *)
+    sub_path :: rev_current_path
+
+
+let collect_eq_from_module_alias
+    ~rev_alias_path ~original_path ~sub_path type_decl
 =
   let type_path =
     List.rev_append rev_alias_path sub_path
     |> String.concat "."
   in
-  let original_eq_type_path =
-    String.concat "." (original_path :: sub_path)
-  in
-  let add_type_eq_internal =
-    if is_internal then
-      let internal_path = original_eq_type_path :: List.tl rev_alias_path in
-      add_type_eq_internal ~internal_path
-    else
-      fun ~component_path ~component_name ->
-        add_type_eq component_path original_eq_type_path component_name
+  let internal_path =
+    let normalized_original_path =
+      normalize_mod_path (List.tl rev_alias_path) original_path
+    in
+    match normalized_original_path with
+    | original_path :: rev_path ->
+        let original_type_path = String.concat "." (original_path :: sub_path) in
+        original_type_path :: rev_path
+    | [] -> assert false
   in
   let add_type_eq loc component_id =
     let component_name = Ident.name component_id in
     let component_path = type_path ^ "." ^ component_name in
     if not (Hashtbl.mem fields component_path) then
       Hashtbl.add fields component_path loc.Location.loc_start;
-    add_type_eq_internal ~component_path ~component_name
+    add_type_eq_internal ~internal_path ~component_path ~component_name
   in
   match type_decl.type_kind with
     | Type_record (l, _) ->
@@ -202,7 +205,7 @@ let collect_equivalence_from_module_alias
     | _ -> ()
 
 
-let collect_equivalence_from_include ~incl_id ~path type_decl =
+let collect_eq_from_include ~incl_path ~path type_decl =
   let state = State.get_current () in
   let module_id = State.File_infos.get_modname state.file_infos in
   (* internal path *)
@@ -211,16 +214,21 @@ let collect_equivalence_from_include ~incl_id ~path type_decl =
     List.rev_append rev_curr_path path
     |> String.concat "."
   in
-  let original_eq_type_path =
-    Longident.flatten incl_id @ path
-    |> String.concat "."
+  let internal_path =
+    let normalized_incl_path =
+      normalize_mod_path rev_curr_path incl_path
+    in
+    match normalized_incl_path with
+    | incl_path :: rev_path ->
+        let incl_type_path = String.concat "." (incl_path :: path) in
+        incl_type_path :: rev_path
+    | [] -> assert false
   in
   let add_type_eq component_id =
     let component_name = Ident.name component_id in
     (* internal path *)
     let component_path = type_path ^ "." ^ component_name in
-    let internal_path = original_eq_type_path :: rev_curr_path in
-      add_type_eq_internal ~internal_path ~component_path ~component_name
+    add_type_eq_internal ~internal_path ~component_path ~component_name
   in
   match type_decl.type_kind with
     | Type_record (l, _) ->
@@ -397,4 +405,17 @@ let wrap f x =
 
 let collect_export path u stock t = wrap (collect_export path u stock) t
 let tstr typ = wrap tstr typ
+let prepare_report () = wrap prepare_report ()
 let report () = wrap report ()
+
+let collect_eq_from_module_alias
+    ~rev_alias_path ~original_path ~sub_path type_decl
+=
+  wrap
+    (collect_eq_from_module_alias
+      ~rev_alias_path ~original_path ~sub_path
+    )
+    type_decl
+
+let collect_eq_from_include ~incl_path ~path type_decl =
+  wrap (collect_eq_from_include ~incl_path ~path) type_decl

@@ -1,5 +1,5 @@
 val collect_export_from_signature :
-  path: Ident.t list ->
+  path: string list ->
   comp_unit: string ->
   Typedtree.signature
   -> unit
@@ -12,7 +12,7 @@ val collect_export_from_signature :
 *)
 
 val collect_export_from_structure :
-  path: Ident.t list ->
+  path: string list ->
   comp_unit: string ->
   Typedtree.structure
   -> unit
@@ -30,11 +30,11 @@ val collect_from_include :
     [incl_decl].
 *)
 
-val collect_equivalence_from_module_alias :
+val collect_eq_from_module_alias :
   path: string list ->
   Typedtree.module_binding
   -> unit
-(** [collect_export_from_module_alias ~path module_binding]
+(** [collect_eq_from_module_alias ~path module_binding]
     links exports in the [module_binding]'s expr to the new module if it is
     an alias (M1 = M2). Aliases on functor applications are included.
     [path] is the current module id's path (with the new id included) in

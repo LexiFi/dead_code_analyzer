@@ -384,9 +384,9 @@ end
 
 let export ?(sep = ".") path u stock id loc =
   let value =
-    String.concat "." (List.rev_map Ident.name path)
+    String.concat "." (List.rev path)
     ^ sep
-    ^ (Ident.name id)
+    ^ id
   in
   (* a .cmti file can contain locations from other files.
     For instance:
@@ -395,7 +395,7 @@ let export ?(sep = ".") path u stock id loc =
   *)
   if not loc.Location.loc_ghost
   && (u = Utils.Filepath.unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
-  && check_underscore (Ident.name id) then
+  && check_underscore id then
     let state = State.get_current () in
     let builddir = State.File_infos.get_builddir state.file_infos in
     hashtbl_add_to_list stock loc.Location.loc_start (builddir, value)

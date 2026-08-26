@@ -174,7 +174,7 @@ let collect_export path u stock ~obj ~cltyp loc =
 
   let pos = loc.Location.loc_start in
 
-  begin match List.rev_map (fun id -> Ident.name id) path with
+  begin match List.rev path with
   | h :: t ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
@@ -198,7 +198,7 @@ let collect_export path u stock ~obj ~cltyp loc =
        compiled projects. Without it, looking up for an existing csml below will
        always fail and can lead to false positive *)
     if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then
-      export ~sep:"#" path u stock (Ident.create_persistent id) loc;
+      export ~sep:"#" path u stock id loc;
   in
 
   let typ = match cltyp with

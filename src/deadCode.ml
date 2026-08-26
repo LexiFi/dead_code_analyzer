@@ -107,10 +107,9 @@ let structure_item super self i =
       List.iter DeadType.tstr l
   | Tstr_module  ({mb_name = {txt = Some txt; _}; _} as mb) ->
       mods := txt :: !mods;
-      DeadMod.defined := String.concat "." (List.rev !mods) :: !DeadMod.defined;
       let modname = State.File_infos.get_modname state.file_infos in
       let path = !mods @ [modname] in
-      DeadSign.collect_equivalence_from_module_alias ~path mb
+      DeadSign.collect_eq_from_module_alias ~path mb
   | Tstr_class l when Config.must_report_section sections.methods ->
       List.iter DeadObj.tstr l
   | Tstr_include incl_decl ->
@@ -322,7 +321,6 @@ let read_interface fn export_collector state =
     in
     let module_id =
       State.File_infos.get_modname state.file_infos
-      |> Ident.create_persistent
     in
     let path = [module_id] in
     export_collector ~path ~comp_unit;

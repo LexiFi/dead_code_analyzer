@@ -14,8 +14,6 @@ open DeadCommon
 
 
 
-let defined : string list ref = ref []
-
 let item maker = function
   | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}, _) ->
     (Ident.name id, loc)::[]

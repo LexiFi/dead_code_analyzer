@@ -17,14 +17,13 @@ val to_string : Types.type_expr -> string
 val check_style : Types.type_expr -> Lexing.position -> unit
   (** Look for bad style typing. (i.e. Argument expecting an optional argument) *)
 
-val collect_equivalence_from_module_alias :
-  is_internal: bool ->
+val collect_eq_from_module_alias :
   rev_alias_path: string list ->
-  original_path: string ->
+  original_path: Path.t ->
   sub_path: string list ->
   Types.type_declaration
   -> unit
-(** [collect_equivalence_from_module_alias ~rev_alias_path ~original_path ~sub_path type_decl]
+(** [collect_eq_from_module_alias ~rev_alias_path ~original_path ~sub_path type_decl]
     stores equivalences between components of the [type_decl] defined in
     the current compilation unit at [sub_path] in the module defined at
     [List.rev rev_alias_path], and the same components in the same type
@@ -41,14 +40,14 @@ val collect_equivalence_from_module_alias :
          [type t = (* type_decl *)]
 *)
 
-val collect_equivalence_from_include :
-  incl_id: Longident.t ->
+val collect_eq_from_include :
+  incl_path: Path.t ->
   path: string list ->
   Types.type_declaration
   -> unit
-(** [collect_equivalence_from_include ~incl_id ~path type_decl]
+(** [collect_eq_from_include ~incl_path ~path type_decl]
     stores equivalences between components of the included [type_decl]
-    defined in [incl_id] at [path] and the same components in the same
+    defined in [incl_path] at [path] and the same components in the same
     type at [path_at_include @ path] in the current compilation unit if it is exported.
     [path] must not be empty and is represented forward (i.e. the type name
     is at the end).
@@ -66,7 +65,7 @@ val nb_args : keep:[> `All | `Lbl | `Opt | `Reg ] -> Types.type_expr -> int
 val is_type : string -> bool
 
 val collect_export :
-  Ident.t list
+  string list
   -> string
   -> (Lexing.position, string * string) Hashtbl.t
   -> Types.type_declaration
