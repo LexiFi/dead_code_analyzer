@@ -213,6 +213,17 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:9: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:18: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:8: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:16: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:8: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:16: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:8: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:16: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:9: Alias.sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:17: Alias.product.unused
+
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
@@ -220,17 +231,6 @@ Nothing else to report in this section
 
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
-
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:9: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:18: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:8: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:16: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:8: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:16: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:8: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:16: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:9: Alias.sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:17: Alias.product.unused
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused

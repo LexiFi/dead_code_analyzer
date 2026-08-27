@@ -786,6 +786,17 @@ Nothing else to report in this section
 
 .> UNUSED CONSTRUCTORS/RECORD FIELDS:
 ====================================
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:9: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:18: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:8: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:16: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:8: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:16: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:8: sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:16: product.unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:9: Alias.sum.Unused
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:17: Alias.product.unused
+
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
@@ -793,17 +804,6 @@ Nothing else to report in this section
 
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Right
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.left
-
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:9: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:18: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:8: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:16: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:8: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:16: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:8: sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:16: product.unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:9: Alias.sum.Unused
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:17: Alias.product.unused
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:14: constructors.Unused
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:19: constr_with_eq.Unused
@@ -877,65 +877,65 @@ Nothing else to report in this section
 
 .>->  ALMOST UNUSED CONSTRUCTORS/RECORD FIELDS: Called 1 time(s):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:3: sum.Used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:4: sum.Used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:5: sum.Used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:6: sum.Used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:7: sum.Used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:8: sum.Used_externally
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:12: product.used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:13: product.used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:14: product.used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:15: product.used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:16: product.used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/all_internal.mli:17: product.used_externally
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:3: sum.Used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:4: sum.Used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:5: sum.Used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:6: sum.Used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:7: sum.Used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:11: product.used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:12: product.used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:13: product.used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:14: product.used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/definitions.ml:15: product.used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:3: sum.Used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:4: sum.Used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:5: sum.Used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:6: sum.Used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:7: sum.Used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:11: product.used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:12: product.used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:13: product.used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:14: product.used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_hidden_equations.mli:15: product.used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:3: sum.Used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:4: sum.Used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:5: sum.Used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:6: sum.Used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:7: sum.Used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:11: product.used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:12: product.used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:13: product.used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:14: product.used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_include.mli:15: product.used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:4: Alias.sum.Used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:5: Alias.sum.Used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:6: Alias.sum.Used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:7: Alias.sum.Used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:8: Alias.sum.Used_directly
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:12: Alias.product.used_by_explicit_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:13: Alias.product.used_by_hidden_equation
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:14: Alias.product.used_by_include
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:15: Alias.product.used_by_module_alias
+./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:16: Alias.product.used_directly
+
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:3: gadt.Int
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:3: t.Both
 
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:2: either.Left
 ./examples/docs/fields_and_constructors/code_constructs/polymorphic_type/polymorphic_type_lib.mli:3: both.right
-
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:3: sum.Used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:4: sum.Used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:5: sum.Used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:6: sum.Used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:7: sum.Used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:8: sum.Used_externally
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:12: product.used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:13: product.used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:14: product.used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:15: product.used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:16: product.used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/all_internal.mli:17: product.used_externally
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:3: sum.Used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:4: sum.Used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:5: sum.Used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:6: sum.Used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:7: sum.Used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:11: product.used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:12: product.used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:13: product.used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:14: product.used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/definitions.ml:15: product.used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:3: sum.Used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:4: sum.Used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:5: sum.Used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:6: sum.Used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:7: sum.Used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:11: product.used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:12: product.used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:13: product.used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:14: product.used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/via_hidden_equations.mli:15: product.used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:3: sum.Used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:4: sum.Used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:5: sum.Used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:6: sum.Used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:7: sum.Used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:11: product.used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:12: product.used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:13: product.used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:14: product.used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/via_include.mli:15: product.used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:4: Alias.sum.Used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:5: Alias.sum.Used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:6: Alias.sum.Used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:7: Alias.sum.Used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:8: Alias.sum.Used_directly
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:12: Alias.product.used_by_explicit_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:13: Alias.product.used_by_hidden_equation
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:14: Alias.product.used_by_include
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:15: Alias.product.used_by_module_alias
-./examples/docs/fields_and_constructors/limitations/equal_types/via_module_alias.mli:16: Alias.product.used_directly
 
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:16: constructors.Internally_used
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:17: constructors.Externally_used

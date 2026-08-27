@@ -12,7 +12,7 @@ build:
 	ocamlopt -bin-annot ${SRC}
 
 analyze:
-	dead_code_analyzer --nothing -T all .
+	~/proj/dead_code_analyzer/_build/install/default/bin/dead_code_analyzer --nothing -T all .
 
 clean:
 	rm -f *.cm* *.o a.out

@@ -2,9 +2,7 @@
 
 all: build
 
-build:
-	make -C equal_types build
+build: ;
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
-	make -C equal_types clean

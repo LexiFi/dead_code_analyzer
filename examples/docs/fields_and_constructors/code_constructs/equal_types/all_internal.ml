@@ -1,4 +1,4 @@
-(* all_internal.mli *)
+(* all_internal.ml *)
 type original_sum =
   | Used_by_explicit_equation
   | Used_by_hidden_equation

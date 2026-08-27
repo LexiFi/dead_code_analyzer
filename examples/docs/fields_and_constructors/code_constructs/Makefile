@@ -8,6 +8,7 @@ build:
 	make -C gadt build
 	make -C extensible_variant build
 	make -C inline_record build
+	make -C equal_types build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -16,3 +17,4 @@ clean:
 	make -C gadt clean
 	make -C extensible_variant clean
 	make -C inline_record clean
+	make -C equal_types clean
