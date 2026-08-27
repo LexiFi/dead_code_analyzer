@@ -276,7 +276,7 @@ let collect_from_include incl_decl =
             | Mty_alias _ as mt ->
                 (*  find the original signature in the env *)
                 begin try
-                  let env = Envaux.env_of_only_summary mod_expr.mod_env in
+                  let env = Utils.Envaux.load_env mod_expr.mod_env in
                   Env.scrape_alias env mt
                 with Envaux.(Error (Module_not_found _)) -> mt
                 end
@@ -383,7 +383,7 @@ let collect_eq_from_module_alias ~path module_binding =
               | Some _ as mt -> mt
               | None ->
                   try
-                    let env = Envaux.env_of_only_summary mod_expr.mod_env in
+                    let env = Utils.Envaux.load_env mod_expr.mod_env in
                     let md = Env.find_module mod_path env in
                     Some md.Types.md_type
                   with

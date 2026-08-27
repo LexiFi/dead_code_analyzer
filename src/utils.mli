@@ -40,3 +40,13 @@ val typedtree_signature_of_modtype :
 *)
 
 module StringSet : Set.S with type elt = String.t
+
+module Envaux : sig
+  val set_loadpaths : Load_path.paths -> unit
+  (** Reset the load_path to the [paths]. Also calls Envaux.reset_cache.
+      To call when loading a new .cmt *)
+
+  val load_env : Env.t -> Env.t
+  (** Same as Envaux.env_of_only_summary but ensures the paths submitted
+      in set_loadpaths are actually set. *)
+end

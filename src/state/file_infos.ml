@@ -28,13 +28,6 @@ let empty = {
   sourcepath = None;
 }
 
-(** Necessary for Envaux.env_of_only_summary *)
-let setup_env (paths : Load_path.paths) =
-  Load_path.reset();
-  List.iter (Load_path.add_dir ~hidden:false) paths.visible;
-  List.iter (Load_path.add_dir ~hidden:true) paths.hidden;
-  Envaux.reset_cache ()
-
 (** [init_from_all_cm_infos ~cm_file cmt_infos] creates a [t] with:
     - information from [cmt_infos] : [builddir], [modname], [sourcepath];
     - [cm_file];
@@ -58,7 +51,7 @@ let init_from_all_cm_infos ~cm_file cmt_infos =
         Cmt {strc; sign = None; location_dependencies}
     | _ -> Neither
   in
-  setup_env cmt_infos.cmt_loadpath;
+  Utils.Envaux.set_loadpaths cmt_infos.cmt_loadpath;
   {builddir; cm_file; cm_infos; modname; sourcepath}
 
 (** [init_from_cm_file cm_file] returns an [Ok t] with [t] filled with general

@@ -52,3 +52,26 @@ let rec typedtree_signature_of_modtype ?(select_param = false) modtype =
   | _ -> None
 
 module StringSet = Set.Make(String)
+
+module Envaux = struct
+  (* Lazy set up of loadpaths for load_env.
+     This is used to ensure the setup is applied only once and only if
+     necessary
+  *)
+  let setup = ref (Lazy.from_val ())
+  let force_setup () = Lazy.force !setup
+
+  let set_loadpaths (paths : Load_path.paths) =
+    let reset () =
+      let auto_include = Load_path.no_auto_include in
+      let visible = paths.visible in
+      let hidden = paths.hidden in
+      Load_path.init ~auto_include ~visible ~hidden;
+      Envaux.reset_cache ()
+    in
+    setup := Lazy.from_fun reset
+
+  let load_env env =
+    force_setup ();
+    Envaux.env_of_only_summary env
+end
