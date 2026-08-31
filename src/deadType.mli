@@ -30,10 +30,6 @@ val collect_eq_from_module_alias :
     at [sub_path] in the aliased module at [original_path].
     [rev_alias_path] must not be empty and is represented backward
     (i.e. the type name is at the head).
-    If [is_internal = true] then there is an attempt to find the aliased
-    definition in the current compilation unit (working upward from the
-    alias path). If not found, then the behavior is the same as if
-    [is_internal = false]: the aliased type is conidered external.
 
     E.g. the .mli declares [module M : sig type t = (* type_decl *) end]
          and the .ml [module M = N] and [N] also declares

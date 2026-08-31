@@ -135,8 +135,7 @@ let rec check_style t loc =
 
 
 let add_type_eq component_path eq_type_path component_name =
-  (* Store t1 = t2 equivalence, with t2 assumed to be defined outside the
-     current compilation unit *)
+  (* Store t1 = t2 equivalence *)
   let eq_path = eq_type_path ^ "." ^ component_name in
   equivalences := (component_path, eq_path) :: !equivalences
 
@@ -164,13 +163,13 @@ let rec add_type_eq_internal ~internal_path ~component_path ~component_name =
 
 
 let normalize_mod_path rev_current_path mod_path =
-  let sub_path = Path.name mod_path in
+  let path = Path.name mod_path in
   if Path.head mod_path |> Ident.global then
     (* External mod_path. Keep as is *)
-    sub_path :: []
+    path :: []
   else
     (* Internal mod_path *)
-    sub_path :: rev_current_path
+    path :: rev_current_path
 
 
 let collect_eq_from_module_alias

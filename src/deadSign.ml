@@ -117,8 +117,7 @@ let collect_export_from_signature ~path ~comp_unit signature =
           class_descs
 
     | Tsig_module {md_id = Some id; md_type; _} ->
-        let id = Ident.name id in
-        let path = id :: path in
+        let path = Ident.name id :: path in
         export_module ~path md_type.mty_type;
         Utils.typedtree_signature_of_modtype md_type
         |> Option.iter (collect_signature path);
@@ -341,7 +340,8 @@ let collect_from_include inc_decl =
   (* Only collect_from_include if methods or types section is enabled *)
   let state = State.get_current () in
   let sections =
-    [state.config.sections.types; state.config.sections.methods]
+    let sections = state.config.sections in
+    [sections.types; sections.methods]
   in
   if List.exists Config.must_report_section sections then
     collect_from_include inc_decl
@@ -359,8 +359,7 @@ let collect_eq_from_module_alias ~path module_binding =
         | Sig_module (id, _, {Types.md_type; _}, _, _) ->
             let sub_path = Ident.name id :: sub_path in
             Utils.signature_of_modtype md_type
-            |> List.iter
-                (collect_from_sig_item ~original_path ~sub_path)
+            |> List.iter (collect_from_sig_item ~original_path ~sub_path)
 
         | Sig_type (id, t, _, _) ->
             let sub_path = List.rev (Ident.name id :: sub_path) in
@@ -394,8 +393,7 @@ let collect_eq_from_module_alias ~path module_binding =
             Option.iter
               (fun mt ->
                 Utils.signature_of_modtype mt
-                |> List.iter
-                    (collect_from_sig_item ~original_path)
+                |> List.iter (collect_from_sig_item ~original_path)
               )
               mt
         | Tmod_constraint (mod_expr, _, _, _)
