@@ -4,7 +4,7 @@
 
 (generate_opam_files true)
 
-(version 1.2.0)
+(version 1.2.1)
 
 (maintainers
  "Alain Frisch <alain.frisch@lexifi.com>"
