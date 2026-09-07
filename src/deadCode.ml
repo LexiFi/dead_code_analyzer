@@ -125,6 +125,27 @@ let structure_item super self i =
   r
 
 
+let id_of_var : type k . k pattern_desc -> Ident.t option = function
+  (* helper function to extract the var's id in  tpat_var and
+     tpat_alias(tpat_any) patterns for all OCaml versions *)
+  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
+  | Tpat_var (id, _)
+  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
+  | Tpat_var (id, _, _)
+  #endif
+    (* x *)
+  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
+  | Tpat_alias ({pat_desc=Tpat_any; _}, id, _)
+  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 4, 0)
+  | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _)
+  #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
+  | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _, _)
+  #endif
+    (* (x: t) *)
+    -> Some id
+  | _ -> None
+
+
 let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -> k general_pattern =
  fun super self p ->
   let state = State.get_current () in
@@ -143,29 +164,18 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
       | Tpat_var (_, {txt = "eta"; _}, _)
       #endif
         when p.pat_loc = Location.none -> ()
-      #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-      | Tpat_var (_, {txt; _})
-      #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-      | Tpat_var (_, {txt; _}, _)
-      #endif
-        (* x *)
-      #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-      | Tpat_alias ({pat_desc=Tpat_any; _}, _, {txt; _})
-      #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 4, 0)
-      | Tpat_alias ({pat_desc=Tpat_any; _}, _, {txt; _}, _)
-      #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-      | Tpat_alias ({pat_desc=Tpat_any; _}, _, {txt; _}, _, _)
-      #endif
-        (* (x: t) *)
-        ->
-          if check_underscore txt then u txt
       | Tpat_any -> if state.config.underscore then u "_"
       | Tpat_value tpat_arg ->
         begin match (tpat_arg :> value general_pattern) with
         | {pat_desc=(Tpat_construct _ | Tpat_var _ | Tpat_any); _} -> ()
         | _ -> u "!!pattern!!"
         end
-      | _ -> u "!!pattern!!"
+      | var ->
+          match id_of_var var with
+          | Some id ->
+              let txt = Ident.name id in
+              if check_underscore txt then u txt
+          | None -> u "!!pattern!!"
   end;
   begin match p.pat_desc with
   | Tpat_record (l, _) ->
@@ -236,23 +246,8 @@ let expr super self e =
 
   | Texp_let (_, [{vb_pat; _}], _)
     when DeadType.is_unit vb_pat.pat_type && sections.style.seq ->
-      begin match vb_pat.pat_desc with
-      #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-      | Tpat_var (id, _)
-      #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-      | Tpat_var (id, _, _)
-      #endif
-        (* x *)
-      #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-      | Tpat_alias ({pat_desc=Tpat_any; _}, id, _)
-      #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 4, 0)
-      | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _)
-      #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-      | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _, _)
-      #endif
-        (* (x: t) *)
-        when not (check_underscore (Ident.name id)) ->
-          ()
+      begin match id_of_var vb_pat.pat_desc with
+      | Some id when not (check_underscore (Ident.name id)) -> ()
       | _ ->
           register_style
             vb_pat.pat_loc.Location.loc_start
@@ -281,25 +276,7 @@ let expr super self e =
               [{vb_pat; _}],
               {exp_desc; exp_extra = []; _})
     ->
-      let pat_id =
-        match vb_pat.pat_desc with
-          #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-          | Tpat_var (id, _)
-          #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-          | Tpat_var (id, _, _)
-          #endif
-            (* let x = ... *)
-          #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-          | Tpat_alias ({pat_desc=Tpat_any; _}, id, _)
-          #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 4, 0)
-          | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _)
-          #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-          | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _, _)
-          #endif
-              (* let (x: t) = ... *)
-            -> Some id
-          | _ -> None
-      in
+      let pat_id = id_of_var vb_pat.pat_desc in
       begin match pat_id, exp_desc with
       | Some pat_id, Texp_ident (Path.Pident exp_id, _, _)
           (* let x = ... in y *)
