@@ -8,11 +8,11 @@
 
 (maintainers
  "Alain Frisch <alain.frisch@lexifi.com>"
- "Corentin De Souza <de.souza.corentin@gmail.com>")
+ "Corentin De Souza <corentin@fantazio.eu>")
 
 (authors
  "Alain Frisch <alain.frisch@lexifi.com>"
- "Corentin De Souza <de.souza.corentin@gmail.com>")
+ "Corentin De Souza <corentin@fantazio.eu>")
 
 (source
  (github LexiFi/dead_code_analyzer))
