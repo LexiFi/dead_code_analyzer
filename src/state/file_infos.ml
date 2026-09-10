@@ -44,10 +44,10 @@ let init_from_all_cm_infos ~cm_file cmt_infos =
   let cm_infos =
     match cmt_infos.cmt_annots with
     | Interface sign ->
-        #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
-        let cmti_uid_to_decl = Location_dependencies.NA in
-        #elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
+        #if OCAML_VERSION >= (5, 3, 0)
         let cmti_uid_to_decl = cmt_infos.cmt_uid_to_decl in
+        #else
+        let cmti_uid_to_decl = Location_dependencies.NA in
         #endif
         Cmti {sign; cmti_uid_to_decl}
     | Implementation strc ->

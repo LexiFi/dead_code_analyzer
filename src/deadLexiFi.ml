@@ -47,14 +47,16 @@ module Extension = struct
 
   let sig_value (value : Types.value_description) =
     let add strct = match strct.pstr_desc with
-      #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
-      | Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _));
-                    _}, _) ->
-      #elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
-      | Pstr_eval ({pexp_desc = Pexp_constant {pconst_desc= (Pconst_string (s, _, _)); _};
-                    _}, _) ->
-      #endif
-          hashtbl_add_unique_to_list str s value.val_loc.loc_start
+      | Pstr_eval ({pexp_desc; _}, _) ->
+          begin match pexp_desc with
+            #if OCAML_VERSION >= (5, 3, 0)
+            | Pexp_constant {pconst_desc= (Pconst_string (s, _, _)); _} ->
+            #else
+            | Pexp_constant (Pconst_string (s, _, _)) ->
+            #endif
+                hashtbl_add_unique_to_list str s value.val_loc.loc_start
+            | _ -> ()
+          end
       | _ -> ()
     in
     let add = function
@@ -135,11 +137,7 @@ module Extension = struct
       match get_deep_desc typ with
       | Tarrow (_, t, _, _) -> process (p, t, call_site)
       | Ttuple ts ->
-          #if OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-           (* Ttuple's ts' content changed in OCaml 5.4, from type_expr to
-              (string option * type_expr). This does the reverse conversion *)
-          let ts = List.map snd ts in
-          #endif
+          let ts = Utils.Compat.unlabel_tuple ts in
           List.iter (fun t -> process (p, t, call_site)) ts
       | Tconstr (path, ts, _) ->
           let name = Path.name path in

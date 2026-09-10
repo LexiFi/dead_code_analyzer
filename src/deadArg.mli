@@ -27,18 +27,6 @@ val eocb : unit -> unit
     locations, their respective files.
     [eocb] = end of code base. *)
 
-val options_of_args :
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 4, 0)
-  (Asttypes.arg_label * expression option) list
-  #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-  (Asttypes.arg_label * (expression, unit) arg_or_omitted) list
-  #endif
-  -> (Asttypes.arg_label * expression option) list
-(** Convert Texp_apply's args representation to its OCaml 5.3 representation.
-    In particular, the type of a single arg changed in OCaml 5.4, from
-    expression option to arg_or_omitted. This does the reverse conversion.
-*)
-
 val register_uses :
   Lexing.position -> (Asttypes.arg_label * expression option) list -> unit
 (** An optional argument is used if it is required match a signature, or if it

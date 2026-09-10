@@ -144,13 +144,12 @@ let rec treat_fields action typ = match get_deep_desc typ with
 
 let rec repr_exp expr f =
   match expr.exp_desc with
+    | Texp_function _ as exp_desc ->
+        begin match Utils.Compat.get_function_bodies exp_desc with
+        | [] -> assert false
+        | expr::_ -> repr_exp expr f
+        end
     | Texp_sequence (_, expr)
-    #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-    | Texp_function {cases = {c_rhs=expr; _}::_ ; _}
-    #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-    | Texp_function (_, Tfunction_cases { cases = {c_rhs=expr; _}::_ ; _ })
-    | Texp_function (_, Tfunction_body expr)
-    #endif
     | Texp_let (_, _, expr)
     | Texp_apply (expr, _) -> repr_exp expr f
     | _ -> f expr
@@ -292,17 +291,16 @@ let add_var loc expr =
     | Texp_ident (_, _, {Types.val_loc; _}) ->
         `Ident val_loc.Location.loc_start
     (* Cases not traversed by repr_exp *)
-    #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
-    | Texp_match (_, cases, _) ->
-        find_first_case_kind cases
-    | Texp_try (_, cases) ->
-        find_first_case_kind cases
-    #elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
-    | Texp_match (_, cases, _, _) ->
-        find_first_case_kind cases
-    | Texp_try (_, cases, _) ->
-        find_first_case_kind cases
-    #endif
+    | Texp_match _ as exp_desc ->
+        begin match Utils.Compat.get_match_data exp_desc with
+        | None -> assert false
+        | Some (_, cases, _, _) -> find_first_case_kind cases
+        end
+    | Texp_try _ as exp_desc ->
+        begin match Utils.Compat.get_try_data exp_desc with
+        | None -> assert false
+        | Some (_, cases, _) -> find_first_case_kind cases
+        end
     | Texp_ifthenelse (_, then_, Some else_) ->
         find_first_kind [then_; else_]
     (* Default *)
@@ -327,15 +325,8 @@ let class_structure cl_struct =
     | Tpat_var _ when not pat.pat_loc.Location.loc_ghost ->
         add_equal pat.pat_loc.Location.loc_start !last_class
     | _ -> () end;
-    match pat.pat_desc with
-    #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-    | Tpat_alias (pat, _, _) ->
-    #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 4, 0)
-    | Tpat_alias (pat, _, _, _) ->
-    #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-    | Tpat_alias (pat, _, _, _, _) ->
-    #endif
-        add_aliases pat
+    match Utils.Compat.get_alias_data pat.pat_desc with
+    | Some (pat, _, _, _) -> add_aliases pat
     | _ -> ()
   in
   add_aliases cl_struct.cstr_self

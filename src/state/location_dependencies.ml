@@ -4,20 +4,7 @@ let empty = []
 
 module UidTbl = Shape.Uid.Tbl
 
-#if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
-
-type uid_to_decl = NA
-
-let init ~comp_unit_to_path:_ cmt_infos _cmti_uid_to_decl =
-  match cmt_infos with
-  | Cmt_format.{cmt_annots = Implementation _; cmt_value_dependencies; _} ->
-    let loc_of_vd vd = vd.Types.val_loc.loc_start in
-    cmt_value_dependencies
-    |> List.map (fun (vd1, vd2) -> loc_of_vd vd1, loc_of_vd vd2)
-    |> Result.ok
-  | _ -> Result.error "No implementation found in cmt_infos"
-
-#elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
+#if OCAML_VERSION >= (5, 3, 0)
 (* Since OCaml 5.3, cmt_infos.cmt_value_dependencies is not available.
    We try to reproduce it using the cmti_uid_to_decl and comp_unit_to_path
    information, respectively found in a .cmti's cmt_infos and built using
@@ -42,7 +29,7 @@ let fill_from_cmt_tbl uid_to_decl res_uid_to_loc =
 
 let find_opt_external_uid_loc ~comp_unit_to_path = function
   | Shape.Uid.(Compilation_unit _ | Internal | Predef _) -> None
-  #if OCAML_VERSION >= (5, 5, 0) && OCAML_VERSION < (5, 6, 0)
+  #if OCAML_VERSION >= (5, 5, 0)
   | Local_opaque_item _ -> None
   #endif
   | Item {comp_unit; from; _} as uid ->
@@ -106,4 +93,21 @@ let init ~comp_unit_to_path cmt_infos cmti_uid_to_decl =
     |> Result.ok
   | _ -> Result.error "No implementation found in cmt_infos"
 
+
+#elif OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
+
+type uid_to_decl = NA
+
+let init ~comp_unit_to_path:_ cmt_infos _cmti_uid_to_decl =
+  match cmt_infos with
+  | Cmt_format.{cmt_annots = Implementation _; cmt_value_dependencies; _} ->
+    let loc_of_vd vd = vd.Types.val_loc.loc_start in
+    cmt_value_dependencies
+    |> List.map (fun (vd1, vd2) -> loc_of_vd vd1, loc_of_vd vd2)
+    |> Result.ok
+  | _ -> Result.error "No implementation found in cmt_infos"
+
+
+#else
+#error "unsupported version"
 #endif

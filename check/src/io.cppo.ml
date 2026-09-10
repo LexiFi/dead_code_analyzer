@@ -9,12 +9,12 @@ let isatty fd =
   #endscope
 
 
-#if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 1, 0)
+#if OCAML_VERSION >= (5, 1, 0)
+let input_lines = In_channel.input_lines
+#else
 let [@tail_mod_cons] rec input_lines ic =
   (* reproduce https://github.com/ocaml/ocaml/blob/5.3.0/stdlib/in_channel.ml#L195 *)
   match In_channel.input_line ic with
   | Some line -> line :: input_lines ic
   | None -> []
-#elif OCAML_VERSION >= (5, 1, 0) && OCAML_VERSION < (5, 6, 0)
-let input_lines = In_channel.input_lines
 #endif

@@ -10,7 +10,9 @@ module Filepath = struct
     | _ -> filepath
 
   let unit filepath =
-    #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
+    #if OCAML_VERSION >= (5, 3, 0)
+    Unit_info.lax_modname_from_source filepath
+    #else
     (* reproduce https://github.com/ocaml/ocaml/blob/5.3/parsing/unit_info.ml#L60 *)
     let remove_all_ext basename =
       match String.index basename '.' with
@@ -18,8 +20,6 @@ module Filepath = struct
         | exception Not_found -> basename
     in
     filepath |> Filename.basename |> remove_all_ext |> String.capitalize_ascii
-    #elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
-    Unit_info.lax_modname_from_source filepath
     #endif
 
   type kind =
@@ -38,10 +38,10 @@ module Filepath = struct
     )
     else if Sys.is_directory filepath then Dir
     else if Filename.check_suffix filepath ".cmti" then Cmti
-  else if Filename.check_suffix filepath ".cmt" then
-    let cmti = Filename.remove_extension filepath ^ ".cmti" in
-    if Sys.file_exists cmti then Cmt_with_mli
-    else Cmt_without_mli
+    else if Filename.check_suffix filepath ".cmt" then
+      let cmti = Filename.remove_extension filepath ^ ".cmti" in
+      if Sys.file_exists cmti then Cmt_with_mli
+      else Cmt_without_mli
     else Ignore
 end
 
@@ -72,23 +72,23 @@ module Envaux = struct
   let force_setup () = Lazy.force !setup
 
   type paths =
-    #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-    string list
-    #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
+    #if OCAML_VERSION >= (5, 2, 0)
     Load_path.paths
+    #else
+    string list
     #endif
 
   let init_load_path paths =
-    #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 0, 0)
-    Load_path.init paths
-    #elif OCAML_VERSION >= (5, 0, 0) && OCAML_VERSION < (5, 2, 0)
-    let auto_include = Load_path.no_auto_include in
-    Load_path.init ~auto_include paths
-    #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
+    #if OCAML_VERSION >= (5, 2, 0)
     let auto_include = Load_path.no_auto_include in
     let visible = paths.Load_path.visible in
     let hidden = paths.Load_path.hidden in
     Load_path.init ~auto_include ~visible ~hidden
+    #elif OCAML_VERSION >= (5, 0, 0)
+    let auto_include = Load_path.no_auto_include in
+    Load_path.init ~auto_include paths
+    #else
+    Load_path.init paths
     #endif
 
   let set_loadpaths paths =
@@ -101,4 +101,119 @@ module Envaux = struct
   let load_env env =
     force_setup ();
     Envaux.env_of_only_summary env
+end
+
+module Compat = struct
+
+  open Typedtree
+
+  (* Conversions *)
+
+  let unlabel_tuple fields =
+    #if OCAML_VERSION >= (5, 4, 0)
+    List.map snd fields
+    #else
+    fields
+    #endif
+
+  let options_of_args args =
+    #if OCAML_VERSION >= (5, 4, 0)
+    (* Texp_apply's args changed in OCaml 5.4, from expression option
+       to arg_or_omitted. This does the reverse conversion *)
+    let args =
+      List.map
+        (fun (lab, arg) ->
+          match arg with
+          | Arg expr -> lab, Some expr
+          | Omitted _ -> lab, None
+        )
+        args
+    in
+    #endif
+    args
+
+  (* Getters *)
+
+  #if OCAML_VERSION < (5, 2, 0)
+  let dummy_uid = Shape.Uid.internal_not_actually_unique
+    (* A uid field appears in multiple constructors in OCaml 5.2.
+       This dummy value serves as replacement. We do not rely on its value
+       but need it to exist for typing. *)
+  #endif
+
+  type alias_data = value general_pattern * Ident.t * Location.t * Shape.Uid.t
+
+  let get_alias_data : type k . k pattern_desc -> alias_data option = function
+    #if OCAML_VERSION >= (5, 4, 0)
+    | Tpat_alias (pat, id, {loc; _}, uid, _) ->
+    #elif OCAML_VERSION >= (5, 2, 0)
+    | Tpat_alias (pat, id, {loc; _}, uid) ->
+    #else
+    | Tpat_alias (pat, id, {loc; _}) ->
+        let uid = dummy_uid in
+    #endif
+      Some (pat, id, loc, uid)
+    | _ -> None
+
+  type var_data = Ident.t * string Location.loc * Shape.Uid.t
+
+  let get_var_data : type k . k pattern_desc -> var_data option = function
+    (* x *)
+    #if OCAML_VERSION >= (5, 2, 0)
+    | Tpat_var (id, loc, uid) ->
+    #else
+    | Tpat_var (id, loc) ->
+        let uid = dummy_uid in
+    #endif
+        Some (id, loc, uid)
+    (* (x: t) *)
+    #if OCAML_VERSION >= (5, 4, 0)
+    | Tpat_alias ({pat_desc=Tpat_any; _}, id, loc, uid, _) ->
+    #elif OCAML_VERSION >= (5, 2, 0)
+    | Tpat_alias ({pat_desc=Tpat_any; _}, id, loc, uid) ->
+    #else
+    | Tpat_alias ({pat_desc=Tpat_any; _}, id, loc) ->
+        let uid = dummy_uid in
+    #endif
+        Some (id, loc, uid)
+    | _ -> None
+
+  type match_data =
+    expression * computation case list * value case list * partial
+
+  let get_match_data = function
+    #if OCAML_VERSION >= (5, 3, 0)
+    | Texp_match (exp, reg_cases, eff_cases, partial) ->
+    #else
+    | Texp_match (exp, reg_cases, partial) ->
+        let eff_cases = [] in (* effect cases appear in OCaml 5.3 *)
+    #endif
+        Some (exp, reg_cases, eff_cases, partial)
+    | _ -> None
+
+  type try_data =
+    expression * value case list * value case list
+
+  let get_try_data = function
+    #if OCAML_VERSION >= (5, 3, 0)
+    | Texp_try (exp, reg_cases, eff_cases) ->
+    #else
+    | Texp_try (exp, reg_cases) ->
+        let eff_cases = [] in (* effect cases appear in OCaml 5.3 *)
+    #endif
+        Some (exp, reg_cases, eff_cases)
+    | _ -> None
+
+  type function_bodies = expression list
+
+  let get_function_bodies = function
+    #if OCAML_VERSION >= (5, 2, 0)
+    | Texp_function (_, Tfunction_body expr) -> expr::[]
+    | Texp_function (_, Tfunction_cases { cases ; _ }) ->
+    #else
+    | Texp_function {cases ; _} ->
+    #endif
+        List.map (fun {c_rhs; _} -> c_rhs) cases
+    | _ -> []
+
 end

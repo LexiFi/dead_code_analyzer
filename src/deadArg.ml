@@ -70,22 +70,6 @@ let deferrable_register_use label expr builddir loc last_loc count_tbl =
     else register_use ()
   else register_use ()
 
-let options_of_args args =
-  #if OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-  (* Texp_apply's args changed in OCaml 5.4, from expression option
-     to arg_or_omitted. This does the reverse conversion *)
-  let args =
-    List.map
-      (fun (lab, arg) ->
-        match arg with
-        | Arg expr -> lab, Some expr
-        | Omitted _ -> lab, None
-      )
-      args
-  in
-  #endif
-  args
-
 let rec register_uses builddir loc args =
   List.iter
     (fun (_, e) -> Option.iter (register_higher_order_uses builddir) e)
@@ -148,10 +132,10 @@ and register_higher_order_uses builddir e =
       in
       let$ (c_lhs, c_rhs) =
         match expr.exp_desc with
-        #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-        | Texp_function {cases = [case]; _} ->
-        #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
+        #if OCAML_VERSION >= (5, 2, 0)
         | Texp_function (_, Tfunction_cases {cases = [case]; _}) ->
+        #else
+        | Texp_function {cases = [case]; _} ->
         #endif
             Some (case.c_lhs, case.c_rhs)
         | _ -> None
@@ -161,7 +145,7 @@ and register_higher_order_uses builddir e =
           if c_lhs.pat_loc.loc_ghost && c_rhs.exp_loc.loc_ghost
              && expr.exp_loc.loc_ghost
           then
-            let args = options_of_args args in
+            let args = Utils.Compat.options_of_args args in
             register_uses builddir ident_loc args
       | _ -> ()
     )
@@ -178,7 +162,9 @@ let register_uses val_loc args =
 let rec bind loc expr =
   let state = State.get_current () in
   match expr.exp_desc with
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
+  #if OCAML_VERSION >= (5, 2, 0)
+  | Texp_function (params, body) -> bind_function loc params body
+  #else
   | Texp_function {arg_label; cases; _} ->
       let expr_loc = expr.exp_loc.Location.loc_start in
       bind_function loc expr_loc arg_label cases
@@ -203,9 +189,6 @@ let rec bind loc expr =
           expr.exp_attributes
       in
       if is_default expr then bind loc in_expr
-  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-  | Texp_function (params, body) ->
-      bind_function loc params body
   #endif
   | exp_desc
     when Config.must_report_opt_args state.config
@@ -222,34 +205,26 @@ let rec bind loc expr =
       VdNode.merge_locs loc loc2
   | _ -> ()
 
-and bind_function loc =
+and register_optional_param state loc = function
+  | Asttypes.Optional s
+    when Config.must_report_opt_args state.State.config ->
+      let (opts, next) = VdNode.get loc in
+      VdNode.update loc (s :: opts, next)
+  | _ -> ()
+
+and arg_type arg_label pat_type =
+  match arg_label with
+  | Asttypes.Optional _ ->
+      (* The type of optional arguments is wrapped in option *)
+      begin match get_deep_desc pat_type with
+      | Tconstr (_, [typ], _) -> typ
+      | _ -> pat_type
+      end
+  | _ -> pat_type
+
+#if OCAML_VERSION >= (5, 2, 0)
+and bind_function loc params body =
   let state = State.get_current () in
-  let register_optional_param = function
-    | Asttypes.Optional s
-      when Config.must_report_opt_args state.config ->
-        let (opts, next) = VdNode.get loc in
-        VdNode.update loc (s :: opts, next)
-    | _ -> ()
-  in
-  let arg_type arg_label pat_type =
-    match arg_label with
-    | Asttypes.Optional _ ->
-        (* The type of optional arguments is wrapped in option *)
-        begin match get_deep_desc pat_type with
-        | Tconstr (_, [typ], _) -> typ
-        | _ -> pat_type
-        end
-    | _ -> pat_type
-  in
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-  fun expr_loc arg_label -> function
-    | {c_lhs = {pat_type; _}; c_rhs; _}::[] ->
-        let arg_type = arg_type arg_label pat_type in
-        DeadType.check_style arg_type expr_loc;
-        register_optional_param arg_label;
-        bind loc c_rhs
-    | _ -> ()
-  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
   let process_params params =
     let check_param_style arg_loc arg_label = function
       | Tparam_pat {pat_type; _}
@@ -260,7 +235,7 @@ and bind_function loc =
     List.iter
       (fun {fp_kind; fp_arg_label; fp_loc; _} ->
         check_param_style fp_loc fp_arg_label fp_kind;
-        register_optional_param fp_arg_label
+        register_optional_param state loc fp_arg_label
       )
       params
   in
@@ -270,10 +245,21 @@ and bind_function loc =
         bind loc exp
     | _ -> ()
   in
-  fun params body ->
-    process_params params;
-    process_body body
-  #endif
+  process_params params;
+  process_body body
+#elif OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
+and bind_function loc expr_loc arg_label cases =
+  let state = State.get_current () in
+    match cases with
+    | {c_lhs = {pat_type; _}; c_rhs; _}::[] ->
+        let arg_type = arg_type arg_label pat_type in
+        DeadType.check_style arg_type expr_loc;
+        register_optional_param state loc arg_label;
+        bind loc c_rhs
+    | _ -> ()
+#else
+#error "unsupported version"
+#endif
 
                 (********   WRAPPING  ********)
 

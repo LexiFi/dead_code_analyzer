@@ -3,15 +3,15 @@ type t = (Lexing.position * Lexing.position) list
 
 val empty : t (** No signature read *)
 
-#if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
+#if OCAML_VERSION >= (5, 3, 0)
+type uid_to_decl = Typedtree.item_declaration Shape.Uid.Tbl.t
+#else
 (* The corresponding [cmt_infos.cmt_uid_to_decl] is introduced in
    OCaml 5.2 but not used until OCaml 5.3 (see {!init} below).
    We still provide a constructor to keep the state representation as
    uniform as possible.
 *)
 type uid_to_decl = NA
-#elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
-type uid_to_decl = Typedtree.item_declaration Shape.Uid.Tbl.t
 #endif
 
 val init :

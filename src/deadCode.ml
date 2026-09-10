@@ -35,24 +35,23 @@ let main_files = Hashtbl.create 256   (* names -> paths *)
 let rec treat_exp exp args =
   match exp.exp_desc with
   | Texp_apply (exp, in_args) ->
-      let in_args = DeadArg.options_of_args in_args in
+      let in_args = Utils.Compat.options_of_args in_args in
       treat_exp exp (in_args @ args)
 
   | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; _}; _})
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; _}; _}) ->
       DeadArg.register_uses loc args
 
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
-  | Texp_match (_, comp_l, _) ->
-    let val_l = [] in (* effect cases appear in OCaml 5.3 *)
-  #elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
-  | Texp_match (_, comp_l, val_l, _) ->
-  #endif
-      let process_cases l =
-        List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
-      in
-      process_cases comp_l;
-      process_cases val_l
+  | Texp_match _ as exp_desc ->
+      begin match Utils.Compat.get_match_data exp_desc with
+      | None -> assert false
+      | Some (_, comp_l, val_l, _) ->
+          let process_cases l =
+            List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
+          in
+          process_cases comp_l;
+          process_cases val_l
+      end
 
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
@@ -68,24 +67,23 @@ let value_binding super self x =
   let at_eof_saved = !DeadArg.at_eof in
   DeadArg.at_eof := [];
   incr depth;
-  let open Asttypes in
   begin match x.vb_pat.pat_desc with
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-  | Tpat_var (_, {loc; _})
-  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-  | Tpat_var (_, {loc; _}, _)
-  #endif
-    when not loc.Location.loc_ghost ->
-      let loc = loc.Location.loc_start in
-      begin match x.vb_expr.exp_desc with
-      | Texp_ident (_, _, {val_loc; _}) when not val_loc.Location.loc_ghost ->
-          let val_loc = val_loc.Location.loc_start in
-          VdNode.merge_locs loc val_loc;
-          DeadObj.add_equal loc val_loc
-      | _ ->
-          let exp = x.vb_expr in
-          DeadArg.bind loc exp;
-          DeadObj.add_var loc exp
+  | Tpat_var _ as pat_desc ->
+      begin match Utils.Compat.get_var_data pat_desc with
+      | None -> assert false
+      | Some (_, {loc=pat_loc; _}, _) ->
+          if not pat_loc.Location.loc_ghost then
+            let pat_loc = pat_loc.Location.loc_start in
+            match x.vb_expr.exp_desc with
+            | Texp_ident (_, _, {val_loc; _})
+              when not val_loc.Location.loc_ghost ->
+                let val_loc = val_loc.Location.loc_start in
+                VdNode.merge_locs pat_loc val_loc;
+                DeadObj.add_equal pat_loc val_loc
+            | _ ->
+                let exp = x.vb_expr in
+                DeadArg.bind pat_loc exp;
+                DeadObj.add_var pat_loc exp
       end
   | _ -> ()
   end;
@@ -125,25 +123,11 @@ let structure_item super self i =
   r
 
 
-let id_of_var : type k . k pattern_desc -> Ident.t option = function
+let id_of_var pat_desc =
   (* helper function to extract the var's id in  tpat_var and
      tpat_alias(tpat_any) patterns for all OCaml versions *)
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-  | Tpat_var (id, _)
-  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-  | Tpat_var (id, _, _)
-  #endif
-    (* x *)
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-  | Tpat_alias ({pat_desc=Tpat_any; _}, id, _)
-  #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 4, 0)
-  | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _)
-  #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
-  | Tpat_alias ({pat_desc=Tpat_any; _}, id, _, _, _)
-  #endif
-    (* (x: t) *)
-    -> Some id
-  | _ -> None
+  Utils.Compat.get_var_data pat_desc
+  |> Option.map (fun (id, _, _) -> id)
 
 
 let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -> k general_pattern =
@@ -154,16 +138,9 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
   let u s =
     register_style pat_loc (Printf.sprintf "unit pattern %s" s)
   in
-  let open Asttypes in
   if DeadType.is_unit p.pat_type && sections.style.unit_pat then begin
     match p.pat_desc with
       | Tpat_construct _ -> ()
-      #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 2, 0)
-      | Tpat_var (_, {txt = "eta"; _})
-      #elif OCAML_VERSION >= (5, 2, 0) && OCAML_VERSION < (5, 6, 0)
-      | Tpat_var (_, {txt = "eta"; _}, _)
-      #endif
-        when p.pat_loc = Location.none -> ()
       | Tpat_any -> if state.config.underscore then u "_"
       | Tpat_value tpat_arg ->
         begin match (tpat_arg :> value general_pattern) with
@@ -171,21 +148,22 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
         | _ -> u "!!pattern!!"
         end
       | var ->
-          match id_of_var var with
+        match id_of_var var with
           | Some id ->
               let txt = Ident.name id in
-              if check_underscore txt then u txt
+              if txt = "eta" && p.pat_loc = Location.none then ()
+              else if check_underscore txt then u txt
           | None -> u "!!pattern!!"
   end;
   begin match p.pat_desc with
   | Tpat_record (l, _) ->
       List.iter
         (fun (_, lab, _) ->
-          #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 4, 0)
-          let lab : Types.label_description = lab in
-          #elif OCAML_VERSION >= (5, 4, 0) && OCAML_VERSION < (5, 6, 0)
+          #if OCAML_VERSION >= (5, 4, 0)
           (* The type of lab moved in OCaml 5.4 *)
           let lab : Data_types.label_description = lab in
+          #else
+          let lab : Types.label_description = lab in
           #endif
           let lab_loc = lab.lbl_loc.Location.loc_start in
           if exported ~is_type:true sections.types lab_loc then
@@ -229,7 +207,7 @@ let expr super self e =
 
 
   | Texp_apply (exp, args) ->
-      let args = DeadArg.options_of_args args in
+      let args = Utils.Compat.options_of_args args in
       if Config.must_report_opt_args state.config then
         treat_exp exp args;
       begin match exp.exp_desc with
@@ -254,21 +232,19 @@ let expr super self e =
             "let () = ... in ... (=> use sequence)"
       end
 
-  #if OCAML_VERSION >= (4, 14, 0) && OCAML_VERSION < (5, 3, 0)
-  | Texp_match (_, [{c_lhs; _}], _)
-  #elif OCAML_VERSION >= (5, 3, 0) && OCAML_VERSION < (5, 6, 0)
-  | Texp_match (_, [{c_lhs; _}], [], _)
-  #endif
-    when DeadType.is_unit c_lhs.pat_type && sections.style.seq ->
-      begin match c_lhs.pat_desc with
-      | Tpat_value tpat_arg ->
-        begin match (tpat_arg :> value general_pattern) with
-        | {pat_desc=Tpat_construct _; _} ->
-            register_style
-              c_lhs.pat_loc.Location.loc_start
-              "let () = ... in ... (=> use sequence)"
-        | _ -> ()
-        end
+  | Texp_match _ as exp_desc when sections.style.seq ->
+      begin match Utils.Compat.get_match_data exp_desc with
+      | None -> assert false
+      | Some (_, {c_lhs={pat_desc=Tpat_value v_pat; _} as c_lhs; _}::[], [], _)
+        when DeadType.is_unit c_lhs.pat_type ->
+          (* split pattern matching for type checking *)
+          begin match (v_pat :> value general_pattern) with
+          | {pat_desc=Tpat_construct _; _} ->
+              register_style
+                c_lhs.pat_loc.Location.loc_start
+                "let () = ... in ... (=> use sequence)"
+          | _ -> ()
+          end
       | _ -> ()
       end
 
