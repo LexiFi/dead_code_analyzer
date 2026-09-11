@@ -189,24 +189,21 @@ let collect_export_from_structure ~path ~comp_unit structure =
     | Tpat_record (fields, _) ->
         List.iter (fun (_, _, pat) -> collect_value ~path pat) fields
     | (Tpat_var _ | Tpat_alias _) as pat_desc ->
-        let pseudo_alias_data =
+        let sub_pat, id, loc, uid =
           (* similar to Utils.Compat.alias_data but the first field (the
              aliased pattern) is None for Tpat_var and Some for Tpat_alias *)
           match Utils.Compat.get_var_data pat_desc with
-          | Some (id, {loc; _}, uid) -> Some (None, id, loc, uid)
-          | None ->
-              match Utils.Compat.get_alias_data pat_desc with
-              | Some (sub_pat, id, loc, uid) ->
-                  Some (Some sub_pat, id, loc, uid)
-              | None -> None
+          | Ok (id, {loc; _}, uid) -> (None, id, loc, uid)
+          | Error _ ->
+              let (sub_pat, id, loc, uid) =
+                Utils.Compat.get_alias_data_exn pat_desc
+              in
+              (Some sub_pat, id, loc, uid)
         in
-        match pseudo_alias_data with
-        | None -> assert false
-        | Some (sub_pat, id, loc, uid) ->
-            let id = Ident.name id in
-            let value = value_of pat loc uid in
-            export export_value ~path id value;
-            Option.iter (collect_value ~path) sub_pat
+        let id = Ident.name id in
+        let value = value_of pat loc uid in
+        export export_value ~path id value;
+        Option.iter (collect_value ~path) sub_pat
 
   and collect_module ~path m =
     match m.mod_desc with

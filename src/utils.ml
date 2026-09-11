@@ -134,6 +134,11 @@ module Compat = struct
 
   (* Getters *)
 
+  type _ invalid_arg =
+    | Unexpected_pattern : string * 'k pattern_desc -> 'k pattern_desc invalid_arg
+    | Unexpected_expression :
+        string * expression_desc -> expression_desc invalid_arg
+
   #if OCAML_VERSION < (5, 2, 0)
   let dummy_uid = Shape.Uid.internal_not_actually_unique
     (* A uid field appears in multiple constructors in OCaml 5.2.
@@ -141,9 +146,11 @@ module Compat = struct
        but need it to exist for typing. *)
   #endif
 
+  type ('k, 'a) pat_getter = 'k pattern_desc -> ('a, 'k pattern_desc invalid_arg) result
+
   type alias_data = value general_pattern * Ident.t * Location.t * Shape.Uid.t
 
-  let get_alias_data : type k . k pattern_desc -> alias_data option = function
+  let get_alias_data : type k . (k, alias_data) pat_getter = function
     #if OCAML_VERSION >= (5, 4, 0)
     | Tpat_alias (pat, id, {loc; _}, uid, _) ->
     #elif OCAML_VERSION >= (5, 2, 0)
@@ -152,12 +159,18 @@ module Compat = struct
     | Tpat_alias (pat, id, {loc; _}) ->
         let uid = dummy_uid in
     #endif
-      Some (pat, id, loc, uid)
-    | _ -> None
+      Result.Ok (pat, id, loc, uid)
+    | pat_desc ->
+        let msg = "get_alias_data expects a Tpat_alias" in
+        let err = Unexpected_pattern (msg, pat_desc) in
+        Result.Error err
+
+  let get_alias_data_exn pat_desc =
+    get_alias_data pat_desc |> Result.get_ok
 
   type var_data = Ident.t * string Location.loc * Shape.Uid.t
 
-  let get_var_data : type k . k pattern_desc -> var_data option = function
+  let get_var_data : type k . (k, var_data) pat_getter = function
     (* x *)
     #if OCAML_VERSION >= (5, 2, 0)
     | Tpat_var (id, loc, uid) ->
@@ -165,7 +178,7 @@ module Compat = struct
     | Tpat_var (id, loc) ->
         let uid = dummy_uid in
     #endif
-        Some (id, loc, uid)
+        Result.ok (id, loc, uid)
     (* (x: t) *)
     #if OCAML_VERSION >= (5, 4, 0)
     | Tpat_alias ({pat_desc=Tpat_any; _}, id, loc, uid, _) ->
@@ -175,8 +188,17 @@ module Compat = struct
     | Tpat_alias ({pat_desc=Tpat_any; _}, id, loc) ->
         let uid = dummy_uid in
     #endif
-        Some (id, loc, uid)
-    | _ -> None
+        Result.ok (id, loc, uid)
+    | pat_desc ->
+        let msg = "get_var_data expects a Tpat_var or Tpat_alias(Tpat_any)" in
+        let err = Unexpected_pattern (msg, pat_desc) in
+        Result.Error err
+
+  let get_var_data_exn pat_desc =
+    get_var_data pat_desc |> Result.get_ok
+
+  type 'a exp_getter =
+    expression_desc -> ('a, expression_desc invalid_arg) result
 
   type match_data =
     expression * computation case list * value case list * partial
@@ -188,8 +210,14 @@ module Compat = struct
     | Texp_match (exp, reg_cases, partial) ->
         let eff_cases = [] in (* effect cases appear in OCaml 5.3 *)
     #endif
-        Some (exp, reg_cases, eff_cases, partial)
-    | _ -> None
+        Result.Ok (exp, reg_cases, eff_cases, partial)
+    | exp_desc ->
+        let msg = "get_match_data expects a Texp_match" in
+        let err = Unexpected_expression (msg, exp_desc) in
+        Result.Error err
+
+  let get_match_data_exn exp_desc =
+    get_match_data exp_desc |> Result.get_ok
 
   type try_data =
     expression * value case list * value case list
@@ -201,19 +229,30 @@ module Compat = struct
     | Texp_try (exp, reg_cases) ->
         let eff_cases = [] in (* effect cases appear in OCaml 5.3 *)
     #endif
-        Some (exp, reg_cases, eff_cases)
-    | _ -> None
+        Result.Ok (exp, reg_cases, eff_cases)
+    | exp_desc ->
+        let msg = "get_try_data expects a Texp_try" in
+        let err = Unexpected_expression (msg, exp_desc) in
+        Result.Error err
+
+  let get_try_data_exn exp_desc =
+    get_try_data exp_desc |> Result.get_ok
 
   type function_bodies = expression list
 
   let get_function_bodies = function
     #if OCAML_VERSION >= (5, 2, 0)
-    | Texp_function (_, Tfunction_body expr) -> expr::[]
+    | Texp_function (_, Tfunction_body expr) ->
+        Result.ok [expr]
     | Texp_function (_, Tfunction_cases { cases ; _ }) ->
     #else
     | Texp_function {cases ; _} ->
     #endif
-        List.map (fun {c_rhs; _} -> c_rhs) cases
-    | _ -> []
+        let bodies = List.map (fun {c_rhs; _} -> c_rhs) cases in
+        Result.ok bodies
+    | exp_desc ->
+        let msg = "get_function_bodies expects a Texp_function" in
+        let err = Unexpected_expression (msg, exp_desc) in
+        Result.Error err
 
 end

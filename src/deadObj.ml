@@ -146,8 +146,8 @@ let rec repr_exp expr f =
   match expr.exp_desc with
     | Texp_function _ as exp_desc ->
         begin match Utils.Compat.get_function_bodies exp_desc with
-        | [] -> assert false
-        | expr::_ -> repr_exp expr f
+        | Ok (expr::_) -> repr_exp expr f
+        | _ -> assert false
         end
     | Texp_sequence (_, expr)
     | Texp_let (_, _, expr)
@@ -292,15 +292,11 @@ let add_var loc expr =
         `Ident val_loc.Location.loc_start
     (* Cases not traversed by repr_exp *)
     | Texp_match _ as exp_desc ->
-        begin match Utils.Compat.get_match_data exp_desc with
-        | None -> assert false
-        | Some (_, cases, _, _) -> find_first_case_kind cases
-        end
+        let (_, cases, _, _) = Utils.Compat.get_match_data_exn exp_desc in
+        find_first_case_kind cases
     | Texp_try _ as exp_desc ->
-        begin match Utils.Compat.get_try_data exp_desc with
-        | None -> assert false
-        | Some (_, cases, _) -> find_first_case_kind cases
-        end
+        let (_, cases, _) = Utils.Compat.get_try_data_exn exp_desc in
+        find_first_case_kind cases
     | Texp_ifthenelse (_, then_, Some else_) ->
         find_first_kind [then_; else_]
     (* Default *)
@@ -326,7 +322,7 @@ let class_structure cl_struct =
         add_equal pat.pat_loc.Location.loc_start !last_class
     | _ -> () end;
     match Utils.Compat.get_alias_data pat.pat_desc with
-    | Some (pat, _, _, _) -> add_aliases pat
+    | Ok (pat, _, _, _) -> add_aliases pat
     | _ -> ()
   in
   add_aliases cl_struct.cstr_self

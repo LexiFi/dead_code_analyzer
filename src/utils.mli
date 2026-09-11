@@ -81,52 +81,79 @@ val options_of_args :
     (** Apply's arguments representation changed in OCaml 5.4, from
         expression option to arg_or_omitted. This does the reverse conversion *)
 
+  type _ invalid_arg =
+    | Unexpected_pattern : string * 'k pattern_desc -> 'k pattern_desc invalid_arg
+        (** Used by pattern_desc getters *)
+    | Unexpected_expression :
+        string * expression_desc -> expression_desc invalid_arg
+        (** Used by expression_desc getters *)
+
+  type ('k, 'a) pat_getter = 'k pattern_desc -> ('a, 'k pattern_desc invalid_arg) result
+
   type alias_data = value general_pattern * Ident.t * Location.t * Shape.Uid.t
 
-  val get_alias_data : 'k . 'k pattern_desc -> alias_data option
-    (** [get_alias_data pat] returns [None] if [pat <> Tpat_alias _].
-        Otherwise it extracts the different components of Tpat_alias.
+  val get_alias_data : 'k . ('k, alias_data) pat_getter
+    (** [get_alias_data pat] expects a [Tpat_alias].
+        It returns [Error Unexpected_pattern] otherwise.
+        It extracts the different components of Tpat_alias.
         If OCaml < 5.2, the [Uid.t] field is a dummy value.
         If OCaml >= 5.4, the last field of Tpat_alias is discarded.
     *)
 
+  val get_alias_data_exn : 'k . 'k pattern_desc -> alias_data
+    (** same as [get_alias_data] but raises instead of returning an Error *)
+
   type var_data = Ident.t * string Location.loc * Shape.Uid.t
 
-  val get_var_data : 'k . 'k pattern_desc ->  var_data option
-    (** [get_var_data pat] returns [None] if
-        [pat <> Tpat_var _ && pat <> Tpat_alias(Tpat_any)].
-        Otherwise it extracts the different components of Tpat_var.
+  val get_var_data : 'k . ('k, var_data) pat_getter
+    (** [get_var_data pat] expects a [Tpat_var] or a [Tpat_alias(Tpat_any)].
+        It returns [Error Unexpected_pattern] otherwise.
+        It extracts the different components of Tpat_var.
         If OCaml < 5.2, the [Uid.t] field is a dummy value.
         [Tpat_alias(Tpat_any)] is considered equivalent to a [Tpat_var]
         because in OCaml < 5.5, constrained vars ([x : t]) are translated
         in this pattern.
     *)
 
+  val get_var_data_exn : 'k . 'k pattern_desc -> var_data
+    (** same as [get_var_data] but raises instead of returning an Error *)
+
+  type 'a exp_getter =
+    expression_desc -> ('a, expression_desc invalid_arg) result
+
   type match_data =
     expression * computation case list * value case list * partial
 
-  val get_match_data : expression_desc -> match_data option
-    (** [get_match_data exp] returns [None] if [pat <> Texp_match].
+  val get_match_data : match_data exp_getter
+    (** [get_match_data exp] expects a [Texp_match].
+        It returns [Error Unexpected_expression] otherwise.
         Otherwise it extracts the different components of Texp_match.
         If OCaml < 5.3, the [value case list] field is en empty list.
     *)
 
-  type try_data =
-    expression * value case list * value case list
+  val get_match_data_exn : expression_desc -> match_data
+    (** same as [get_match_data] but raises instead of returning an Error *)
 
-  val get_try_data : expression_desc -> try_data option
-    (** [get_try_data exp] returns [None] if [pat <> Texp_try].
+  type try_data = expression * value case list * value case list
+
+  val get_try_data : try_data exp_getter
+    (** [get_try_data exp] expects a [Texp_try].
+        It returns [Error Unexpected_expression] otherwise.
         Otherwise it extracts the different components of Texp_try.
         If OCaml < 5.3, the second [value case list] field is en empty list.
     *)
 
+  val get_try_data_exn : expression_desc -> try_data
+    (** same as [get_try_data] but raises instead of returning an Error *)
+
   type function_bodies = expression list
 
-  val get_function_bodies : expression_desc -> function_bodies
-    (** [get_function_bodies exp] returns [[]] if [pat <> Texp_function].
+  val get_function_bodies : function_bodies exp_getter
+    (** [get_function_bodies exp] expects a [Texp_function].
+        It returns [Error Unexpected_expression] otherwise.
         Otherwise it returns the expression of the function body.
         If there are multiple cases, then the returned list contains all the
-        alternative expressions..
+        alternative expressions.
     *)
 
 end

@@ -43,15 +43,12 @@ let rec treat_exp exp args =
       DeadArg.register_uses loc args
 
   | Texp_match _ as exp_desc ->
-      begin match Utils.Compat.get_match_data exp_desc with
-      | None -> assert false
-      | Some (_, comp_l, val_l, _) ->
-          let process_cases l =
-            List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
-          in
-          process_cases comp_l;
-          process_cases val_l
-      end
+      let (_, comp_l, val_l, _) = Utils.Compat.get_match_data_exn exp_desc in
+      let process_cases l =
+        List.iter (fun {c_rhs = exp; _} -> treat_exp exp args) l
+      in
+      process_cases comp_l;
+      process_cases val_l
 
   | Texp_ifthenelse (_, exp_then, exp_else) ->
       treat_exp exp_then args;
@@ -67,23 +64,18 @@ let value_binding super self x =
   let at_eof_saved = !DeadArg.at_eof in
   DeadArg.at_eof := [];
   incr depth;
-  begin match x.vb_pat.pat_desc with
-  | Tpat_var _ as pat_desc ->
-      begin match Utils.Compat.get_var_data pat_desc with
-      | None -> assert false
-      | Some (_, {loc=pat_loc; _}, _) ->
-          if not pat_loc.Location.loc_ghost then
-            let pat_loc = pat_loc.Location.loc_start in
-            match x.vb_expr.exp_desc with
-            | Texp_ident (_, _, {val_loc; _})
-              when not val_loc.Location.loc_ghost ->
-                let val_loc = val_loc.Location.loc_start in
-                VdNode.merge_locs pat_loc val_loc;
-                DeadObj.add_equal pat_loc val_loc
-            | _ ->
-                let exp = x.vb_expr in
-                DeadArg.bind pat_loc exp;
-                DeadObj.add_var pat_loc exp
+  begin match Utils.Compat.get_var_data x.vb_pat.pat_desc with
+  | Ok (_, {loc=pat_loc; _}, _) when not pat_loc.Location.loc_ghost ->
+      let pat_loc = pat_loc.Location.loc_start in
+      begin match x.vb_expr.exp_desc with
+      | Texp_ident (_, _, {val_loc; _}) when not val_loc.Location.loc_ghost ->
+          let val_loc = val_loc.Location.loc_start in
+          VdNode.merge_locs pat_loc val_loc;
+          DeadObj.add_equal pat_loc val_loc
+      | _ ->
+          let exp = x.vb_expr in
+          DeadArg.bind pat_loc exp;
+          DeadObj.add_var pat_loc exp
       end
   | _ -> ()
   end;
@@ -127,6 +119,7 @@ let id_of_var pat_desc =
   (* helper function to extract the var's id in  tpat_var and
      tpat_alias(tpat_any) patterns for all OCaml versions *)
   Utils.Compat.get_var_data pat_desc
+  |> Result.to_option
   |> Option.map (fun (id, _, _) -> id)
 
 
@@ -233,9 +226,9 @@ let expr super self e =
       end
 
   | Texp_match _ as exp_desc when sections.style.seq ->
-      begin match Utils.Compat.get_match_data exp_desc with
-      | None -> assert false
-      | Some (_, {c_lhs={pat_desc=Tpat_value v_pat; _} as c_lhs; _}::[], [], _)
+      let (_, comp_l, val_l, _) = Utils.Compat.get_match_data_exn exp_desc in
+      begin match comp_l, val_l with
+      | {c_lhs={pat_desc=Tpat_value v_pat; _} as c_lhs; _}::[], []
         when DeadType.is_unit c_lhs.pat_type ->
           (* split pattern matching for type checking *)
           begin match (v_pat :> value general_pattern) with
