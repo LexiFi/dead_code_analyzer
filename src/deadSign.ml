@@ -23,10 +23,31 @@ let export_object ~path ~comp_unit ~stock id value =
 let export_value ~path ~comp_unit ~stock id value =
   export_object ~path ~comp_unit ~stock id value;
   !DeadLexiFi.sig_value value;
+  let is_defined_in_comp_unit loc =
+    (* a .cmti file can contain locations from other files.
+      For instance:
+          module M : Set.S with type elt = int
+      will create value definitions whose location is in set.mli
+    *)
+    let loc_unit =
+      Utils.Filepath.unit loc.Location.loc_start.Lexing.pos_fname
+    in
+    not loc.Location.loc_ghost
+    && (String.equal comp_unit loc_unit)
+  in
   let state = State.get_current () in
-  if Config.must_report_section state.config.sections.exported_values then
-    let loc = value.Types.val_loc in
-    DeadCommon.export path comp_unit stock id loc
+  let loc = value.Types.val_loc in
+  if Config.must_report_section state.config.sections.exported_values
+      && DeadCommon.check_underscore id
+      && is_defined_in_comp_unit loc
+  then
+    let val_loc = loc.Location.loc_start in
+    let val_path =
+      id::path |> List.rev |> String.concat "."
+    in
+    let builddir = State.File_infos.get_builddir state.file_infos in
+    State.Values.add_exported_declaration ~val_loc ~builddir ~val_path state.values
+    |> ignore
 
 let export_type ~path ~comp_unit ~stock id t =
   let path = id :: path in
@@ -55,15 +76,20 @@ let modtype ~on_mismatch (mt : Typedtree.module_type) =
 let rec correct_export : Types.signature_item -> unit = function
   | Sig_value (_, {Types.val_loc; _}, _)
     when not val_loc.Location.loc_ghost ->
-      DeadCommon.unexport DeadCommon.decs val_loc;
-      DeadObj.correct_export val_loc;
+      let state = State.get_current () in
+      let builddir = State.File_infos.get_builddir state.file_infos in
+      let loc = val_loc in
+      let val_loc = loc.Location.loc_start in
+      State.Values.remove_exported_declaration ~val_loc ~builddir state.values
+      |> ignore;
+      DeadObj.correct_export loc;
       (* For optional arguments, every use is stored during the analysis.
          The uses are then filtered before reporting. Thus, we need to
          remember "wrong" exports until then.
       *)
       let state = State.get_current () in
       if Config.must_report_opt_args state.config then
-        Hashtbl.replace DeadCommon.implicit_decs val_loc.Location.loc_start ()
+        Hashtbl.replace DeadCommon.implicit_decs val_loc ()
 
   | Sig_type (_, t, _, _) -> DeadType.correct_export t
 

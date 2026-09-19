@@ -1,9 +1,12 @@
 module File_infos = File_infos
 
+module Values = Values
+
 type t =
   { config : Config.t
   ; comp_unit_to_path : (string, string) Hashtbl.t
   ; file_infos : File_infos.t
+  ; values : Values.t
   }
 
 let init config =
@@ -19,6 +22,7 @@ let init config =
   { config
   ; comp_unit_to_path
   ; file_infos = File_infos.empty
+  ; values = Values.create ()
   }
 
 let update_config config state =
@@ -48,6 +52,7 @@ let current = ref
     { config = Config.default_config
     ; comp_unit_to_path = Hashtbl.create 0
     ; file_infos = File_infos.empty
+    ; values = Values.create ()
     }
 
 let get_current () = !current

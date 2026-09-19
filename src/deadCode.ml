@@ -185,7 +185,8 @@ let expr super self e =
 
   | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
     when exported sections.exported_values loc ->
-      Utils.LocHash.add_set references loc exp_loc
+      State.Values.add_use ~val_loc:loc ~use_loc:exp_loc state.values
+      |> ignore
 
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
   | Texp_construct (_, {cstr_loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _)
@@ -345,7 +346,7 @@ let read_interface fn export_collector state =
 
 
 (* Merge a location's references to another one's *)
-let assoc decs (loc1, loc2) =
+let assoc section (loc1, loc2) =
   let state = State.get_current () in
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
@@ -357,45 +358,64 @@ let assoc decs (loc1, loc2) =
       && DeadCommon.file_exists (fn ^ "i"))
   in
   let is_iface fn loc =
-    Hashtbl.mem decs loc || Utils.Filepath.unit fn <> sourceunit
+    let is_exported =
+      match section with
+      | `Types -> Hashtbl.mem DeadType.decs loc
+      | `Values ->
+          State.Values.is_exported_declaration ~val_loc:loc state.values
+    in
+    is_exported || Utils.Filepath.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
+  in
+  let merge_refs loc1 loc2 =
+    match section with
+    | `Types -> Utils.LocHash.merge_set references loc1 references loc2
+    | `Values ->
+        State.Values.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.values
+        |> ignore
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
     if (state.config.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      Utils.LocHash.merge_set references loc2 references loc1;
+      merge_refs loc2 loc1;
     if is_iface fn1 loc1 then begin
       if is_iface fn2 loc2 then
-        Utils.LocHash.add_set references loc1 loc2
+        match section with
+        | `Types -> Utils.LocHash.add_set references loc1 loc2
+        | `Values ->
+            State.Values.add_use ~val_loc:loc1 ~use_loc:loc2 state.values
+            |> ignore
       else
-        Utils.LocHash.merge_set references loc1 references loc2;
+        merge_refs loc1 loc2
     end
     else
-      Utils.LocHash.merge_set references loc2 references loc1
+      merge_refs loc2 loc1
   end
 
 
-let clean references loc =
+let clean section loc =
   let state = State.get_current () in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
-    Utils.LocHash.remove references loc
+    match section with
+    | `Types -> Utils.LocHash.remove references loc
+    | `Values -> State.Values.remove_uses ~val_loc:loc state.values |> ignore
 
 let eof loc_dep =
   let state = State.get_current () in
   DeadArg.eof();
-  List.iter (assoc decs) loc_dep;
-  List.iter (assoc DeadType.decs) !DeadType.dependencies;
+  List.iter (assoc `Values) loc_dep;
+  List.iter (assoc `Types) !DeadType.dependencies;
   let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
   if DeadCommon.file_exists (sourcepath ^ "i") then begin
-    let clean =
+    let clean section =
       List.iter
         (fun (loc1, loc2) ->
-          clean references loc1; clean references loc2
+          clean section loc1; clean section loc2
         )
     in
-    clean loc_dep;
-    clean !DeadType.dependencies;
+    clean `Values loc_dep;
+    clean `Types !DeadType.dependencies;
   end;
   VdNode.eof ();
   DeadObj.eof ();
@@ -605,6 +625,26 @@ let report_opt_args s l =
 
 let report_unused_exported () =
   let state = State.get_current () in
+  let decs =
+    let max_uses =
+      Config.get_main_threshold state.config.sections.exported_values
+    in
+    let res = Hashtbl.create 256 in
+    State.Values.get_unused ~max_uses state.values
+    |> Hashtbl.iter
+      (fun _ locs ->
+        List.iter
+          (fun (val_loc, builddir) ->
+            State.Values.get_uses ~val_loc state.values
+            |> List.iter
+              (fun use_loc -> Utils.LocHash.add_set references val_loc use_loc);
+            State.Values.get_val_path ~val_loc ~builddir state.values
+            |> Option.iter (fun val_path -> Hashtbl.add res val_loc (builddir, val_path))
+          )
+          locs
+      );
+    res
+  in
   report_basic
     decs
     "UNUSED EXPORTED VALUES"

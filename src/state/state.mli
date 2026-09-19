@@ -2,11 +2,14 @@
 
 module File_infos = File_infos
 
+module Values = Values
+
 type t =
   { config : Config.t (** Configuration of the analysis *)
   ; comp_unit_to_path : (string, string) Hashtbl.t
       (** Compilation unit -> filepaths. Useful for quick filepath retrieval *)
   ; file_infos : File_infos.t (** Info about the file being analyzed *)
+  ; values : Values.t (** Info about exported values declarations and uses *)
   }
 
 val init : Config.t -> t
