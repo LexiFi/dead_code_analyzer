@@ -62,6 +62,11 @@ let rec typedtree_signature_of_modtype ?(select_param = false) modtype =
   | _ -> None
 
 module StringSet = Set.Make(String)
+module StringHash =
+  Hashtbl.Make(struct
+    include String
+    let hash = Hashtbl.hash
+  end)
 
 module Envaux = struct
   (* Lazy set up of loadpaths for load_env.

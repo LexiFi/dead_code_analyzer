@@ -40,6 +40,7 @@ val typedtree_signature_of_modtype :
 *)
 
 module StringSet : Set.S with type elt = String.t
+module StringHash : Hashtbl.S with type key = String.t
 
 module Envaux : sig
   type paths =
