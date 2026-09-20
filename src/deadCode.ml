@@ -360,7 +360,8 @@ let assoc section (loc1, loc2) =
   let is_iface fn loc =
     let is_exported =
       match section with
-      | `Types -> Hashtbl.mem DeadType.decs loc
+      | `Types ->
+          State.Ctors_fields.is_exported_declaration ~cf_loc:loc state.ctors_fields
       | `Values ->
           State.Values.is_exported_declaration ~val_loc:loc state.values
     in
@@ -369,7 +370,9 @@ let assoc section (loc1, loc2) =
   in
   let merge_refs loc1 loc2 =
     match section with
-    | `Types -> Utils.LocHash.merge_set references loc1 references loc2
+    | `Types ->
+        State.Ctors_fields.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.ctors_fields
+        |> ignore
     | `Values ->
         State.Values.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.values
         |> ignore
@@ -380,7 +383,9 @@ let assoc section (loc1, loc2) =
     if is_iface fn1 loc1 then begin
       if is_iface fn2 loc2 then
         match section with
-        | `Types -> Utils.LocHash.add_set references loc1 loc2
+        | `Types ->
+            State.Ctors_fields.add_use ~cf_loc:loc1 ~use_loc:loc2 state.ctors_fields
+            |> ignore
         | `Values ->
             State.Values.add_use ~val_loc:loc1 ~use_loc:loc2 state.values
             |> ignore
@@ -398,7 +403,7 @@ let clean section loc =
   let fn = loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
     match section with
-    | `Types -> Utils.LocHash.remove references loc
+    | `Types -> State.Ctors_fields.remove_uses ~cf_loc:loc state.ctors_fields |> ignore
     | `Values -> State.Values.remove_uses ~val_loc:loc state.values |> ignore
 
 let eof loc_dep =

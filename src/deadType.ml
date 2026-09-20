@@ -70,20 +70,27 @@ let is_type s =
 
                 (********   PROCESSING  ********)
 
-let collect_export path u stock t =
+let collect_export path _u stock t =
 
-  let stock =
+  let _stock =
     if stock == DeadCommon.decs then decs
     else stock
   in
 
   let save id loc =
     let id = Ident.name id in
-    if t.type_manifest = None then
+    let cf_path =
+      id::path |> List.rev |> String.concat "."
+    in
+    let cf_loc = loc.Location.loc_start in
+    if t.type_manifest = None then begin
       (* do not export t1 when there is an explicit equation t1 = t2 *)
-      export path u stock id loc;
-    let path = String.concat "." @@ List.rev (id::path) in
-    Hashtbl.replace fields path loc.Location.loc_start
+      let state = State.get_current () in
+      let builddir = State.File_infos.get_builddir state.file_infos in
+      State.Ctors_fields.add_exported_declaration ~cf_loc ~builddir ~cf_path state.ctors_fields
+      |> ignore
+    end;
+    Hashtbl.replace fields cf_path cf_loc
   in
 
   match t.type_kind with
@@ -99,7 +106,13 @@ let collect_export path u stock t =
     | _ -> ()
 
 let correct_export t =
-  let unexport loc = DeadCommon.unexport decs loc in
+  let unexport loc =
+    let state = State.get_current () in
+    let builddir = State.File_infos.get_builddir state.file_infos in
+    let cf_loc = loc.Location.loc_start in
+    State.Ctors_fields.remove_exported_declaration ~cf_loc ~builddir state.ctors_fields
+    |> ignore
+  in
   match t.type_kind with
     | Type_record (l, _) ->
         List.iter
@@ -112,8 +125,10 @@ let correct_export t =
     | _ -> ()
 
 
-let collect_references loc exp_loc =
-  Utils.LocHash.add_set references loc exp_loc
+let collect_references cf_loc use_loc =
+  let state = State.get_current() in
+  State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
+  |> ignore
 
 
 (* Look for bad style typing *)
@@ -337,11 +352,13 @@ let prepare_report () =
      Use get_repr to get _the_ representative of a location's class.
   *)
   let reprs = Hashtbl.create 128 in
-  let init_refs loc =
+  let state = State.get_current () in
+  let init_refs cf_loc =
     (* the initial value for a single-element class is the set of references
        gathered during the analysis *)
-    Utils.LocHash.find_set DeadCommon.references loc
-    |> Utils.LocHash.replace references loc
+    State.Ctors_fields.get_uses ~cf_loc state.ctors_fields
+    |> Utils.LocSet.of_list
+    |> Utils.LocHash.replace references cf_loc
   in
   let rec get_repr loc =
     (* explore members of loc's class until finding the class representative *)
@@ -369,12 +386,18 @@ let prepare_report () =
   in
   let update_references loc =
     Option.iter
-      (fun loc ->
-        let repr = get_repr loc in
+      (fun cf_loc ->
+        let repr = get_repr cf_loc in
         let refs = Utils.LocHash.find_set references repr in
         (* refs include the references gathered for loc and all the members
            of its equivalence class *)
-        Utils.LocHash.replace DeadCommon.references loc refs
+        State.Ctors_fields.remove_uses ~cf_loc state.ctors_fields |> ignore;
+        Utils.LocSet.iter
+          (fun use_loc ->
+            State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
+            |> ignore
+          )
+          refs
       )
       loc
   in
@@ -388,6 +411,26 @@ let prepare_report () =
 
 let report () =
   let state = State.get_current () in
+  let decs =
+    let max_uses =
+      Config.get_main_threshold state.config.sections.types
+    in
+    let res = Hashtbl.create 256 in
+    State.Ctors_fields.get_unused ~max_uses state.ctors_fields
+    |> Hashtbl.iter
+      (fun _ locs ->
+        List.iter
+          (fun (cf_loc, builddir) ->
+            State.Ctors_fields.get_uses ~cf_loc state.ctors_fields
+            |> List.iter
+              (fun use_loc -> Utils.LocHash.add_set references cf_loc use_loc);
+            State.Ctors_fields.get_cf_path ~cf_loc ~builddir state.ctors_fields
+            |> Option.iter (fun cf_path -> Hashtbl.add res cf_loc (builddir, cf_path))
+          )
+          locs
+      );
+    res
+  in
   report_basic
     decs
     "UNUSED CONSTRUCTORS/RECORD FIELDS"
