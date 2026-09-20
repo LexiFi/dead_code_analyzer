@@ -3,6 +3,7 @@
 module File_infos = File_infos
 
 module Values = Values
+module Methods = Methods
 module Ctors_fields = Ctors_fields
 
 type t =
@@ -11,6 +12,7 @@ type t =
       (** Compilation unit -> filepaths. Useful for quick filepath retrieval *)
   ; file_infos : File_infos.t (** Info about the file being analyzed *)
   ; values : Values.t (** Info about exported values declarations and uses *)
+  ; methods : Methods.t (** Info about exported methods declarations and uses *)
   ; ctors_fields : Ctors_fields.t
       (** Info about exported constructors and fields *)
   }

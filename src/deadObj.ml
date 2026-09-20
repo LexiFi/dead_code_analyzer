@@ -18,8 +18,6 @@ open DeadCommon
 
 let decs = Hashtbl.create 256
 
-let references = Hashtbl.create 512                 (* references by loc->method->uses *)
-
 let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
 
 let content = Hashtbl.create 512                    (* loc -> [field names] *)
@@ -63,7 +61,6 @@ let meth_tbl tbl loc =
   Hashtbl.find tbl loc
 
 
-let meth_ref = meth_tbl references
 let meth_self_ref = meth_tbl self_ref
 
 
@@ -112,16 +109,20 @@ let add_equal loc1 loc2 =
       if res = [] then hashtbl_find_list content loc1
       else res
     in
+    let state = State.get_current () in
+    State.Methods.add_alias ~orig_loc:loc2 ~alias_loc:loc1 state.methods
+    |> ignore;
     List.iter
       (fun (_, meth) ->
-        hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
         hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth
       )
       meths;
     hashtbl_merge_unique_list inheritances loc2 inheritances loc1;
     hashtbl_remove_list inheritances loc1;
-    hashtbl_remove_list references loc1;
-    hashtbl_remove_list decs loc1;
+    let state = State.get_current () in
+    State.Methods.remove_uses ~obj_loc:loc1 state.methods |> ignore;
+    let builddir = State.File_infos.get_builddir state.file_infos in
+    State.Methods.remove_exported_declarations ~obj_loc:loc1 ~builddir state.methods |> ignore;
     hashtbl_remove_list content loc1
   end
 
@@ -195,8 +196,19 @@ let collect_export path u stock ~obj ~cltyp loc =
     (* TODO: resolve the builddir ('/workspace_root') in the case of dune
        compiled projects. Without it, looking up for an existing csml below will
        always fail and can lead to false positive *)
-    if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then
-      export ~sep:"#" path u stock id loc;
+    if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then begin
+      if stock == DeadCommon.incl then
+        export ~sep:"#" path u stock id loc
+      else
+        let meth_path =
+          String.concat "." (List.rev path)
+          ^ "#" ^ id
+        in
+        let obj_loc = loc.Location.loc_start in
+        let builddir = State.File_infos.get_builddir state.file_infos in
+        State.Methods.add_exported_declaration ~obj_loc ~meth_name:id ~builddir ~meth_path state.methods
+        |> ignore
+    end
   in
 
 
@@ -214,14 +226,21 @@ let collect_export path u stock ~obj ~cltyp loc =
         treat_fields save typ
     | None -> ()
 
-let correct_export loc = DeadCommon.unexport decs loc
+let correct_export loc =
+  let state = State.get_current () in
+  let builddir = State.File_infos.get_builddir state.file_infos in
+  let obj_loc = loc.Location.loc_start in
+  State.Methods.remove_exported_declarations ~obj_loc ~builddir state.methods
+  |> ignore
 
 
 let collect_references ~meth ~call_site expr =
   let loc = locate expr in
 
   if not (is_ghost loc) then begin
-    hashtbl_add_unique_to_list (meth_ref loc) meth call_site;
+    let state = State.get_current () in
+    State.Methods.add_use ~obj_loc:loc ~meth_name:meth ~use_loc:call_site state.methods
+    |> ignore;
     if loc = !last_class then
       hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site
   end
@@ -407,8 +426,11 @@ let arg typ args =
 
 let coerce expr typ =
   let loc = locate expr in
-  let use meth =
-    hashtbl_add_unique_to_list (meth_ref loc) meth expr.exp_loc.Location.loc_start
+  let use meth_name =
+    let state = State.get_current () in
+    let use_loc = expr.exp_loc.Location.loc_start in
+    State.Methods.add_use ~obj_loc:loc ~meth_name ~use_loc state.methods
+    |> ignore
   in
   treat_fields use typ
 
@@ -420,21 +442,26 @@ let prepare_report () =
   let apply_self meth loc1 loc2 =
     let loc1 = repr_loc loc1
     and loc2 = repr_loc loc2 in
-    hashtbl_merge_unique_list (meth_ref loc2) meth (meth_self_ref loc1) meth;
+    let state = State.get_current () in
+    hashtbl_find_list (meth_self_ref loc1) meth
+    |> List.iter (fun use_loc ->
+        State.Methods.add_use ~obj_loc:loc2 ~meth_name:meth ~use_loc state.methods
+        |> ignore
+    );
     hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth;
   in
 
-  let move_uses meth loc1 loc2 =
-    hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
-    hashtbl_remove_list (meth_ref loc1) meth;
+  let state = State.get_current () in
+  let move_uses ?meth_name orig_loc alias_loc =
+    State.Methods.add_alias ~orig_loc ~alias_loc ?meth_name state.methods
+    |> State.Methods.remove_uses ~obj_loc:alias_loc ?meth_name
+    |> ignore
   in
-
   Hashtbl.fold (fun loc _ acc -> loc :: acc) equals []
   |> List.iter
-    (fun loc ->
-      let dst = repr_loc loc in
-      hashtbl_find_list content dst
-      |> List.iter (fun (_, meth) -> move_uses meth loc dst)
+    (fun alias_loc ->
+      let orig_loc = repr_loc alias_loc in
+      move_uses orig_loc alias_loc
     );
 
   let sons =
@@ -468,7 +495,7 @@ let prepare_report () =
             when not (Hashtbl.mem met meth)
             && List.exists (fun (_, meth2) -> meth2 = meth) (hashtbl_find_list content paren) ->
               Hashtbl.add met meth ();
-              move_uses meth (repr_loc clas) paren
+              move_uses ~meth_name:meth paren (repr_loc clas)
           | _ -> ()
         )
     in
@@ -504,16 +531,35 @@ let report () =
         (hashtbl_find_list content loc)
     in
     if exists then
-      match hashtbl_find_list (meth_ref loc) (get_method path) with
-      | exception Not_found when nb_call = 0 ->
-          (fn, no_star path, loc, []) :: acc
-      | exception Not_found -> acc
-      | l when check_length nb_call l -> (fn, no_star path, loc, l) :: acc
-      | _ -> acc
+      let meth_name = get_method path in
+      let uses =
+        let state = State.get_current () in
+        State.Methods.get_uses ~obj_loc:loc ~meth_name state.methods
+      in
+      if check_length nb_call uses then
+          (fn, no_star path, loc, uses) :: acc
+      else acc
     else acc
   in
 
   let state = State.get_current () in
+  let decs =
+    let max_uses =
+      Config.get_main_threshold state.config.sections.methods
+    in
+    let res = Hashtbl.create 256 in
+    State.Methods.get_unused ~max_uses state.methods
+    |> Hashtbl.iter
+      (fun _ locs ->
+        List.iter
+          (fun (obj_loc, meth_name, builddir) ->
+            State.Methods.get_meth_path ~obj_loc ~meth_name ~builddir state.methods
+            |> Option.iter (fun meth_path -> Hashtbl.add res obj_loc (builddir, meth_path))
+          )
+          locs
+      );
+    res
+  in
   report_basic ~folder decs "UNUSED METHODS" state.config.sections.methods
 
 
