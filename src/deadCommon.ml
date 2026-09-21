@@ -8,30 +8,6 @@
 (***************************************************************************)
 
                 (********   ATTRIBUTES   ********)
-module LocSet = Set.Make(struct type t = Lexing.position let compare = compare end)
-
-module LocHash = struct
-  include
-    Hashtbl.Make(struct
-      type t = Lexing.position
-
-      let hash x =
-        let s = Filename.basename x.Lexing.pos_fname in
-        Hashtbl.hash (x.Lexing.pos_cnum, s)
-
-      let equal x y = x = y
-    end)
-
-  let find_set h k = try find h k with Not_found -> LocSet.empty
-
-  let add_set h k v =
-    let l = find_set h k in replace h k (LocSet.add v l)
-
-  let merge_set h1 k1 h2 k2 =
-    let l1 = find_set h1 k1 in
-    let l2 = find_set h2 k2 in
-    replace h1 k1 (LocSet.union l1 l2)
-end
 
 (* longest paths known *)
 let abspath : (string, string) Hashtbl.t = Hashtbl.create 256
@@ -46,7 +22,7 @@ let implicit_decs : (Lexing.position, unit) Hashtbl.t = Hashtbl.create 256
 let incl : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
 
 (* all value references *)
-let references : LocSet.t LocHash.t  = LocHash.create 256
+let references : Utils.LocSet.t Utils.LocHash.t  = Utils.LocHash.create 256
 
 (* link from fields (record/variant) paths and locations *)
 let fields : (string, Lexing.position) Hashtbl.t = Hashtbl.create 256
@@ -149,8 +125,8 @@ let exported ?(is_type = false) (flag : Config.Sections.main_section) loc =
   let fn = loc.Lexing.pos_fname in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   Config.must_report_section flag
-  && LocHash.find_set references loc
-     |> LocSet.cardinal <= Config.get_main_threshold flag
+  && Utils.LocHash.find_set references loc
+     |> Utils.LocSet.cardinal <= Config.get_main_threshold flag
   && (is_type
     || state.config.internal
     || fn.[String.length fn - 1] = 'i'
@@ -230,18 +206,18 @@ module VdNode = struct
 
   type t = (string list * Lexing.position option)
 
-  let vd_nodes = LocHash.create 256
+  let vd_nodes = Utils.LocHash.create 256
 
-  let parents = LocHash.create 256
+  let parents = Utils.LocHash.create 256
 
 
   (* Get or create a vd_node corresponding to the location *)
   let get loc =
     assert (not (is_ghost loc));
-    try (LocHash.find vd_nodes loc)
+    try (Utils.LocHash.find vd_nodes loc)
     with Not_found ->
       let r = ([], None) in
-      LocHash.add vd_nodes loc r;
+      Utils.LocHash.add vd_nodes loc r;
       r
 
   let get_opts loc =
@@ -254,16 +230,16 @@ module VdNode = struct
     let _, loc1 = get loc in
     begin match loc1 with
     | Some loc1 ->
-        LocHash.find_set parents loc1
-        |> LocSet.remove loc
-        |> LocHash.replace parents loc1
+        Utils.LocHash.find_set parents loc1
+        |> Utils.LocSet.remove loc
+        |> Utils.LocHash.replace parents loc1
     | None -> ()
     end;
     begin match loc2 with
-    | Some loc2 -> LocHash.add_set parents loc2 loc
+    | Some loc2 -> Utils.LocHash.add_set parents loc2 loc
     | None -> ()
     end;
-    LocHash.replace vd_nodes loc node
+    Utils.LocHash.replace vd_nodes loc node
 
   let is_end loc =
     get_next loc = None
@@ -274,12 +250,12 @@ module VdNode = struct
 
 
   let func loc =
-    let met = LocHash.create 8 in
+    let met = Utils.LocHash.create 8 in
     let rec loop loc =
-      LocHash.replace met loc ();
+      Utils.LocHash.replace met loc ();
       match get loc with
       | [], Some loc
-      when not (LocHash.mem met loc) && seen loc ->
+      when not (Utils.LocHash.mem met loc) && seen loc ->
           loop loc
       | _ -> loc
     in loop loc
@@ -307,16 +283,16 @@ module VdNode = struct
 
   (* find the loc of the function declaring the nth occurence of the label *)
   let find loc lab occur =
-    let met = LocHash.create 8 in
+    let met = Utils.LocHash.create 8 in
     let rec loop loc lab occur =
       let count =
         if is_end loc then 0
         else List.filter (( = ) lab) (get_opts loc) |> List.length
       in
-      if is_end loc || LocHash.mem met loc || count >= occur then loc
+      if is_end loc || Utils.LocHash.mem met loc || count >= occur then loc
       else (
         let occur = occur - count in
-        LocHash.replace met loc ();
+        Utils.LocHash.replace met loc ();
         match get_next loc with
         | Some next -> loop (func next) lab occur
         | None ->
@@ -332,7 +308,7 @@ module VdNode = struct
     let state = State.get_current () in
 
     let sons =
-      LocHash.fold (fun loc _ acc -> loc :: acc) parents []
+      Utils.LocHash.fold (fun loc _ acc -> loc :: acc) parents []
       |> List.sort_uniq compare
     in
 
@@ -342,15 +318,15 @@ module VdNode = struct
         let rec loop loc =
           if not (Hashtbl.mem met loc) then begin
             Hashtbl.add met loc ();
-            LocHash.find_set parents loc
-            |> LocSet.iter loop;
+            Utils.LocHash.find_set parents loc
+            |> Utils.LocSet.iter loop;
             let pts =
-              LocHash.find_set parents loc
-              |> LocSet.filter (LocHash.mem vd_nodes) in
-            if LocSet.is_empty pts then begin
-              if LocHash.mem parents loc then
-                LocHash.remove parents loc;
-              LocHash.remove vd_nodes loc;
+              Utils.LocHash.find_set parents loc
+              |> Utils.LocSet.filter (Utils.LocHash.mem vd_nodes) in
+            if Utils.LocSet.is_empty pts then begin
+              if Utils.LocHash.mem parents loc then
+                Utils.LocHash.remove parents loc;
+              Utils.LocHash.remove vd_nodes loc;
             end
           end
         in loop loc
@@ -359,23 +335,23 @@ module VdNode = struct
 
     let sourceunit = State.File_infos.get_sourceunit state.file_infos in
     let delete loc =
-      let met = LocHash.create 64 in
+      let met = Utils.LocHash.create 64 in
       let rec loop worklist loc_list =
-        if not (LocSet.is_empty worklist) then
-          let loc = LocSet.choose worklist in
-          let wl = LocSet.remove loc worklist in
+        if not (Utils.LocSet.is_empty worklist) then
+          let loc = Utils.LocSet.choose worklist in
+          let wl = Utils.LocSet.remove loc worklist in
           if Utils.Filepath.unit loc.Lexing.pos_fname <> sourceunit then
-            List.iter (LocHash.remove parents) loc_list
+            List.iter (Utils.LocHash.remove parents) loc_list
           else begin
-            LocHash.replace met loc ();
-            let my_parents = LocHash.find_set parents loc in
+            Utils.LocHash.replace met loc ();
+            let my_parents = Utils.LocHash.find_set parents loc in
             let my_parents =
-              LocSet.filter (fun l -> not (LocHash.mem met l)) my_parents
+              Utils.LocSet.filter (fun l -> not (Utils.LocHash.mem met l)) my_parents
             in
-            let wl = LocSet.union my_parents wl in
+            let wl = Utils.LocSet.union my_parents wl in
             loop wl (loc :: loc_list)
           end
-      in loop (LocSet.singleton loc) []
+      in loop (Utils.LocSet.singleton loc) []
     in
     List.iter delete sons
 
@@ -493,9 +469,9 @@ let report_basic ?folder decs title (flag: Config.Sections.main_section) =
           else cut_main s (pos + 1)
         in
         let test elt =
-          let set = LocHash.find_set references elt in
-          if LocSet.cardinal set = nb_call then begin
-              let l = LocSet.elements set in
+          let set = Utils.LocHash.find_set references elt in
+          if Utils.LocSet.cardinal set = nb_call then begin
+              let l = Utils.LocSet.elements set in
               Some ((fn, cut_main path 0, loc, l) :: acc)
             end
           else None

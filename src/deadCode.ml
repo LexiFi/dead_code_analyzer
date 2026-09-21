@@ -185,7 +185,7 @@ let expr super self e =
 
   | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
     when exported sections.exported_values loc ->
-      LocHash.add_set references loc exp_loc
+      Utils.LocHash.add_set references loc exp_loc
 
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
   | Texp_construct (_, {cstr_loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _)
@@ -362,15 +362,15 @@ let assoc decs (loc1, loc2) =
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
     if (state.config.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      DeadCommon.LocHash.merge_set references loc2 references loc1;
+      Utils.LocHash.merge_set references loc2 references loc1;
     if is_iface fn1 loc1 then begin
       if is_iface fn2 loc2 then
-        DeadCommon.LocHash.add_set references loc1 loc2
+        Utils.LocHash.add_set references loc1 loc2
       else
-        DeadCommon.LocHash.merge_set references loc1 references loc2;
+        Utils.LocHash.merge_set references loc1 references loc2;
     end
     else
-      DeadCommon.LocHash.merge_set references loc2 references loc1
+      Utils.LocHash.merge_set references loc2 references loc1
   end
 
 
@@ -379,7 +379,7 @@ let clean references loc =
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
-    LocHash.remove references loc
+    Utils.LocHash.remove references loc
 
 let eof loc_dep =
   let state = State.get_current () in

@@ -68,7 +68,7 @@ let expr m = match m.mod_desc with
         in
         let value_is_expected_by_modtype = List.mem x l1 || l1 = [] in
         if value_is_expected_by_modtype && relevant_report_enabled then
-          LocHash.add_set references loc m.mod_loc.Location.loc_start
+          Utils.LocHash.add_set references loc m.mod_loc.Location.loc_start
       )
       l2
   | _ -> ()

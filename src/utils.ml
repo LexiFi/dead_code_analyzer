@@ -103,6 +103,31 @@ module Envaux = struct
     Envaux.env_of_only_summary env
 end
 
+module LocSet = Set.Make(struct type t = Lexing.position let compare = compare end)
+
+module LocHash = struct
+  include
+    Hashtbl.Make(struct
+      type t = Lexing.position
+
+      let hash x =
+        let s = Filename.basename x.Lexing.pos_fname in
+        Hashtbl.hash (x.Lexing.pos_cnum, s)
+
+      let equal x y = x = y
+    end)
+
+  let find_set h k = try find h k with Not_found -> LocSet.empty
+
+  let add_set h k v =
+    let l = find_set h k in replace h k (LocSet.add v l)
+
+  let merge_set h1 k1 h2 k2 =
+    let l1 = find_set h1 k1 in
+    let l2 = find_set h2 k2 in
+    replace h1 k1 (LocSet.union l1 l2)
+end
+
 module Compat = struct
 
   open Typedtree

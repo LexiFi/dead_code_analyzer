@@ -113,7 +113,7 @@ let correct_export t =
 
 
 let collect_references loc exp_loc =
-  LocHash.add_set references loc exp_loc
+  Utils.LocHash.add_set references loc exp_loc
 
 
 (* Look for bad style typing *)
@@ -329,7 +329,7 @@ let prepare_report () =
   (* implement a pseudo union-find via 2 tables : references and reprs *)
   (* references hold merged references of a union class with the
      representative as key.*)
-  let references = LocHash.create 128 in
+  let references = Utils.LocHash.create 128 in
   (* reprs points to another member of the location's equivalence class.
      This memeber was the representative at some point. There are no
      circular references.
@@ -340,8 +340,8 @@ let prepare_report () =
   let init_refs loc =
     (* the initial value for a single-element class is the set of references
        gathered during the analysis *)
-    LocHash.find_set DeadCommon.references loc
-    |> LocHash.replace references loc
+    Utils.LocHash.find_set DeadCommon.references loc
+    |> Utils.LocHash.replace references loc
   in
   let rec get_repr loc =
     (* explore members of loc's class until finding the class representative *)
@@ -364,17 +364,17 @@ let prepare_report () =
         let repr2 = get_repr loc2 in
         Hashtbl.replace reprs repr1 repr2;
         (* repr1 is now represented by repr2: its references are transfered *)
-        LocHash.merge_set references repr2 references repr1;
-        LocHash.remove references repr1
+        Utils.LocHash.merge_set references repr2 references repr1;
+        Utils.LocHash.remove references repr1
   in
   let update_references loc =
     Option.iter
       (fun loc ->
         let repr = get_repr loc in
-        let refs = LocHash.find_set references repr in
+        let refs = Utils.LocHash.find_set references repr in
         (* refs include the references gathered for loc and all the members
            of its equivalence class *)
-        LocHash.replace DeadCommon.references loc refs
+        Utils.LocHash.replace DeadCommon.references loc refs
       )
       loc
   in

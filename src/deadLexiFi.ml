@@ -129,7 +129,7 @@ module Extension = struct
         |> List.iter
           (fun loc ->
             if exported sections.exported_values loc then
-              LocHash.add_set references loc pos
+              Utils.LocHash.add_set references loc pos
           )
       )
       !used;
@@ -170,7 +170,7 @@ module Extension = struct
           else get_type s (pos - 1)
         in
         List.iter
-          ( if exported ~is_type:true sections.types loc then LocHash.add_set references loc
+          ( if exported ~is_type:true sections.types loc then Utils.LocHash.add_set references loc
             else ignore
           )
           (hashtbl_find_list dyn_used (get_type path (String.length path - 1)))

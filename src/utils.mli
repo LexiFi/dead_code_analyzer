@@ -58,6 +58,15 @@ module Envaux : sig
       in set_loadpaths are actually set. *)
 end
 
+module LocSet : Set.S with type elt = Lexing.position
+
+module LocHash : sig
+  include Hashtbl.S with type key = Lexing.position
+  val find_set : LocSet.t t -> key -> LocSet.t
+  val add_set : LocSet.t t -> key -> LocSet.elt -> unit
+  val merge_set : LocSet.t t -> key -> LocSet.t t -> key -> unit
+end
+
 module Compat : sig
 
   open Typedtree
