@@ -411,30 +411,7 @@ let prepare_report () =
 
 let report () =
   let state = State.get_current () in
-  let decs =
-    let max_uses =
-      Config.get_main_threshold state.config.sections.types
-    in
-    let res = Hashtbl.create 256 in
-    State.Ctors_fields.get_unused ~max_uses state.ctors_fields
-    |> Hashtbl.iter
-      (fun _ locs ->
-        List.iter
-          (fun (cf_loc, builddir) ->
-            State.Ctors_fields.get_uses ~cf_loc state.ctors_fields
-            |> List.iter
-              (fun use_loc -> Utils.LocHash.add_set references cf_loc use_loc);
-            State.Ctors_fields.get_cf_path ~cf_loc ~builddir state.ctors_fields
-            |> Option.iter (fun cf_path -> Hashtbl.add res cf_loc (builddir, cf_path))
-          )
-          locs
-      );
-    res
-  in
-  report_basic
-    decs
-    "UNUSED CONSTRUCTORS/RECORD FIELDS"
-    state.config.sections.types
+  Report.report state `Type
 
 
                 (********   WRAPPING  ********)

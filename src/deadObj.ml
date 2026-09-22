@@ -365,7 +365,7 @@ let class_field f =
   let update_overr b s =
     let l = hashtbl_find_list content !last_class in
     let l = (b, s) :: List.filter (fun (_, f) -> f <> s) l in
-    hashtbl_replace_list content !last_class l
+    hashtbl_replace_list content !last_class l;
   in
 
   begin match f.cf_desc with
@@ -388,6 +388,10 @@ let class_field f =
         |> hashtbl_replace_list tbl !last_class
       in
       erase_from_tbl content;
+      let state = State.get_current () in
+      let builddir = State.File_infos.get_builddir state.file_infos in
+      State.Methods.remove_exported_declaration ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
+      |> ignore
   | Tcf_method ({txt; _}, _, _) ->
       update_overr true txt
 
@@ -461,7 +465,9 @@ let prepare_report () =
   |> List.iter
     (fun alias_loc ->
       let orig_loc = repr_loc alias_loc in
-      move_uses orig_loc alias_loc
+      move_uses orig_loc alias_loc;
+      State.Methods.remove_exported_declarations ~obj_loc:alias_loc state.methods
+      |> ignore
     );
 
   let sons =
@@ -495,7 +501,9 @@ let prepare_report () =
             when not (Hashtbl.mem met meth)
             && List.exists (fun (_, meth2) -> meth2 = meth) (hashtbl_find_list content paren) ->
               Hashtbl.add met meth ();
-              move_uses ~meth_name:meth paren (repr_loc clas)
+              move_uses ~meth_name:meth paren (repr_loc clas);
+              State.Methods.remove_exported_declaration ~obj_loc:clas ~meth_name:meth state.methods
+              |> ignore
           | _ -> ()
         )
     in
@@ -506,61 +514,8 @@ let prepare_report () =
 
 let report () =
   prepare_report ();
-
-  let cut_main s =
-    let rec loop s pos =
-      if pos = String.length s then s
-      else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
-      else loop s (pos + 1)
-    in loop s 0
-  in
-  let no_star s =
-    let rec loop s pos =
-      if pos = String.length s then s
-      else if s.[pos] = '*' then
-        String.sub s 0 pos ^ String.sub s (pos + 1) (String.length s - pos - 1)
-      else loop s (pos + 1)
-    in cut_main (loop s 0)
-  in
-
-  let folder nb_call = fun loc (builddir, path) acc ->
-    let fn = Filename.concat builddir loc.Lexing.pos_fname in
-    let exists =
-      List.exists
-        (fun (overr, meth) -> overr && get_method path = meth)
-        (hashtbl_find_list content loc)
-    in
-    if exists then
-      let meth_name = get_method path in
-      let uses =
-        let state = State.get_current () in
-        State.Methods.get_uses ~obj_loc:loc ~meth_name state.methods
-      in
-      if check_length nb_call uses then
-          (fn, no_star path, loc, uses) :: acc
-      else acc
-    else acc
-  in
-
   let state = State.get_current () in
-  let decs =
-    let max_uses =
-      Config.get_main_threshold state.config.sections.methods
-    in
-    let res = Hashtbl.create 256 in
-    State.Methods.get_unused ~max_uses state.methods
-    |> Hashtbl.iter
-      (fun _ locs ->
-        List.iter
-          (fun (obj_loc, meth_name, builddir) ->
-            State.Methods.get_meth_path ~obj_loc ~meth_name ~builddir state.methods
-            |> Option.iter (fun meth_path -> Hashtbl.add res obj_loc (builddir, meth_path))
-          )
-          locs
-      );
-    res
-  in
-  report_basic ~folder decs "UNUSED METHODS" state.config.sections.methods
+  Report.report state `Method
 
 
 

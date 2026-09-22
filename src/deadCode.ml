@@ -630,30 +630,7 @@ let report_opt_args s l =
 
 let report_unused_exported () =
   let state = State.get_current () in
-  let decs =
-    let max_uses =
-      Config.get_main_threshold state.config.sections.exported_values
-    in
-    let res = Hashtbl.create 256 in
-    State.Values.get_unused ~max_uses state.values
-    |> Hashtbl.iter
-      (fun _ locs ->
-        List.iter
-          (fun (val_loc, builddir) ->
-            State.Values.get_uses ~val_loc state.values
-            |> List.iter
-              (fun use_loc -> Utils.LocHash.add_set references val_loc use_loc);
-            State.Values.get_val_path ~val_loc ~builddir state.values
-            |> Option.iter (fun val_path -> Hashtbl.add res val_loc (builddir, val_path))
-          )
-          locs
-      );
-    res
-  in
-  report_basic
-    decs
-    "UNUSED EXPORTED VALUES"
-    state.config.sections.exported_values
+  Report.report state `Value
 
 
 let report_style () =

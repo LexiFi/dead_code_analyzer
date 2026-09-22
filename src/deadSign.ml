@@ -15,7 +15,7 @@ let export_module ~path mt =
 
 let export_object ~path ~comp_unit ~stock id value =
   (* export a value as an object *)
-  let path = (id ^ "*") :: path in
+  let path = id :: path in
   let obj = value.Types.val_type in
   let loc = value.Types.val_loc in
   DeadObj.collect_export path comp_unit stock ~obj loc

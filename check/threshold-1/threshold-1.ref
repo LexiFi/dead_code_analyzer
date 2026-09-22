@@ -481,6 +481,7 @@ Nothing else to report in this section
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/constraint.ml:1: p#g
+./examples/using_make/obj/constraint.ml:6: c#g: Should not be detected
 ./examples/using_make/obj/fooCl.mli:1: p1#g
 ./examples/using_make/obj/fooCl.mli:1: p1#h
 ./examples/using_make/obj/fooCl.mli:7: p2#h
@@ -573,6 +574,7 @@ Nothing else to report in this section
 ./examples/using_make/obj/class.mli:1: c#f
 ./examples/using_make/obj/class.mli:1: c#g
 ./examples/using_make/obj/constraint.ml:1: p#f
+./examples/using_make/obj/constraint.ml:6: c#f: Should not be detected
 ./examples/using_make/obj/depend.ml:8: M.c#f
 ./examples/using_make/obj/fooCl.mli:1: p1#f
 ./examples/using_make/obj/fooCl.mli:7: p2#g
@@ -1240,7 +1242,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1033
+Total: 1035
 Success: 1027
-Failed: 6
-Ratio: 99.4191674734%
+Failed: 8
+Ratio: 99.2270531401%
