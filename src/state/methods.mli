@@ -102,13 +102,16 @@ val get_unused :
     By default, [max_uses = 0].
 *)
 
-val add_alias : orig_loc:Lexing.position -> alias_loc:Lexing.position -> ?meth_name:string -> t -> t
-(** [add_alias ~orig_loc ~alias_loc ?meth_name meths] returns a [t] containing the
-    same info as [meths], plus an extra equivalence between [orig_loc] and
-    [alias_loc].
-    This equivalence implies that a use of either is a use of both. In
-    particular, a use of the [alias_loc] is a use of the [orig_loc].
-    If a [meth_name] is provided, then the equivalence only applies to it.
+val add_alias : orig_loc:Lexing.position -> alias_loc:Lexing.position -> t -> t
+(** [add_alias ~orig_loc ~alias_loc meths] returns a [t] containing the
+    same info as [meths], plus an extra alias at [alias_loc] of [orig_loc].
+*)
+
+val resolve_aliases : t -> t
+(** [resolve_aliases meths] returns a [t] containing the same info as [meths]
+    with all the uses of aliases copied as uses of the original declaration,
+    and without [alias_loc] among the declarations.
+    This function is meant to be called once before calling {!get_unused}.
 *)
 
 val mark_defined :
@@ -148,4 +151,26 @@ val mark_virtual :
     returns a [t] containing the same info as [meths], plus an indication
     that [meth_name] at [obj_loc] in [builddir] is virtual encountered.
     This overrides any previous status for that method.
+*)
+
+val add_loc_binding : obj_path:string -> obj_loc:Lexing.position -> t -> t
+(** [add_loc_binding ~obj_path ~obj_loc meths] returns a [t] containing
+    the same info as [meths], plus an extra binding of [obj_path] to [obj_loc].
+    All the previous bindings of [obj_path] are shadowed.
+
+    Retrieving the latest binding is done via {!find_loc} below.
+    Those 2 functions are intended to resolve class locations when they
+    are not readily available (e.g. in [inherit] fields).
+*)
+
+val find_loc : obj_path:string -> t -> Lexing.position option
+(** [find_loc ~obj_path meths] returns [Some obj_loc] if the [obj_loc] was
+    added via {!add_loc_binding} above.
+    Otherwise, it returns [None].
+*)
+
+val get_orig_loc : obj_loc:Lexing.position -> t -> Lexing.position
+(** [get_orig_loc ~obj_loc meths] returns the location of the original
+    declaration of the object/class defined at [obj_loc].
+    It does this by following the aliases added via {!add_alias} above.
 *)

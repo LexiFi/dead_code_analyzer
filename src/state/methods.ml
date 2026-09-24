@@ -12,13 +12,46 @@ type t = {
     (** obj_loc -> meth_name -> builddir -> meth_path *)
   uses : Utils.LocSet.t name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> use_loc *)
+  aliases : Lexing.position Utils.LocHash.t;
+    (** alias_loc -> orig_loc
+        NOTE: an alias may be an instance of the class declared at orig_loc
+    *)
+  locations: Lexing.position Utils.StringHash.t;
+    (** obj_path -> obj_loc
+        This is used to retrieve the location information from a path.
+        In particular, this is useful when inheritances happen because
+        a Tcf_inherit knows the shape and name of the inherited class but
+        not the location of its definition or declaration.
+    *)
 }
 
 let create () =
   let open Utils in
-  let declarations = LocHash.create 256 in
-  let uses = LocHash.create 256 in
-  {declarations; uses}
+  let declarations = LocHash.create 128 in
+  let uses = LocHash.create 128 in
+  let aliases = LocHash.create 128 in
+  let locations = StringHash.create 128 in
+  {declarations; uses; aliases; locations}
+
+let get_orig_loc ~obj_loc meths =
+  let open Utils in
+  let rec get_orig ~prev_locs ~obj_loc =
+    (* prev_locs protects against circular references *)
+    match LocHash.find_opt meths.aliases obj_loc with
+    | None -> obj_loc
+    | Some next_loc when LocSet.mem next_loc prev_locs -> obj_loc
+    | Some next_loc ->
+        let prev_locs = LocSet.add obj_loc prev_locs in
+        get_orig ~prev_locs ~obj_loc:next_loc
+  in
+  get_orig ~prev_locs:LocSet.empty ~obj_loc
+
+let add_loc_binding ~obj_path ~obj_loc meths =
+  Utils.StringHash.add meths.locations obj_path obj_loc;
+  meths
+
+let find_loc ~obj_path meths =
+  Utils.StringHash.find_opt meths.locations obj_path
 
 let find_meth_tbl_or_default tbl ~default_size key =
   let open Utils in
@@ -167,7 +200,11 @@ let is_marked_defined ~builddir ~obj_loc ~meth_name meths =
   in
   Option.value ~default:false is_defined
 
-let add_alias ~orig_loc ~alias_loc ~meth_name meths =
+let add_alias ~orig_loc ~alias_loc meths =
+  Utils.LocHash.replace meths.aliases alias_loc orig_loc;
+  meths
+
+let copy_uses ~orig_loc ~alias_loc ~meth_name meths =
   let open Utils in
   let get_uses loc =
     match LocHash.find_opt meths.uses loc with
@@ -186,20 +223,27 @@ let add_alias ~orig_loc ~alias_loc ~meth_name meths =
   StringHash.replace use_tbl meth_name orig_uses;
   meths
 
-let add_alias ~orig_loc ~alias_loc ?meth_name meths =
+let resolve_aliases meths =
   let open Utils in
-  match meth_name with
-  | Some meth_name -> add_alias ~orig_loc ~alias_loc ~meth_name meths
-  | None ->
-      match LocHash.find_opt meths.uses alias_loc with
-      | None -> meths
-      | Some alias_use_tbl ->
-          StringHash.fold
-            (fun meth_name _alias_uses meths ->
-              add_alias ~orig_loc ~alias_loc ~meth_name meths
-            )
-            alias_use_tbl
-            meths
+  let copy_uses ~alias_loc ~orig_loc meths =
+    match LocHash.find_opt meths.uses alias_loc with
+    | None -> meths
+    | Some alias_use_tbl ->
+        StringHash.fold
+          (fun meth_name _alias_uses meths ->
+            copy_uses ~orig_loc ~alias_loc ~meth_name meths
+          )
+          alias_use_tbl
+          meths
+  in
+  LocHash.fold
+    (fun alias_loc _ meths ->
+      let orig_loc = get_orig_loc ~obj_loc:alias_loc meths in
+      let meths = copy_uses ~alias_loc ~orig_loc meths in
+      remove_exported_declarations ~obj_loc:alias_loc meths
+    )
+    meths.aliases
+    meths
 
 let get_unused ?(max_uses=0) meths =
   let open Utils in
