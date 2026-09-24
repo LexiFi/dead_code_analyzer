@@ -155,7 +155,8 @@ let locate expr =
     match expr.exp_desc with
     | Texp_instvar (_, _, {Asttypes.loc; _})
     | Texp_new (_, _, {Types.cty_loc=loc; _})
-    | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc.Location.loc_start
+    | Texp_ident (_, _, {Types.val_loc=loc; _}) ->
+        repr_loc loc.Location.loc_start
     | _ -> Lexing.dummy_pos
   in repr_exp expr locate
 
@@ -207,7 +208,10 @@ let collect_export path u stock ~obj ~cltyp loc =
         let obj_loc = loc.Location.loc_start in
         let builddir = State.File_infos.get_builddir state.file_infos in
         State.Methods.add_exported_declaration ~obj_loc ~meth_name:id ~builddir ~meth_path state.methods
-        |> ignore
+        |> ignore;
+        if Option.is_some obj then
+          State.Methods.mark_defined ~obj_loc ~meth_name:id ~builddir state.methods
+          |> ignore
     end
   in
 
@@ -373,6 +377,17 @@ let class_field f =
       let path = locate cl_exp in
       if path != _none then begin
         hashtbl_add_unique_to_list inheritances !last_class path;
+        let state = State.get_current () in
+        let builddir = State.File_infos.get_builddir state.file_infos in
+        List.iter
+          (fun (meth_name, _) ->
+            State.Methods.mark_inherited
+              ~builddir ~obj_loc:!last_class ~meth_name
+              ~inherited_path:path
+              state.methods
+            |> ignore
+          )
+          l;
         add_equal f.cf_loc.Location.loc_start cl_exp.cl_loc.Location.loc_start;
         let loc = get_loc path in
         let equal () = add_equal cl_exp.cl_loc.Location.loc_start (get_loc path) in  (* for uses inside class def *)
@@ -390,10 +405,14 @@ let class_field f =
       erase_from_tbl content;
       let state = State.get_current () in
       let builddir = State.File_infos.get_builddir state.file_infos in
-      State.Methods.remove_exported_declaration ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
+      State.Methods.mark_virtual ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
       |> ignore
   | Tcf_method ({txt; _}, _, _) ->
-      update_overr true txt
+      update_overr true txt;
+      let state = State.get_current () in
+      let builddir = State.File_infos.get_builddir state.file_infos in
+      State.Methods.mark_defined ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
+      |> ignore
 
   | _ -> ()
   end;

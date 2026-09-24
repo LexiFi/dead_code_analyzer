@@ -94,8 +94,9 @@ val get_unused :
   t
   -> (int, (Lexing.position * string * string) list) Hashtbl.t
 (** [get_unused ?max_uses meths] returns a table containing the [obj_loc]
-    of [meth_name] in [builddir] added via {!add_exported_declaration} above
-    and not removed, with at most [max_uses] [use_loc] associated via {!add_use} above.
+    of [meth_name] in [builddir] added via {!add_exported_declaration}
+    above, marked defined via {!mark_defined} below, and not removed, with
+    at most [max_uses] [use_loc] associated via {!add_use} above.
     The key is the number of associated uses, and the value the list of
     [obj_loc * meth_name * builddir] used key number of times.
     By default, [max_uses = 0].
@@ -108,4 +109,43 @@ val add_alias : orig_loc:Lexing.position -> alias_loc:Lexing.position -> ?meth_n
     This equivalence implies that a use of either is a use of both. In
     particular, a use of the [alias_loc] is a use of the [orig_loc].
     If a [meth_name] is provided, then the equivalence only applies to it.
+*)
+
+val mark_defined :
+  builddir:string ->
+  obj_loc:Lexing.position ->
+  meth_name:string ->
+  t
+  -> t
+(** [mark_defined ~builddir ~obj_loc ~meth_name meths]
+    returns a [t] containing the same info as [meths], plus an indication
+    that the definition for [meth_name] at [obj_loc] in [builddir] was
+    encountered.
+    This overrides any previous status for that method.
+*)
+
+val mark_inherited :
+  builddir:string ->
+  obj_loc:Lexing.position ->
+  meth_name:string ->
+  inherited_path:string ->
+  t
+  -> t
+(** [mark_inherited ~builddir ~obj_loc ~meth_name ~inherited_path meths]
+    returns a [t] containing the same info as [meths], plus an extra
+    inheritance status : [meth_name] at [obj_loc] in [builddir] is actually
+    inherited from [inherited_path].
+    This overrides any previous status for that method.
+*)
+
+val mark_virtual :
+  builddir:string ->
+  obj_loc:Lexing.position ->
+  meth_name:string ->
+  t
+  -> t
+(** [mark_virtual ~builddir ~obj_loc ~meth_name meths]
+    returns a [t] containing the same info as [meths], plus an indication
+    that [meth_name] at [obj_loc] in [builddir] is virtual encountered.
+    This overrides any previous status for that method.
 *)

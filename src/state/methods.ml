@@ -1,10 +1,16 @@
-type builddir_to_path = string Utils.StringHash.t
+type status =
+  | Undefined (* a method is considered undefined by default *)
+  | Defined
+  | Inherited of string (* inherited_path *)
+  | Virtual
+
+type builddir_to_path = (string * status) Utils.StringHash.t
 type 'a name_to_a = 'a Utils.StringHash.t
 
 type t = {
   declarations : builddir_to_path name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> builddir -> meth_path *)
-  uses : Utils.LocSet.t name_to_a Utils.LocHash.t
+  uses : Utils.LocSet.t name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> use_loc *)
 }
 
@@ -41,7 +47,7 @@ let add_exported_declaration ~builddir ~obj_loc ~meth_name ~meth_path meths =
   in
   (* Collisions at the same meth_name at the obj_loc in the same builddir
      should not happen. *)
-  StringHash.replace builddir_tbl builddir meth_path;
+  StringHash.replace builddir_tbl builddir (meth_path, Undefined);
   meths
 
 let remove_exported_declaration ?builddir ~obj_loc ~meth_name meths =
@@ -92,6 +98,7 @@ let get_meth_path ~builddir ~obj_loc ~meth_name meths =
   in
   Option.bind builddir_tbl (fun builddir_tbl ->
     StringHash.find_opt builddir_tbl builddir)
+  |> Option.map fst
 
 let add_use ~obj_loc ~meth_name ~use_loc meths =
   let open Utils in
@@ -128,6 +135,37 @@ let get_uses ~obj_loc ~meth_name meths =
       | None -> []
     )
   |> Option.value ~default:[]
+
+let replace_status ~builddir ~obj_loc ~meth_name status meths =
+  let open Utils in
+  let ( let$ ) x f = Option.iter f x in
+  let$ meth_tbl = LocHash.find_opt meths.declarations obj_loc in
+  let$ builddir_tbl = StringHash.find_opt meth_tbl meth_name in
+  let$ (meth_path, _) = StringHash.find_opt builddir_tbl builddir in
+  StringHash.replace builddir_tbl builddir (meth_path, status)
+
+let mark_defined ~builddir ~obj_loc ~meth_name meths =
+  replace_status ~builddir ~obj_loc ~meth_name Defined meths;
+  meths
+
+let mark_inherited ~builddir ~obj_loc ~meth_name ~inherited_path meths =
+  replace_status ~builddir ~obj_loc ~meth_name (Inherited inherited_path) meths;
+  meths
+
+let mark_virtual ~builddir ~obj_loc ~meth_name meths =
+  replace_status ~builddir ~obj_loc ~meth_name Virtual meths;
+  meths
+
+let is_marked_defined ~builddir ~obj_loc ~meth_name meths =
+  let open Utils in
+  let ( let* ) x f = Option.bind x f in
+  let is_defined =
+    let* meth_tbl = LocHash.find_opt meths.declarations obj_loc in
+    let* builddir_tbl = StringHash.find_opt meth_tbl meth_name in
+    let* (_, status) = StringHash.find_opt builddir_tbl builddir in
+    Some (status = Defined)
+  in
+  Option.value ~default:false is_defined
 
 let add_alias ~orig_loc ~alias_loc ~meth_name meths =
   let open Utils in
@@ -178,7 +216,11 @@ let get_unused ?(max_uses=0) meths =
   in
   let add_if_unused obj_loc meth_name builddir_tbl =
     StringHash.to_seq_keys builddir_tbl
-    |> Seq.iter (add_if_unused obj_loc meth_name)
+    |> Seq.iter
+      (fun builddir ->
+        if is_marked_defined ~builddir ~obj_loc ~meth_name meths then
+          add_if_unused obj_loc meth_name builddir
+      )
   in
   let add_if_unused obj_loc meth_tbl =
     StringHash.iter (add_if_unused obj_loc) meth_tbl

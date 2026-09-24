@@ -189,7 +189,6 @@ Nothing else to report in this section
 ./examples/using_make/obj/class.mli:1: c#h
 ./examples/using_make/obj/class_type.mli:9: c#h
 ./examples/using_make/obj/constraint.ml:1: p#g
-./examples/using_make/obj/constraint.ml:6: c#g: Should not be detected
 ./examples/using_make/obj/fooCl.mli:1: p1#g
 ./examples/using_make/obj/fooCl.mli:1: p1#h
 ./examples/using_make/obj/fooCl.mli:7: p2#h
@@ -721,7 +720,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 596
+Total: 595
 Success: 589
-Failed: 7
-Ratio: 98.8255033557%
+Failed: 6
+Ratio: 98.9915966387%
