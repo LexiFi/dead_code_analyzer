@@ -2,14 +2,22 @@ type 'a name_to_a = 'a Utils.StringHash.t
 
 type definition =
   | Defined
-  | Inherited of string (* inherited_path *)
+  | Override of string list (* overriden_paths *)
+  | Inherited of string * string list (* inherited_path, overriden_paths *)
   | Virtual
 
 type t = {
   declarations : string name_to_a name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> builddir -> meth_path *)
   uses : Utils.LocSet.t name_to_a Utils.LocHash.t;
-    (** obj_loc -> meth_name -> use_loc *)
+    (** obj_loc -> meth_name -> use_locs *)
+  self_uses : Utils.LocSet.t name_to_a Utils.LocHash.t;
+    (** obj_loc -> meth_name -> use_locs
+        Same as {!uses} above but for uses of [meth_name] of [obj_loc]
+        within the object/class definition.
+        In particular, this is useful for inheritances, to propagate self
+        uses to the actual (parent or child) method definition.
+    *)
   definitions : definition name_to_a name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> builddir -> definition
         This is used to keep track of methods whose definition belong
@@ -33,10 +41,11 @@ let create () =
   let open Utils in
   let declarations = LocHash.create 128 in
   let uses = LocHash.create 128 in
+  let self_uses = LocHash.create 32 in
   let definitions = LocHash.create 128 in
   let aliases = LocHash.create 128 in
   let locations = StringHash.create 128 in
-  {declarations; uses; definitions; aliases; locations}
+  {declarations; uses; self_uses; definitions; aliases; locations}
 
 let get_orig_loc ~obj_loc meths =
   let open Utils in
@@ -153,10 +162,14 @@ let get_meth_path ~builddir ~obj_loc ~meth_name meths =
   Option.bind builddir_tbl (fun builddir_tbl ->
     StringHash.find_opt builddir_tbl builddir)
 
-let add_use ~obj_loc ~meth_name ~use_loc meths =
+let add_any_use ~obj_loc ~meth_name ~use_loc use_tbl =
+  (* [use_tbl] is either [meths.uses] or [meths.self_uses]
+     XXX: using either as parameter relies on the fact that we use
+          hashtables for storage.
+  *)
   let open Utils in
   let meth_tbl =
-    find_meth_tbl_or_default meths.uses obj_loc ~default_size:8
+    find_meth_tbl_or_default use_tbl obj_loc ~default_size:8
   in
   let use_set =
     match StringHash.find_opt meth_tbl meth_name with
@@ -164,7 +177,14 @@ let add_use ~obj_loc ~meth_name ~use_loc meths =
     | None -> LocSet.empty
   in
   let use_set = LocSet.add use_loc use_set in
-  StringHash.replace meth_tbl meth_name use_set;
+  StringHash.replace meth_tbl meth_name use_set
+
+let add_use ~obj_loc ~meth_name ~use_loc meths =
+  add_any_use ~obj_loc ~meth_name ~use_loc meths.uses;
+  meths
+
+let add_self_use ~obj_loc ~meth_name ~use_loc meths =
+  add_any_use ~obj_loc ~meth_name ~use_loc meths.self_uses;
   meths
 
 let remove_uses ~obj_loc ?meth_name meths =
@@ -178,74 +198,108 @@ let remove_uses ~obj_loc ?meth_name meths =
   end;
   meths
 
-let get_uses ~obj_loc ~meth_name meths =
+let get_any_uses ~obj_loc ~meth_name use_tbl =
+  (* [use_tbl] is either [meths.uses] or [meths.self_uses]
+     XXX: using either as parameter relies on the fact that we use
+          hashtables for storage.
+  *)
   let open Utils in
-  LocHash.find_opt meths.uses obj_loc
+  LocHash.find_opt use_tbl obj_loc
   |> Option.map
-    (fun use_tbl ->
-      match StringHash.find_opt use_tbl meth_name with
+    (fun meth_tbl ->
+      match StringHash.find_opt meth_tbl meth_name with
       | Some use_set -> LocSet.to_seq use_set |> List.of_seq
       | None -> []
     )
   |> Option.value ~default:[]
 
-let mark_defined ~builddir ~obj_loc ~meth_name meths =
-  add_definition ~builddir ~obj_loc ~meth_name
-    ~definition:Defined meths
+let get_uses ~obj_loc ~meth_name meths =
+  get_any_uses ~obj_loc ~meth_name meths.uses
 
-let mark_inherited ~builddir ~obj_loc ~meth_name ~inherited_path meths =
-  add_definition ~builddir ~obj_loc ~meth_name
-    ~definition:(Inherited inherited_path) meths
-
-let mark_virtual ~builddir ~obj_loc ~meth_name meths =
-  add_definition ~builddir ~obj_loc ~meth_name
-    ~definition:Virtual meths
-
-let is_marked_defined ~builddir ~obj_loc ~meth_name meths =
+let find_definition ~builddir ~obj_loc ~meth_name meths =
   let open Utils in
   let ( let* ) x f = Option.bind x f in
-  let is_defined =
-    let* meth_tbl = LocHash.find_opt meths.definitions obj_loc in
-    let* builddir_tbl = StringHash.find_opt meth_tbl meth_name in
-    let* definition = StringHash.find_opt builddir_tbl builddir in
-    Some (definition = Defined)
+  let* meth_tbl = LocHash.find_opt meths.definitions obj_loc in
+  let* builddir_tbl = StringHash.find_opt meth_tbl meth_name in
+  StringHash.find_opt builddir_tbl builddir
+
+let mark_defined ~builddir ~obj_loc ~meth_name meths =
+  let definition =
+    match find_definition ~builddir ~obj_loc ~meth_name meths with
+    | Some (Inherited (path, overriden_paths)) ->
+       Override (path::overriden_paths)
+    | Some (Override _ as override) -> override
+    | _ -> Defined
   in
-  Option.value ~default:false is_defined
+  add_definition ~builddir ~obj_loc ~meth_name ~definition meths
+
+let mark_inherited ~builddir ~obj_loc ~meth_name ~inherited_path meths =
+  let definition =
+    match find_definition ~builddir ~obj_loc ~meth_name meths with
+    | Some (Inherited (path, overriden_paths)) ->
+       Inherited (inherited_path, path::overriden_paths)
+    | Some (Override overriden_paths) ->
+       Inherited (inherited_path, overriden_paths)
+    | _ -> Inherited (inherited_path, [])
+  in
+  add_definition ~builddir ~obj_loc ~meth_name ~definition meths
+
+let mark_virtual ~builddir ~obj_loc ~meth_name meths =
+  add_definition ~builddir ~obj_loc ~meth_name ~definition:Virtual meths
+
+let add_initializer ~builddir ~obj_loc meths =
+  (* An initializer is a special hidden method. *)
+  mark_defined ~builddir ~obj_loc ~meth_name:"!!initializer!!" meths
+
+let inherit_initializer ~builddir ~obj_loc ~inherited_path meths =
+  (* An initializer is a special hidden method. *)
+  mark_inherited ~builddir ~obj_loc
+    ~meth_name:"!!initializer!!" ~inherited_path meths
+
+let is_marked_defined ~builddir ~obj_loc ~meth_name meths =
+    find_definition ~builddir ~obj_loc ~meth_name meths
+    |> Option.map (function
+      | Defined | Override _ -> true
+      | _ -> false)
+    |> Option.value ~default:false
 
 let add_alias ~orig_loc ~alias_loc meths =
   Utils.LocHash.replace meths.aliases alias_loc orig_loc;
   meths
 
-let copy_uses ~orig_loc ~alias_loc ~meth_name meths =
+let copy_uses ~orig_loc ~alias_loc ~meth_name src_tbl dst_tbl =
+  (* [src_tbl] and [dst_tbl] are either [meths.uses] or [meths.self_uses]
+     XXX: using either as parameter relies on the fact that we use
+          hashtables for storage.
+  *)
   let open Utils in
-  let get_uses loc =
-    match LocHash.find_opt meths.uses loc with
+  let get_uses use_tbl loc =
+    match LocHash.find_opt use_tbl loc with
     | None -> LocSet.empty
-    | Some use_tbl ->
-        match StringHash.find_opt use_tbl meth_name with
+    | Some meth_tbl ->
+        match StringHash.find_opt meth_tbl meth_name with
         | None -> LocSet.empty
         | Some use_set -> use_set
   in
-  let alias_uses = get_uses alias_loc in
-  let orig_uses = get_uses orig_loc in
+  let alias_uses = get_uses src_tbl alias_loc in
+  let orig_uses = get_uses dst_tbl orig_loc in
   let orig_uses = LocSet.union alias_uses orig_uses in
-  let use_tbl =
-    find_meth_tbl_or_default meths.uses orig_loc ~default_size:8
+  let meth_tbl =
+    find_meth_tbl_or_default dst_tbl orig_loc ~default_size:8
   in
-  StringHash.replace use_tbl meth_name orig_uses;
-  meths
+  StringHash.replace meth_tbl meth_name orig_uses
 
 let resolve_aliases meths =
   let open Utils in
-  let copy_uses ~alias_loc ~orig_loc meths =
-    match LocHash.find_opt meths.uses alias_loc with
+  let copy_uses ~alias_loc ~orig_loc use_tbl =
+    match LocHash.find_opt use_tbl alias_loc with
     | None -> meths
-    | Some alias_use_tbl ->
-        StringHash.fold
-          (fun meth_name _alias_uses meths ->
-            copy_uses ~orig_loc ~alias_loc ~meth_name meths
+    | Some alias_meth_tbl ->
+        StringHash.iter
+          (fun meth_name _alias_uses ->
+            copy_uses ~orig_loc ~alias_loc ~meth_name use_tbl use_tbl
           )
-          alias_use_tbl
+          alias_meth_tbl;
           meths
   in
   let move_definitions ~alias_loc ~orig_loc meths =
@@ -272,12 +326,115 @@ let resolve_aliases meths =
   LocHash.fold
     (fun alias_loc _ meths ->
       let orig_loc = get_orig_loc ~obj_loc:alias_loc meths in
-      copy_uses ~alias_loc ~orig_loc meths
+      copy_uses ~alias_loc ~orig_loc meths.uses
+      |> (fun meths -> copy_uses ~alias_loc ~orig_loc meths.self_uses)
       |> move_definitions ~alias_loc ~orig_loc
       |> remove_exported_declarations ~obj_loc:alias_loc
     )
     meths.aliases
     meths
+
+let resolve_inheritances meths =
+  (* TODO: fix-point resolution: the order in which methods are explored
+     traversed is undefined. Because, we copy uses between direct parent
+     and child, uses may not be propagated to a grand-parent or grand-child
+     if we propagate from parent to child before grand-parent to parent,
+     or from parent to grand-parent before child to parent.
+ *)
+  let open Utils in
+  let propagate propagate_fun meths =
+    (* apply propagate_fun on methods represented by their obj_loc,
+       meth_name, and definition *)
+    let seen = LocHash.create 128 in
+    LocHash.iter
+      (fun obj_loc meth_tbl ->
+        let obj_loc = get_orig_loc ~obj_loc meths in
+        let propagate_fun = propagate_fun ~obj_loc in
+        if LocHash.mem seen obj_loc then ()
+        else begin
+          LocHash.add seen obj_loc ();
+          StringHash.iter
+            (fun meth_name builddir_tbl ->
+              let propagate_fun = propagate_fun ~meth_name in
+              StringHash.iter
+                (fun _builddir definition ->
+                  propagate_fun ~definition meths
+                )
+                builddir_tbl
+            )
+            meth_tbl
+        end
+      )
+      meths.definitions;
+    meths
+  in
+  let find_orig_parent_loc ~obj_path meths =
+    find_loc ~obj_path meths
+    |> Option.map (fun obj_loc -> get_orig_loc ~obj_loc meths)
+  in
+  let propagate_downward meths =
+    let copy_uses ~obj_loc ~parent_loc meths =
+      (* propagate self uses from all the parent's methods *)
+      LocHash.find_opt meths.self_uses parent_loc
+      |> Option.iter
+          (fun meth_tbl ->
+            StringHash.iter
+              (fun meth_name _ ->
+                copy_uses ~alias_loc:parent_loc ~orig_loc:obj_loc
+                  ~meth_name meths.self_uses meths.uses;
+                copy_uses ~alias_loc:parent_loc ~orig_loc:obj_loc
+                  ~meth_name meths.self_uses meths.self_uses
+              )
+              meth_tbl
+          )
+    in
+    let propagate_from_parents ~obj_loc =
+      let seen = StringHash.create 8 in
+      fun ~paths meths ->
+        List.iter
+          (fun parent_path ->
+            if StringHash.mem seen parent_path then ()
+            else begin
+              StringHash.add seen parent_path ();
+              find_orig_parent_loc ~obj_path:parent_path meths
+              |> Option.iter (fun parent_loc ->
+                  copy_uses ~obj_loc ~parent_loc meths)
+            end
+          )
+          paths
+    in
+    propagate
+      (fun ~obj_loc ->
+        let propagate_from_parents = propagate_from_parents ~obj_loc in
+        fun ~meth_name:_ ~definition meths ->
+        match definition with
+        | Override paths ->
+            propagate_from_parents ~paths meths
+        | Inherited (inherited_path, overriden_paths) ->
+            let paths = inherited_path::overriden_paths in
+            propagate_from_parents ~paths meths
+        | _ -> ()
+      )
+      meths
+  in
+  let propagate_upward meths =
+    propagate
+      (fun ~obj_loc ~meth_name ~definition meths ->
+        match definition with
+        | Inherited (inherited_path, _) ->
+            (* propagate all the uses upward *)
+            find_orig_parent_loc ~obj_path:inherited_path meths
+            |> Option.iter (fun parent_loc ->
+                copy_uses ~alias_loc:obj_loc ~orig_loc:parent_loc
+                  ~meth_name meths.uses meths.uses;
+                remove_exported_declaration ~obj_loc ~meth_name meths
+                |> ignore)
+        | _ -> ()
+      )
+      meths
+  in
+  propagate_downward meths
+  |> propagate_upward
 
 let get_unused ?(max_uses=0) meths =
   let open Utils in

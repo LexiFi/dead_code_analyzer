@@ -18,12 +18,6 @@ open DeadCommon
 
 let decs = Hashtbl.create 256
 
-let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
-
-let content = Hashtbl.create 512                    (* loc -> [field names] *)
-
-let inheritances = Hashtbl.create 512               (* inheritance links loc-> loc *)
-
 let at_eof = ref []
 
 let last_class = ref Lexing.dummy_pos            (* last class met *)
@@ -38,15 +32,6 @@ let defined = Hashtbl.create 16
 let repr_loc obj_loc =
   let state = State.get_current () in
   State.Methods.get_orig_loc ~obj_loc state.methods
-
-
-let meth_tbl tbl loc =
-  if not (Hashtbl.mem tbl loc) then
-    Hashtbl.add tbl loc (Hashtbl.create 16);
-  Hashtbl.find tbl loc
-
-
-let meth_self_ref = meth_tbl self_ref
 
 
 let add_path obj_path obj_loc =
@@ -72,36 +57,15 @@ let get_loc path =
   |> Option.map repr_loc
 
 
-let get_method s =
-  let rec loop s pos =
-    if s.[pos] = '#' then String.sub s (pos + 1) (String.length s - pos - 1)
-    else if pos <= 0 then s
-    else loop s (pos - 1)
-  in loop s (String.length s - 1)
-
-
 let add_equal loc1 loc2 =
   let loc1 = repr_loc loc1
   and loc2 = repr_loc loc2 in
   if loc1 <> loc2 && not (is_ghost loc1 || is_ghost loc2) then begin
     if loc1 = !last_class then
       last_class := loc2;
-    let meths =
-      let res = hashtbl_find_list content loc2 in
-      if res = [] then hashtbl_find_list content loc1
-      else res
-    in
     let state = State.get_current () in
     State.Methods.add_alias ~orig_loc:loc2 ~alias_loc:loc1 state.methods
-    |> ignore;
-    List.iter
-      (fun (_, meth) ->
-        hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth
-      )
-      meths;
-    hashtbl_merge_unique_list inheritances loc2 inheritances loc1;
-    hashtbl_remove_list inheritances loc1;
-    hashtbl_remove_list content loc1
+    |> ignore
   end
 
 
@@ -214,14 +178,17 @@ let correct_export loc =
 
 
 let collect_references ~meth ~call_site expr =
-  let loc = locate expr in
+  let obj_loc = locate expr in
 
-  if not (is_ghost loc) then begin
+  if not (is_ghost obj_loc) then begin
     let state = State.get_current () in
-    State.Methods.add_use ~obj_loc:loc ~meth_name:meth ~use_loc:call_site state.methods
+    let meth_name = meth in
+    let use_loc = call_site in
+    State.Methods.add_use ~obj_loc ~meth_name ~use_loc state.methods
     |> ignore;
-    if loc = !last_class then
-      hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site
+    if obj_loc = !last_class then
+      State.Methods.add_self_use ~obj_loc ~meth_name ~use_loc state.methods
+      |> ignore
   end
 
 
@@ -326,7 +293,6 @@ let class_structure cl_struct =
 
 
 let class_field f =
-
   let rec locate cl_exp = match cl_exp.cl_desc with
     | Tcl_ident (path, _, _) ->
         let path = Path.name path in
@@ -338,18 +304,10 @@ let class_field f =
     | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp
     | Tcl_structure _ | Tcl_open _ -> _none
   in
-
-  let update_overr b s =
-    let l = hashtbl_find_list content !last_class in
-    let l = (b, s) :: List.filter (fun (_, f) -> f <> s) l in
-    hashtbl_replace_list content !last_class l;
-  in
-
-  begin match f.cf_desc with
+  match f.cf_desc with
   | Tcf_inherit (_, cl_exp, _, _, l) ->
       let path = locate cl_exp in
       if path != _none then begin
-        hashtbl_add_unique_to_list inheritances !last_class path;
         let state = State.get_current () in
         let builddir = State.File_infos.get_builddir state.file_infos in
         List.iter
@@ -361,6 +319,10 @@ let class_field f =
             |> ignore
           )
           l;
+        State.Methods.inherit_initializer
+          ~builddir ~obj_loc:!last_class
+          ~inherited_path:path state.methods
+        |> ignore;
         add_equal f.cf_loc.Location.loc_start cl_exp.cl_loc.Location.loc_start;
         match get_loc path with
         | None ->
@@ -372,32 +334,27 @@ let class_field f =
             at_eof := equal :: !at_eof
         | Some loc ->
             add_equal cl_exp.cl_loc.Location.loc_start loc
-      end;
-      List.iter (fun (s, _) -> update_overr false s) l
+      end
 
   | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
-      let erase_from_tbl tbl =
-        hashtbl_find_list tbl !last_class
-        |> List.filter (fun (_, path) -> get_method path <> txt)
-        |> hashtbl_replace_list tbl !last_class
-      in
-      erase_from_tbl content;
       let state = State.get_current () in
       let builddir = State.File_infos.get_builddir state.file_infos in
       State.Methods.mark_virtual ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
       |> ignore
   | Tcf_method ({txt; _}, _, _) ->
-      update_overr true txt;
       let state = State.get_current () in
       let builddir = State.File_infos.get_builddir state.file_infos in
       State.Methods.mark_defined ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
       |> ignore
 
+  | Tcf_initializer _ ->
+      let state = State.get_current () in
+      let builddir = State.File_infos.get_builddir state.file_infos in
+      State.Methods.add_initializer
+        ~builddir ~obj_loc:!last_class state.methods
+      |> ignore
+
   | _ -> ()
-  end;
-  hashtbl_replace_list
-    content (repr_loc !last_class)
-    (hashtbl_find_list content !last_class)
 
 
 let arg typ args =
@@ -438,77 +395,11 @@ let coerce expr typ =
 
 
 let prepare_report () =
-
   List.iter (fun f -> f ()) !at_eof;
-
   let state = State.get_current () in
-  let apply_self meth loc1 loc2 =
-    let loc1 = repr_loc loc1
-    and loc2 = repr_loc loc2 in
-    hashtbl_find_list (meth_self_ref loc1) meth
-    |> List.iter (fun use_loc ->
-        State.Methods.add_use ~obj_loc:loc2 ~meth_name:meth ~use_loc state.methods
-        |> ignore
-    );
-    hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth;
-  in
-
-  State.Methods.resolve_aliases state.methods |> ignore;
-
-  let sons =
-    Hashtbl.fold
-      (fun loc _ acc -> if not (List.mem loc acc) then loc :: acc else acc)
-      inheritances
-      []
-  in
-
-  List.iter
-    (fun clas ->
-      hashtbl_find_list inheritances clas
-      |> List.iter
-        (fun paren ->
-          get_loc paren |> Option.iter (fun paren ->
-          hashtbl_find_list content clas
-          |> List.iter (fun (_, meth) -> apply_self meth paren clas)
-          )
-        )
-    )
-    sons;
-
-  let spread_ref loc =
-
-    let met = Hashtbl.create 16 in
-    let spread clas paren =
-      get_loc paren |> Option.iter (fun paren ->
-      (hashtbl_find_list content clas)
-      |> List.iter
-        (function
-          | false, meth
-            when not (Hashtbl.mem met meth)
-            && List.exists (fun (_, meth2) -> meth2 = meth) (hashtbl_find_list content paren) ->
-              Hashtbl.add met meth ();
-              let meth_name = meth in
-              let orig_loc = paren in
-              let alias_loc = repr_loc clas in
-              let uses =
-                State.Methods.get_uses ~obj_loc:alias_loc ~meth_name state.methods
-              in
-              List.fold_left
-                (fun meths use_loc ->
-                  State.Methods.add_use ~obj_loc:orig_loc ~meth_name ~use_loc meths
-                )
-                state.methods
-                uses
-              |> State.Methods.remove_uses ~obj_loc:alias_loc ~meth_name
-              |> State.Methods.remove_exported_declaration ~obj_loc:clas ~meth_name:meth
-              |> ignore
-          | _ -> ()
-        )
-      )
-    in
-    List.iter (spread loc) (hashtbl_find_list inheritances loc)
-  in
-  List.iter spread_ref sons
+  State.Methods.resolve_aliases state.methods
+  |> State.Methods.resolve_inheritances
+  |> ignore
 
 
 let report () =

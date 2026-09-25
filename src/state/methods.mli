@@ -72,6 +72,17 @@ val add_use :
     extra use at [use_loc] of [meth_name] declared at [obj_loc].
 *)
 
+val add_self_use :
+  obj_loc:Lexing.position ->
+  meth_name:string ->
+  use_loc:Lexing.position ->
+  t
+  -> t
+(** [add_self_use ~obj_loc ~meth_name ~use_loc meths]
+    is the same as {!add_use} above but for self-referencing uses within
+    an object/class definition.
+*)
+
 val remove_uses : obj_loc:Lexing.position -> ?meth_name:string -> t -> t
 (** [remove_use ~obj_loc ?meth_name meths]
     returns a [t] containing the same the same info as [meths], minus all
@@ -114,6 +125,13 @@ val resolve_aliases : t -> t
     This function is meant to be called once before calling {!get_unused}.
 *)
 
+val resolve_inheritances : t -> t
+(** [resolve_inheritances meths] returns a [t] containing the same info as [meths]
+    with all the uses and self uses propagated to the inherited or overriding
+    method.
+    This function is meant to be called once before calling {!get_unused}.
+*)
+
 val mark_defined :
   builddir:string ->
   obj_loc:Lexing.position ->
@@ -151,6 +169,23 @@ val mark_virtual :
     returns a [t] containing the same info as [meths], plus an indication
     that [meth_name] at [obj_loc] in [builddir] is virtual encountered.
     This overrides any previous status for that method.
+*)
+
+val add_initializer : builddir:string -> obj_loc:Lexing.position -> t -> t
+(** [add_initializer ~builddir ~obj_loc meths]
+    returns a [t] containing the same info as [meths], plus an indication
+    that [obj_loc] in [builddir] defines an initializer.
+*)
+
+val inherit_initializer :
+  builddir:string ->
+  obj_loc:Lexing.position ->
+  inherited_path:string ->
+  t
+  -> t
+(** [inherit_initializer ~builddir ~obj_loc ~inherited_path meths]
+    returns a [t] containing the same info as [meths], plus an indication
+    that [obj_loc] in [builddir] inherits [inherited_path]'s initializer.
 *)
 
 val add_loc_binding : obj_path:string -> obj_loc:Lexing.position -> t -> t
