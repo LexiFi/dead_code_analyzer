@@ -186,10 +186,7 @@ let collect_export path u stock ~obj ~cltyp loc =
         let obj_loc = loc.Location.loc_start in
         let builddir = State.File_infos.get_builddir state.file_infos in
         State.Methods.add_exported_declaration ~obj_loc ~meth_name:id ~builddir ~meth_path state.methods
-        |> ignore;
-        if Option.is_some obj then
-          State.Methods.mark_defined ~obj_loc ~meth_name:id ~builddir state.methods
-          |> ignore
+        |> ignore
     end
   in
 

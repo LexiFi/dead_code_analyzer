@@ -375,6 +375,9 @@ let assoc section (loc1, loc2) =
         |> ignore
     | `Values ->
         State.Values.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.values
+        |> ignore;
+        (* for immediate objects : *)
+        State.Methods.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.methods
         |> ignore
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin

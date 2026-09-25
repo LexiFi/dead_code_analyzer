@@ -1,17 +1,21 @@
-type status =
-  | Undefined (* a method is considered undefined by default *)
+type 'a name_to_a = 'a Utils.StringHash.t
+
+type definition =
   | Defined
   | Inherited of string (* inherited_path *)
   | Virtual
 
-type builddir_to_path = (string * status) Utils.StringHash.t
-type 'a name_to_a = 'a Utils.StringHash.t
-
 type t = {
-  declarations : builddir_to_path name_to_a Utils.LocHash.t;
+  declarations : string name_to_a name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> builddir -> meth_path *)
   uses : Utils.LocSet.t name_to_a Utils.LocHash.t;
     (** obj_loc -> meth_name -> use_loc *)
+  definitions : definition name_to_a name_to_a Utils.LocHash.t;
+    (** obj_loc -> meth_name -> builddir -> definition
+        This is used to keep track of methods whose definition belong
+        to the obj_loc and those that are inherited or virtual.
+        Only defined methods are reported.
+    *)
   aliases : Lexing.position Utils.LocHash.t;
     (** alias_loc -> orig_loc
         NOTE: an alias may be an instance of the class declared at orig_loc
@@ -29,9 +33,10 @@ let create () =
   let open Utils in
   let declarations = LocHash.create 128 in
   let uses = LocHash.create 128 in
+  let definitions = LocHash.create 128 in
   let aliases = LocHash.create 128 in
   let locations = StringHash.create 128 in
-  {declarations; uses; aliases; locations}
+  {declarations; uses; definitions; aliases; locations}
 
 let get_orig_loc ~obj_loc meths =
   let open Utils in
@@ -62,25 +67,41 @@ let find_meth_tbl_or_default tbl ~default_size key =
       LocHash.add tbl key meth_tbl;
       meth_tbl
 
+let find_builddir_tbl_or_default tbl ~default_size key =
+  (* TODO: factorize:
+      same as find_meth_tbl_or_default on StringHash instead of LocHash
+  *)
+  let open Utils in
+  match StringHash.find_opt tbl key with
+  | Some builddir_tbl -> builddir_tbl
+  | None ->
+      let builddir_tbl = StringHash.create default_size in
+      StringHash.add tbl key builddir_tbl;
+      builddir_tbl
+
+let add_definition ~builddir ~obj_loc ~meth_name ~definition meths =
+  let open Utils in
+  let meth_tbl =
+    find_meth_tbl_or_default meths.definitions obj_loc ~default_size:8
+  in
+  let builddir_tbl =
+    find_builddir_tbl_or_default meth_tbl meth_name ~default_size:4
+  in
+  (* Ignore collisions *)
+  StringHash.replace builddir_tbl builddir definition;
+  meths
+
 let add_exported_declaration ~builddir ~obj_loc ~meth_name ~meth_path meths =
   let open Utils in
   let meth_tbl =
     find_meth_tbl_or_default meths.declarations obj_loc ~default_size:8
   in
   let builddir_tbl =
-    (* TODO: factorize:
-        same as find_meth_tbl_or_default on StringHash instead of LocHash
-    *)
-    match StringHash.find_opt meth_tbl meth_name with
-    | Some tbl -> tbl
-    | None ->
-        let tbl = Utils.StringHash.create 4 in
-        StringHash.add meth_tbl meth_name tbl;
-        tbl
+    find_builddir_tbl_or_default meth_tbl meth_name ~default_size:4
   in
   (* Collisions at the same meth_name at the obj_loc in the same builddir
      should not happen. *)
-  StringHash.replace builddir_tbl builddir (meth_path, Undefined);
+  StringHash.replace builddir_tbl builddir meth_path;
   meths
 
 let remove_exported_declaration ?builddir ~obj_loc ~meth_name meths =
@@ -131,7 +152,6 @@ let get_meth_path ~builddir ~obj_loc ~meth_name meths =
   in
   Option.bind builddir_tbl (fun builddir_tbl ->
     StringHash.find_opt builddir_tbl builddir)
-  |> Option.map fst
 
 let add_use ~obj_loc ~meth_name ~use_loc meths =
   let open Utils in
@@ -169,34 +189,26 @@ let get_uses ~obj_loc ~meth_name meths =
     )
   |> Option.value ~default:[]
 
-let replace_status ~builddir ~obj_loc ~meth_name status meths =
-  let open Utils in
-  let ( let$ ) x f = Option.iter f x in
-  let$ meth_tbl = LocHash.find_opt meths.declarations obj_loc in
-  let$ builddir_tbl = StringHash.find_opt meth_tbl meth_name in
-  let$ (meth_path, _) = StringHash.find_opt builddir_tbl builddir in
-  StringHash.replace builddir_tbl builddir (meth_path, status)
-
 let mark_defined ~builddir ~obj_loc ~meth_name meths =
-  replace_status ~builddir ~obj_loc ~meth_name Defined meths;
-  meths
+  add_definition ~builddir ~obj_loc ~meth_name
+    ~definition:Defined meths
 
 let mark_inherited ~builddir ~obj_loc ~meth_name ~inherited_path meths =
-  replace_status ~builddir ~obj_loc ~meth_name (Inherited inherited_path) meths;
-  meths
+  add_definition ~builddir ~obj_loc ~meth_name
+    ~definition:(Inherited inherited_path) meths
 
 let mark_virtual ~builddir ~obj_loc ~meth_name meths =
-  replace_status ~builddir ~obj_loc ~meth_name Virtual meths;
-  meths
+  add_definition ~builddir ~obj_loc ~meth_name
+    ~definition:Virtual meths
 
 let is_marked_defined ~builddir ~obj_loc ~meth_name meths =
   let open Utils in
   let ( let* ) x f = Option.bind x f in
   let is_defined =
-    let* meth_tbl = LocHash.find_opt meths.declarations obj_loc in
+    let* meth_tbl = LocHash.find_opt meths.definitions obj_loc in
     let* builddir_tbl = StringHash.find_opt meth_tbl meth_name in
-    let* (_, status) = StringHash.find_opt builddir_tbl builddir in
-    Some (status = Defined)
+    let* definition = StringHash.find_opt builddir_tbl builddir in
+    Some (definition = Defined)
   in
   Option.value ~default:false is_defined
 
@@ -236,11 +248,33 @@ let resolve_aliases meths =
           alias_use_tbl
           meths
   in
+  let move_definitions ~alias_loc ~orig_loc meths =
+    match LocHash.find_opt meths.definitions alias_loc with
+    | None -> meths
+    | Some meth_tbl ->
+        let meths =
+          StringHash.fold
+            (fun meth_name builddir_tbl meths ->
+              StringHash.fold
+                (fun builddir definition meths ->
+                  add_definition ~builddir ~obj_loc:orig_loc ~meth_name
+                    ~definition meths
+                )
+                builddir_tbl
+                meths
+            )
+            meth_tbl
+            meths
+        in
+        LocHash.remove meths.definitions alias_loc;
+        meths
+  in
   LocHash.fold
     (fun alias_loc _ meths ->
       let orig_loc = get_orig_loc ~obj_loc:alias_loc meths in
-      let meths = copy_uses ~alias_loc ~orig_loc meths in
-      remove_exported_declarations ~obj_loc:alias_loc meths
+      copy_uses ~alias_loc ~orig_loc meths
+      |> move_definitions ~alias_loc ~orig_loc
+      |> remove_exported_declarations ~obj_loc:alias_loc
     )
     meths.aliases
     meths
