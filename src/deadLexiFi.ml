@@ -120,16 +120,15 @@ module Extension = struct
     in
     dyn_rec := (name, e.exp_type, call_site) :: !dyn_rec
 
-  let prepare_report decs =
+  let prepare_report () =
     let state = State.get_current () in
-    let sections = state.config.sections in
     List.iter
       (fun (strin, pos) ->
         hashtbl_find_list str strin
         |> List.iter
           (fun loc ->
-            if exported sections.exported_values loc then
-              Utils.LocHash.add_set references loc pos
+              State.Values.add_use ~val_loc:loc ~use_loc:pos state.values
+              |> ignore
           )
       )
       !used;
@@ -162,20 +161,21 @@ module Extension = struct
       | _ -> ()
     in
     List.iter process !dyn_rec;
-    Hashtbl.iter
-      (fun loc (_, path) ->
+    List.iter
+      (fun (cf_loc, _, cf_path) ->
         let rec get_type s pos =
           if pos = 0 then s
           else if s.[pos] = '.' then String.sub s 0 pos
           else get_type s (pos - 1)
         in
         List.iter
-          ( if exported ~is_type:true sections.types loc then Utils.LocHash.add_set references loc
-            else ignore
+          (fun use_loc ->
+            State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
+            |> ignore
           )
-          (hashtbl_find_list dyn_used (get_type path (String.length path - 1)))
+          (hashtbl_find_list dyn_used (get_type cf_path (String.length cf_path - 1)))
       )
-      decs
+      (State.Ctors_fields.get_exported_declarations state.ctors_fields)
 
 end
 

@@ -36,6 +36,18 @@ let remove_exported_declaration ~builddir ~cf_loc ctors_fields =
 let is_exported_declaration ~cf_loc ctors_fields =
   Utils.LocHash.mem ctors_fields.declarations cf_loc
 
+let get_exported_declarations ctors_fields =
+  let open Utils in
+  LocHash.fold
+    (fun cf_loc builddir_tbl acc ->
+      StringHash.fold
+        (fun builddir cf_path acc -> (cf_loc, builddir, cf_path)::acc)
+        builddir_tbl
+        acc
+    )
+    ctors_fields.declarations
+    []
+
 let get_cf_path ~builddir ~cf_loc ctors_fields =
   let open Utils in
   match LocHash.find_opt ctors_fields.declarations cf_loc with

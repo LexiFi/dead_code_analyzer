@@ -70,12 +70,7 @@ let is_type s =
 
                 (********   PROCESSING  ********)
 
-let collect_export path _u stock t =
-
-  let _stock =
-    if stock == DeadCommon.decs then decs
-    else stock
-  in
+let collect_export path t =
 
   let save id loc =
     let id = Ident.name id in
@@ -412,7 +407,7 @@ let wrap f x =
     f x
   else ()
 
-let collect_export path u stock t = wrap (collect_export path u stock) t
+let collect_export path t = wrap (collect_export path) t
 let tstr typ = wrap tstr typ
 let prepare_report () = wrap prepare_report ()
 let report () = wrap report ()

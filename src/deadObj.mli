@@ -17,8 +17,6 @@ val last_class : Lexing.position ref
 
 val collect_export :
   string list
-  -> string
-  -> (Lexing.position, string * string) Hashtbl.t
   -> ?obj: Types.type_expr
   -> ?cltyp: Types.class_type
   -> Location.t

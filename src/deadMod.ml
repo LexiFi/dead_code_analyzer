@@ -85,10 +85,10 @@ let expr m = match m.mod_desc with
           let use_loc = m.mod_loc.Location.loc_start in
           if elt_is_expected elt then
             match elt with
-            | `Value (_, val_loc) when exported sections.exported_values val_loc ->
+            | `Value (_, val_loc) when exported `Values val_loc ->
                 State.Values.add_use ~val_loc ~use_loc state.values
                 |> ignore
-            | `Type (_, cf_loc) when exported ~is_type:true sections.types cf_loc ->
+            | `Type (_, cf_loc) when exported `Types cf_loc ->
                 State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
                 |> ignore
             | `Method _ when Config.must_report_section sections.methods ->

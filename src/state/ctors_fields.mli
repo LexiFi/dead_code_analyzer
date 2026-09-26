@@ -34,6 +34,12 @@ val is_exported_declaration : cf_loc:Lexing.position -> t -> bool
     Otherwise, it returns [false].
 *)
 
+val get_exported_declarations : t -> (Lexing.position * string * string) list
+(** [get_exported_declarations ctors_fields] returns the list of exported
+    declarations. The elements are the [cf_loc], [builddir], and [cf_path]
+    that were added via {!add_exported_declaration} above.
+*)
+
 val get_cf_path :
   builddir:string ->
   cf_loc:Lexing.position ->

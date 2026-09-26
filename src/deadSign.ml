@@ -13,16 +13,17 @@ let eof () =
 let export_module ~path mt =
   Hashtbl.add exported_modules path mt
 
-let export_object ~path ~comp_unit ~stock id value =
+let export_object ~path id value =
   (* export a value as an object *)
   let path = id :: path in
   let obj = value.Types.val_type in
   let loc = value.Types.val_loc in
-  DeadObj.collect_export path comp_unit stock ~obj loc
+  DeadObj.collect_export path ~obj loc
 
-let export_value ~path ~comp_unit ~stock id value =
-  export_object ~path ~comp_unit ~stock id value;
+let export_value ~path id value =
+  export_object ~path id value;
   !DeadLexiFi.sig_value value;
+  let state = State.get_current () in
   let is_defined_in_comp_unit loc =
     (* a .cmti file can contain locations from other files.
       For instance:
@@ -32,10 +33,10 @@ let export_value ~path ~comp_unit ~stock id value =
     let loc_unit =
       Utils.Filepath.unit loc.Location.loc_start.Lexing.pos_fname
     in
+    let comp_unit = State.File_infos.get_sourceunit state.file_infos in
     not loc.Location.loc_ghost
     && (String.equal comp_unit loc_unit)
   in
-  let state = State.get_current () in
   let loc = value.Types.val_loc in
   if Config.must_report_section state.config.sections.exported_values
       && DeadCommon.check_underscore id
@@ -49,15 +50,15 @@ let export_value ~path ~comp_unit ~stock id value =
     State.Values.add_exported_declaration ~val_loc ~builddir ~val_path state.values
     |> ignore
 
-let export_type ~path ~comp_unit ~stock id t =
+let export_type ~path id t =
   let path = id :: path in
-  DeadType.collect_export path comp_unit stock t
+  DeadType.collect_export path t
 
-let export_class ~path ~comp_unit ~stock id cd =
+let export_class ~path id cd =
   let path = id :: path in
   let cltyp = cd.Types.cty_type in
   let loc = cd.Types.cty_loc in
-  DeadObj.collect_export path comp_unit stock ~cltyp loc
+  DeadObj.collect_export path ~cltyp loc
 
 
 let modtype ~on_mismatch (mt : Typedtree.module_type) =
@@ -102,7 +103,7 @@ let rec correct_export : Types.signature_item -> unit = function
   | _ -> ()
 
 
-let collect_export_from_signature ~path ~comp_unit signature =
+let collect_export_from_signature ~path signature =
   let state = State.get_current () in
   let mark_modtype_elements mt =
     (* For optional arguments, every use is stored during the analysis.
@@ -120,25 +121,22 @@ let collect_export_from_signature ~path ~comp_unit signature =
 
     | Tsig_value {val_id; val_loc; val_val; _}
       when not val_loc.Location.loc_ghost ->
-        let stock = DeadCommon.decs in
         let id = Ident.name val_id in
-        export_value ~path ~comp_unit ~stock id val_val
+        export_value ~path id val_val
 
     | Tsig_type (_, type_decls)->
-        let stock = DeadCommon.decs in
         List.iter
           (fun Typedtree.{typ_id; typ_type; _} ->
             let id = Ident.name typ_id in
-            export_type ~path ~comp_unit ~stock id typ_type
+            export_type ~path id typ_type
           )
           type_decls
 
     | Tsig_class class_descs ->
-        let stock = DeadCommon.decs in
         List.iter
           (fun {Typedtree.ci_id_class; ci_decl; _} ->
             let id = Ident.name ci_id_class in
-            export_class ~path ~comp_unit ~stock id ci_decl
+            export_class ~path id ci_decl
           )
           class_descs
 
@@ -157,7 +155,7 @@ let collect_export_from_signature ~path ~comp_unit signature =
   collect_signature path signature
 
 
-let collect_export_from_structure ~path ~comp_unit structure =
+let collect_export_from_structure ~path structure =
   let met = Hashtbl.create 64 in
   let export export_fn ~path id param =
     let path_key = id :: path in
@@ -165,8 +163,7 @@ let collect_export_from_structure ~path ~comp_unit structure =
     | Some _ -> () (* the current path is shadowed *)
     | None ->
         Hashtbl.add met path_key (); (* shadows other occurences of path *)
-        let stock = DeadCommon.decs in
-        export_fn ~path ~comp_unit ~stock id param
+        export_fn ~path id param
   in
   (* Traversal *)
   let open Typedtree in
@@ -249,7 +246,7 @@ let collect_export_from_structure ~path ~comp_unit structure =
     | Tmod_constraint (_, _, Tmodtype_explicit mt, _) ->
         export_module ~path mt.mty_type;
         Utils.typedtree_signature_of_modtype mt
-        |> Option.iter (collect_export_from_signature ~path ~comp_unit)
+        |> Option.iter (collect_export_from_signature ~path)
 
   and collect_module_binding ~path = function
     | {mb_id = Some id; mb_expr; _} ->

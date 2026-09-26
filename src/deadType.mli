@@ -62,8 +62,6 @@ val is_type : string -> bool
 
 val collect_export :
   string list
-  -> string
-  -> (Lexing.position, string * string) Hashtbl.t
   -> Types.type_declaration
   -> unit
 

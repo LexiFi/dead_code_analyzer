@@ -12,14 +12,8 @@
 (* longest paths known *)
 let abspath : (string, string) Hashtbl.t = Hashtbl.create 256
 
-(* all exported value declarations *)
-let decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
-
 (* all value declarations re-exported by module types uses *)
 let implicit_decs : (Lexing.position, unit) Hashtbl.t = Hashtbl.create 256
-(* all value references *)
-let references : Utils.LocSet.t Utils.LocHash.t  = Utils.LocHash.create 256
-
 (* link from fields (record/variant) paths and locations *)
 let fields : (string, Lexing.position) Hashtbl.t = Hashtbl.create 256
 
@@ -116,18 +110,19 @@ let rec get_deep_desc typ =
   | t -> t
 
 
-let exported ?(is_type = false) (flag : Config.Sections.main_section) loc =
+let exported section loc =
   let state = State.get_current () in
-  let fn = loc.Lexing.pos_fname in
-  let sourceunit = State.File_infos.get_sourceunit state.file_infos in
-  Config.must_report_section flag
-  && Utils.LocHash.find_set references loc
-     |> Utils.LocSet.cardinal <= Config.get_main_threshold flag
-  && (is_type
-    || state.config.internal
-    || fn.[String.length fn - 1] = 'i'
-    || sourceunit <> Utils.Filepath.unit fn
-    || not (file_exists (fn ^ "i")))
+  match section with
+  | `Types ->
+      Config.must_report_section state.config.sections.types
+  | `Values ->
+      let fn = loc.Lexing.pos_fname in
+      let sourceunit = State.File_infos.get_sourceunit state.file_infos in
+      Config.must_report_section state.config.sections.exported_values
+      && (state.config.internal
+          || fn.[String.length fn - 1] = 'i'
+          || sourceunit <> Utils.Filepath.unit fn
+          || not (file_exists (fn ^ "i")))
 
 
 (* Section printer:
@@ -452,67 +447,3 @@ let report s ~(opt: Config.Sections.opt_args_section) ?(extra = "Called") l
   end;
   if continue nb_call then reporter (nb_call + 1)
   else (print_newline () |> separator)
-
-
-let report_basic ?folder decs title (flag: Config.Sections.main_section) =
-  let folder = match folder with
-    | Some folder -> folder
-    | None -> fun nb_call -> fun loc (builddir, path) acc ->
-        let fn = Filename.concat builddir loc.Lexing.pos_fname in
-        let rec cut_main s pos =
-          if pos = String.length s then s
-          else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
-          else cut_main s (pos + 1)
-        in
-        let test elt =
-          let set = Utils.LocHash.find_set references elt in
-          if Utils.LocSet.cardinal set = nb_call then begin
-              let l = Utils.LocSet.elements set in
-              Some ((fn, cut_main path 0, loc, l) :: acc)
-            end
-          else None
-        in match test loc with
-          | exception Not_found when nb_call = 0 ->
-                (fn, cut_main path 0, loc, []) :: acc
-          | exception Not_found -> acc
-          | None -> acc
-          | Some l -> l
-  in
-  let rec reportn nb_call =
-    let l =
-     Hashtbl.fold (folder nb_call) decs []
-      |> List.fast_sort (fun (fn1, path1, loc1, _) (fn2, path2, loc2, _) ->
-          compare (fn1, loc1, path1) (fn2, loc2, path2))
-    in
-
-    let change =
-      let fn =
-        match l with
-        | (fn, _, _, _)::_ -> fn
-        | _ -> _none
-      in
-      dir fn
-    in
-    let pretty_print = fun (fn, path, loc, call_sites) ->
-      if change fn then print_newline ();
-      prloc ~fn loc;
-      print_string path;
-      if call_sites <> [] && Config.must_report_call_sites flag then
-        print_string "    Call sites:";
-      print_newline ();
-      if Config.must_report_call_sites flag then begin
-        List.fast_sort compare call_sites
-        |> List.iter (pretty_print_call ());
-        if nb_call <> 0 then print_newline ()
-      end
-    in
-
-    let continue nb_call = nb_call < Config.get_main_threshold flag in
-    let s =
-      if nb_call = 0 then title
-      else "ALMOST " ^ title
-    in
-    let state = State.get_current () in
-    report s ~opt:(state.config.sections.opta) l continue nb_call pretty_print reportn
-
-  in reportn 0

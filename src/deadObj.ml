@@ -111,7 +111,7 @@ let collect_from_include ?incl_path ~rev_curr_path path =
   |> ignore
 
 
-let collect_export path _u _stock ~obj ~cltyp loc =
+let collect_export path ~obj ~cltyp loc =
 
   let state = State.get_current () in
   let pos = loc.Location.loc_start in
@@ -407,8 +407,8 @@ let wrap f x =
     f x
   else ()
 
-let collect_export path u stock ?obj ?cltyp loc =
-  wrap (collect_export path u stock ~obj ~cltyp) loc
+let collect_export path ?obj ?cltyp loc =
+  wrap (collect_export path ~obj ~cltyp) loc
 
 let collect_references ~meth ~call_site exp =
   wrap (collect_references ~meth ~call_site) exp

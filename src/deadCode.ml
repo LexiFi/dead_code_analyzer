@@ -159,7 +159,7 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
           let lab : Types.label_description = lab in
           #endif
           let lab_loc = lab.lbl_loc.Location.loc_start in
-          if exported ~is_type:true sections.types lab_loc then
+          if exported `Types lab_loc then
             DeadType.collect_references lab_loc pat_loc
         )
         l
@@ -184,13 +184,13 @@ let expr super self e =
       !DeadLexiFi.ttype_of e
 
   | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
-    when exported sections.exported_values loc ->
+    when exported `Values loc ->
       State.Values.add_use ~val_loc:loc ~use_loc:exp_loc state.values
       |> ignore
 
   | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
   | Texp_construct (_, {cstr_loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _)
-    when exported ~is_type:true sections.types loc ->
+    when exported `Types loc ->
       DeadType.collect_references loc exp_loc
 
   | Texp_send (e2, Tmeth_name meth) ->
@@ -328,20 +328,14 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
-let read_interface fn export_collector state =
+let read_interface export_collector state =
   regabs state;
   if Config.must_report_main state.config then
-    let comp_unit =
-      if State.File_infos.has_sourcepath state.file_infos then
-        State.File_infos.get_sourceunit state.file_infos
-      else
-      Utils.Filepath.unit fn
-    in
     let module_id =
       State.File_infos.get_modname state.file_infos
     in
     let path = [module_id] in
-    export_collector ~path ~comp_unit;
+    export_collector ~path;
     last_loc := Lexing.dummy_pos
 
 
@@ -458,10 +452,10 @@ let load_file fn state =
     | Neither -> report_error (fn ^ ": missing signature")
     | Cmti {sign; _} | Cmt {sign = Some sign; _} ->
         let export_collector = DeadSign.collect_export_from_signature sign in
-        read_interface fn export_collector state
+        read_interface export_collector state
     | Cmt {strc; _} ->
         let export_collector = DeadSign.collect_export_from_structure strc in
-        read_interface fn export_collector state
+        read_interface export_collector state
     )
   in
   let process_implementation fn =
@@ -700,7 +694,7 @@ try
           file_string;
     in
 
-    !DeadLexiFi.prepare_report DeadType.decs;
+    !DeadLexiFi.prepare_report ();
     DeadType.prepare_report ();
     let sections = state.config.sections in
     if Config.must_report_section sections.exported_values then report_unused_exported ();
