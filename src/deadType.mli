@@ -7,8 +7,6 @@
 (*                                                                         *)
 (***************************************************************************)
 
-val decs : (Lexing.position, string * string) Hashtbl.t
-
 val dependencies : (Lexing.position * Lexing.position) list ref
 
 val to_string : Types.type_expr -> string

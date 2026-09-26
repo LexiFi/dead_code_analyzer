@@ -17,8 +17,6 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let decs = Hashtbl.create 256
-
 let dependencies = ref []   (* like the cmt value_dependencies but for types *)
 
 let equivalences = ref []   (* t1 = t2 *)
