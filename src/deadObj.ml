@@ -22,9 +22,6 @@ let at_eof = ref []
 
 let last_class = ref Lexing.dummy_pos            (* last class met *)
 
-let defined = Hashtbl.create 16
-
-
 
                 (********   HELPERS   ********)
 
@@ -41,6 +38,7 @@ let add_path obj_path obj_loc =
 
 
 let get_loc path =
+  let state = State.get_current () in
   let path =
     let exported_path =
       Hashtbl.to_seq_values incl
@@ -49,10 +47,8 @@ let get_loc path =
     match exported_path with
     | Some (_, exported_path) -> exported_path
     | None ->
-      try Hashtbl.find defined path
-      with Not_found -> path
+        State.Methods.get_orig_path ~obj_path:path state.methods
   in
-  let state = State.get_current () in
   State.Methods.find_loc ~obj_path:path state.methods
   |> Option.map repr_loc
 
@@ -104,7 +100,8 @@ let locate expr =
 
 
 let eof () =
-  Hashtbl.reset defined;
+  let state = State.get_current () in
+  State.Methods.reset_path_aliases state.methods |> ignore;
   last_class := Lexing.dummy_pos
 
 
@@ -114,13 +111,15 @@ let eof () =
 
 let collect_export path u stock ~obj ~cltyp loc =
 
+  let state = State.get_current () in
   let pos = loc.Location.loc_start in
 
   begin match List.rev path with
   | h :: t ->
       let short = String.concat "." t in
       let path = h ^ "." ^ short in
-      Hashtbl.add defined short path;
+      State.Methods.add_path_alias ~alias_path:short ~orig_path:path state.methods
+      |> ignore;
       add_path path pos
   | _ -> ()
   end;
@@ -134,7 +133,6 @@ let collect_export path u stock ~obj ~cltyp loc =
   in
 
   let save id =
-    let state = State.get_current () in
     let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
     (* TODO: resolve the builddir ('/workspace_root') in the case of dune
        compiled projects. Without it, looking up for an existing csml below will
@@ -202,19 +200,20 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
   in
   let modname = State.File_infos.get_modname state.file_infos in
   let path = modname ^ "." ^ short in
-  if not (Hashtbl.mem defined short) then
-    Hashtbl.add defined short path
-  else begin
-    (* using begin ... end because otherwise make_dep below is considered
-       part of this else *)
-    let loc =
-      match get_loc short with
-      | None -> get_loc path
-      | some -> some
-    in
-    match loc with
-    | Some loc when loc <> !last_class -> add_equal !last_class loc
-    | _ -> add_path path !last_class
+  begin
+    match State.Methods.find_orig_path ~obj_path:short state.methods with
+    | None ->
+        State.Methods.add_path_alias ~alias_path:short ~orig_path:path state.methods
+        |> ignore
+    | Some _ ->
+        let loc =
+          match get_loc short with
+          | None -> get_loc path
+          | some -> some
+        in
+        match loc with
+        | Some loc when loc <> !last_class -> add_equal !last_class loc
+        | _ -> add_path path !last_class
   end;
 
   let rec make_dep ci_expr =
@@ -293,11 +292,11 @@ let class_structure cl_struct =
 
 
 let class_field f =
+  let state = State.get_current () in
   let rec locate cl_exp = match cl_exp.cl_desc with
     | Tcl_ident (path, _, _) ->
         let path = Path.name path in
-        if Hashtbl.mem defined path then Hashtbl.find defined path
-        else path
+        State.Methods.get_orig_path ~obj_path:path state.methods
     | Tcl_fun (_, _, _, cl_exp, _)
     | Tcl_apply (cl_exp, _)
     | Tcl_let (_, _, _, cl_exp)
@@ -308,7 +307,6 @@ let class_field f =
   | Tcf_inherit (_, cl_exp, _, _, l) ->
       let path = locate cl_exp in
       if path != _none then begin
-        let state = State.get_current () in
         let builddir = State.File_infos.get_builddir state.file_infos in
         List.iter
           (fun (meth_name, _) ->

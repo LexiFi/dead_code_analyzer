@@ -35,6 +35,14 @@ type t = {
         a Tcf_inherit knows the shape and name of the inherited class but
         not the location of its definition or declaration.
     *)
+  path_aliases : string Utils.StringHash.t;
+    (** local_path -> global_path
+        This is used to refer to the fully qualified version of a locally
+        defined object/class.
+        This is particularly useful for included definitions, which are
+        relocated within the module where the include happen, to point to
+        the actual definitions in conjunction with {!locations} above.
+    *)
 }
 
 let create () =
@@ -45,7 +53,8 @@ let create () =
   let definitions = LocHash.create 128 in
   let aliases = LocHash.create 128 in
   let locations = StringHash.create 128 in
-  {declarations; uses; self_uses; definitions; aliases; locations}
+  let path_aliases = StringHash.create 128 in
+  {declarations; uses; self_uses; definitions; aliases; locations; path_aliases}
 
 let get_orig_loc ~obj_loc meths =
   let open Utils in
@@ -66,6 +75,21 @@ let add_loc_binding ~obj_path ~obj_loc meths =
 
 let find_loc ~obj_path meths =
   Utils.StringHash.find_opt meths.locations obj_path
+
+let add_path_alias ~orig_path ~alias_path meths =
+  Utils.StringHash.add meths.path_aliases alias_path orig_path;
+  meths
+
+let find_orig_path ~obj_path meths =
+  Utils.StringHash.find_opt meths.path_aliases obj_path
+
+let get_orig_path ~obj_path meths =
+  find_orig_path ~obj_path meths
+  |> Option.value ~default:obj_path
+
+let reset_path_aliases meths =
+  Utils.StringHash.reset meths.path_aliases;
+  meths
 
 let find_meth_tbl_or_default tbl ~default_size key =
   let open Utils in

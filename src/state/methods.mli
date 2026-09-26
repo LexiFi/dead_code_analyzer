@@ -208,4 +208,36 @@ val get_orig_loc : obj_loc:Lexing.position -> t -> Lexing.position
 (** [get_orig_loc ~obj_loc meths] returns the location of the original
     declaration of the object/class defined at [obj_loc].
     It does this by following the aliases added via {!add_alias} above.
+    [get_orig_loc] is idempotent.
+*)
+
+val add_path_alias : orig_path:string -> alias_path:string -> t -> t
+(** [add_path_alias ~orig_path ~alias_path meths] returns a [t] containing the
+    same info as [meths], plus an extra alias [alias_path] for [orig_path].
+    Path aliases are useful to retrieve the "exported" path of included objects
+    and classes, and the original definition of a local path in conjunction
+    with {!find_loc} above.
+*)
+
+val find_orig_path : obj_path:string -> t -> string option
+(** [find_orig_path ~obj_path meths] returns [Some orig_path] if the
+    [obj_path] was added as an alias via {!add_path_alias} above.
+    Otherwise, it returns [None].
+*)
+
+val get_orig_path : obj_path:string -> t -> string
+(** [get_orig_path ~obj_path meths] is the same as {!find_orig_path} above
+    but returns [orig_path] if [obj_path] is an alias, and [obj_path]
+    otherwise.
+    NOTE: unlike {!get_orig_loc}, it does not traverse the aliases but stops
+          at the first. I.e. [get_orig_path] is not idempotent.
+*)
+
+val reset_path_aliases : t -> t
+(** [reset_path_aliases meths] returns a [t] containing the same info as
+    [meths] minus all the path aliases.
+    Path aliases are a "local" construct which have far greater chances of
+    collision in between compilation units than locations. Thus, it is
+    recommended to discard all the path aliases before analyzing a new
+    compilation unit.
 *)
