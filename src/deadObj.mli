@@ -27,6 +27,11 @@ val collect_export :
 val correct_export : Location.t -> unit
 (** Undo export collection for the specified location *)
 
+val collect_from_include :
+  ?incl_path: Path.t
+  -> rev_curr_path:string list
+  -> string list (* the included element path *)
+  -> unit
 
 val collect_references :
   meth: string

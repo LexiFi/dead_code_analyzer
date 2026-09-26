@@ -177,16 +177,6 @@ let rec add_type_eq_internal ~internal_path ~component_path ~component_name =
           add_type_eq_internal ~internal_path ~component_path ~component_name
 
 
-let normalize_mod_path rev_current_path mod_path =
-  let path = Path.name mod_path in
-  if Path.head mod_path |> Ident.global then
-    (* External mod_path. Keep as is *)
-    path :: []
-  else
-    (* Internal mod_path *)
-    path :: rev_current_path
-
-
 let collect_eq_from_module_alias
     ~rev_alias_path ~original_path ~sub_path type_decl
 =
@@ -196,7 +186,7 @@ let collect_eq_from_module_alias
   in
   let internal_path =
     let normalized_original_path =
-      normalize_mod_path (List.tl rev_alias_path) original_path
+      Utils.normalize_mod_path ~rev_curr_path:(List.tl rev_alias_path) original_path
     in
     match normalized_original_path with
     | original_path :: rev_path ->
@@ -230,7 +220,7 @@ let collect_eq_from_include ~incl_path ~path type_decl =
   in
   let internal_path =
     let normalized_incl_path =
-      normalize_mod_path rev_curr_path incl_path
+      Utils.normalize_mod_path ~rev_curr_path incl_path
     in
     match normalized_incl_path with
     | incl_path :: rev_path ->

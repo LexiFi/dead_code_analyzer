@@ -39,6 +39,22 @@ val typedtree_signature_of_modtype :
     See {!signature_of_modtype} above for more information
 *)
 
+val normalize_mod_path : rev_curr_path:string list -> Path.t -> string list
+(** [normalize_mod_path ~rev_curr_path mod_path] returns a new reversed
+    path which either points within the current compilation unit
+    or outside it.
+    The head is always the [mod_path].
+    [rev_curr_path] is a reversed path. A reversed path is one with the
+    contained module at the head and the containing module at the tail.
+    E.g.
+      [normalize_mod_path ~rev_curr_path:["Sub"; "Mod"; "Comp_Unit" mod_path]
+      with [mod_path]'s string representation equal to ["Module.Sub"],
+      returns
+      - [["Module.Sub"]] if [Module] is a global identifier;
+      - [["Module.Sub"; "Sub"; "Mod"; "Comp_Unit"]] otherwise, pointing to
+        module [Comp_Unit.Mod.Sub.Module.Sub]
+*)
+
 module StringSet : Set.S with type elt = String.t
 module StringHash : Hashtbl.S with type key = String.t
 

@@ -61,6 +61,15 @@ let rec typedtree_signature_of_modtype ?(select_param = false) modtype =
   | Tmty_functor (Named (_, _, t), _) -> typedtree_signature_of_modtype t
   | _ -> None
 
+let normalize_mod_path ~rev_curr_path mod_path =
+  let path = Path.name mod_path in
+  if Path.head mod_path |> Ident.global then
+    (* External mod_path. Keep as is *)
+    path :: []
+  else
+    (* Internal mod_path *)
+    path :: rev_curr_path
+
 module StringSet = Set.Make(String)
 module StringHash =
   Hashtbl.Make(struct

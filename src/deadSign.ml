@@ -304,7 +304,7 @@ let collect_export_from_structure ~path ~comp_unit structure =
 
 
 let collect_from_include incl_decl =
-  (* Get incl_decl's signature to export classes and objects in DeadCommon.incl.
+  (* Get incl_decl's signature to collect included classes and objects.
      If the incl_decl is an ident, then store the equivalence between its
      types and those of the current compilation unit.
   *)
@@ -342,28 +342,21 @@ let collect_from_include incl_decl =
     get_mod_path_and_signature incl_decl.Typedtree.incl_mod
   in
   (* path to the module where include happens *)
-  let current_path =
+  let rev_curr_path =
     let state = State.get_current () in
     let module_id = State.File_infos.get_modname state.file_infos in
     !DeadCommon.mods @ [module_id]
   in
-  (* comp_unit = DeadCommon._include enables exports from outside the current
-     compilation unit *)
-  let comp_unit = DeadCommon._include in
-  (* exports from include are stored in their dedicated stock*)
-  let stock = DeadCommon.incl in
   let rec collect_from_sig_item ~path sig_item =
     (* [path] is the path within the included module *)
     match (sig_item : Types.signature_item) with
-    | Sig_value (id, ({val_loc; _} as value), _)
+    | Sig_value (id, {val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
-        let path = path @ current_path in
-        let id = Ident.name id in
-        export_object ~path ~comp_unit ~stock id value
-    | Sig_class (id, cd, _, _) ->
-        let path = path @ current_path in
-        let id = Ident.name id in
-        export_class ~path ~comp_unit ~stock id cd
+        let path = Ident.name id :: path in
+        DeadObj.collect_from_include ?incl_path ~rev_curr_path path
+    | Sig_class (id, _, _, _) ->
+        let path = Ident.name id :: path in
+        DeadObj.collect_from_include ?incl_path ~rev_curr_path path
     | Sig_module (id, _, {Types.md_type; _}, _, _) ->
         let path = Ident.name id :: path in
         Utils.signature_of_modtype md_type

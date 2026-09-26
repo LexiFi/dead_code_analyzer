@@ -428,8 +428,7 @@ let eof loc_dep =
   VdNode.eof ();
   DeadObj.eof ();
   DeadSign.eof ();
-  DeadType.dependencies := [];
-  Hashtbl.reset incl
+  DeadType.dependencies := []
 
 
 (* Starting point *)

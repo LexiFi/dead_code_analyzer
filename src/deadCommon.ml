@@ -17,10 +17,6 @@ let decs : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
 
 (* all value declarations re-exported by module types uses *)
 let implicit_decs : (Lexing.position, unit) Hashtbl.t = Hashtbl.create 256
-
-(* all exported value declarations *)
-let incl : (Lexing.position, string * string) Hashtbl.t = Hashtbl.create 256
-
 (* all value references *)
 let references : Utils.LocSet.t Utils.LocHash.t  = Utils.LocHash.create 256
 

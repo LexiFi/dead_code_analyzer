@@ -16,8 +16,6 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let decs = Hashtbl.create 256
-
 let at_eof = ref []
 
 let last_class = ref Lexing.dummy_pos            (* last class met *)
@@ -37,19 +35,10 @@ let add_path obj_path obj_loc =
   |> ignore
 
 
-let get_loc path =
+let get_loc obj_path =
   let state = State.get_current () in
-  let path =
-    let exported_path =
-      Hashtbl.to_seq_values incl
-      |> Seq.find (fun (_, exported_path) -> is_sub_path ~sep:"." path exported_path)
-    in
-    match exported_path with
-    | Some (_, exported_path) -> exported_path
-    | None ->
-        State.Methods.get_orig_path ~obj_path:path state.methods
-  in
-  State.Methods.find_loc ~obj_path:path state.methods
+  let obj_path = State.Methods.get_orig_path ~obj_path state.methods in
+  State.Methods.find_loc ~obj_path state.methods
   |> Option.map repr_loc
 
 
@@ -109,7 +98,20 @@ let eof () =
                 (********   PROCESSING  ********)
 
 
-let collect_export path u stock ~obj ~cltyp loc =
+let collect_from_include ?incl_path ~rev_curr_path path =
+  let state = State.get_current () in
+  let alias_path = List.rev path |> String.concat "." in
+  let rev_mod_path =
+    match incl_path with
+    | None -> rev_curr_path
+    | Some incl_path -> Utils.normalize_mod_path ~rev_curr_path incl_path
+  in
+  let orig_path = List.rev (alias_path::rev_mod_path) |> String.concat "." in
+  State.Methods.add_path_alias ~alias_path ~orig_path state.methods
+  |> ignore
+
+
+let collect_export path _u _stock ~obj ~cltyp loc =
 
   let state = State.get_current () in
   let pos = loc.Location.loc_start in
@@ -124,31 +126,20 @@ let collect_export path u stock ~obj ~cltyp loc =
   | _ -> ()
   end;
 
-  let stock =
-    if stock == DeadCommon.decs then decs
-    else begin
-      export (List.tl path) u stock (List.hd path) loc;
-      stock
-    end
-  in
-
   let save id =
     let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
     (* TODO: resolve the builddir ('/workspace_root') in the case of dune
        compiled projects. Without it, looking up for an existing csml below will
        always fail and can lead to false positive *)
     if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then begin
-      if stock == DeadCommon.incl then
-        export ~sep:"#" path u stock id loc
-      else
-        let meth_path =
-          String.concat "." (List.rev path)
-          ^ "#" ^ id
-        in
-        let obj_loc = loc.Location.loc_start in
-        let builddir = State.File_infos.get_builddir state.file_infos in
-        State.Methods.add_exported_declaration ~obj_loc ~meth_name:id ~builddir ~meth_path state.methods
-        |> ignore
+      let meth_path =
+        String.concat "." (List.rev path)
+        ^ "#" ^ id
+      in
+      let obj_loc = loc.Location.loc_start in
+      let builddir = State.File_infos.get_builddir state.file_infos in
+      State.Methods.add_exported_declaration ~obj_loc ~meth_name:id ~builddir ~meth_path state.methods
+      |> ignore
     end
   in
 
