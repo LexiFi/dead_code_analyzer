@@ -4,9 +4,11 @@
 
 make -C check stats
 
+scenarios="threshold-3-0.5 threshold-1 internal classic exclude"
+
 echo "COPYING"
-cp check/threshold-3-0.5.out check/threshold-3-0.5/threshold-3-0.5.ref
-cp check/threshold-1.out check/threshold-1/threshold-1.ref
-cp check/internal.out check/internal/internal.ref
-cp check/classic.out check/classic/classic.ref
+for scenario in $scenarios
+do
+  cp check/$scenario.out check/$scenario/$scenario.ref
+done
 echo "DONE"
