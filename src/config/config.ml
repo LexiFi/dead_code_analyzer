@@ -106,7 +106,7 @@ let normalize_path path =
   in
   let remove_redundancies splitted_path =
     let reject_empty_and_curr s =
-      String.equal s "" || String.equal s Filename.current_dir_name
+      not (String.equal s "" || String.equal s Filename.current_dir_name)
     in
     List.filter reject_empty_and_curr splitted_path
   in
