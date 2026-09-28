@@ -14,9 +14,6 @@ let abspath : (string, string) Hashtbl.t = Hashtbl.create 256
 
 (* all value declarations re-exported by module types uses *)
 let implicit_decs : (Lexing.position, unit) Hashtbl.t = Hashtbl.create 256
-(* link from fields (record/variant) paths and locations *)
-let fields : (string, Lexing.position) Hashtbl.t = Hashtbl.create 256
-
 (* patterns of type unit which are not () *)
 let style : (string * Lexing.position * string) list ref = ref []
 

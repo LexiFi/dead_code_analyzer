@@ -89,3 +89,43 @@ val add_alias : orig_loc:Lexing.position -> alias_loc:Lexing.position -> t -> t
     This equivalence implies that a use of either is a use of both. In
     particular, a use of the [alias_loc] is a use of the [orig_loc].
 *)
+
+val add_loc_binding : path:string -> loc:Lexing.position -> t -> t
+(** [add_loc_binding ~path ~loc ctors_fields] returns a [t] containing
+    the same info as [ctors_fields], plus an extra binding of [path] to [loc].
+    All the previous bindings of [path] are shadowed.
+
+    Retrieving the latest binding is done via {!find_loc} below.
+    Those 2 functions are intended to resolve type equivalences and
+    dependencies.
+*)
+
+val find_loc : path:string -> t -> Lexing.position option
+(** [find_loc ~path ctors_fields] returns [Some loc] if the [loc] was
+    added via {!add_loc_binding} above.
+    Otherwise, it returns [None].
+*)
+
+val add_component :
+  type_loc:Lexing.position ->
+  cf_name:string ->
+  cf_loc:Lexing.position ->
+  t
+  -> t
+(** [add_component ~type_loc #cf_name ~cf_loc ctors_fields] returns a [t]
+    containing the same info as [ctors_fields], plus an extra component for
+    [type_loc] names [cf_name] and defined at [cf_loc].
+
+    This is used to resolve type equivalences.
+*)
+
+val add_equivalence : t1_path:string -> t2_path:string -> t -> t
+(** [add_equivalence ~t1_path ~t2_path ctors_fields] returns a [t] containing
+    the same info as [ctors_fields] plus an extra equivalence [t1 = t2]
+*)
+
+val resolve_equivalences : t -> t
+(** [resolve_equivalences ctors_fields] returns a [t] containing the same info as [ctors_fields]
+    with all the uses of equivalent types propagated to each.
+    This function is meant to be called once before calling {!get_unused}.
+*)
