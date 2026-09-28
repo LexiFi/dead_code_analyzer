@@ -1,7 +1,7 @@
 # =(byt|opt) to select byte code or native compilation
 EXT?=byt
 
-SCENARIOS:=threshold-3-0.5 threshold-1 internal classic
+SCENARIOS:=threshold-3-0.5 threshold-1 internal classic exclude
 # rule names
 REDIRECTED_SCENARIOS:=$(SCENARIOS:%=redirected_%)
 DIFF_SCENARIOS:=$(SCENARIOS:%=diff_%)
@@ -43,6 +43,9 @@ threshold-1:
 
 threshold-3-0.5:
 	make scenario EXT=$(EXT) SCENARIO=$@ DEADFLAGS="-A --internal -E threshold:3 -Oa both:3,0.5 -On both:3,0.5 -M threshold:3 -T threshold:3"
+
+exclude:
+	make scenario EXT=$(EXT) SCENARIO=$@ DEADFLAGS="-A --exclude using_make --exclude using_dune"
 
 $(REDIRECTED_SCENARIOS):
 	SCENARIO=$(@:redirected_%=%); \
