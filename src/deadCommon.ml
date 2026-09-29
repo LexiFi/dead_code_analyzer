@@ -346,40 +346,6 @@ module VdNode = struct
 
 end
 
-                (********   PROCESSING  ********)
-
-let export ?(sep = ".") path u stock id loc =
-  let value =
-    String.concat "." (List.rev path)
-    ^ sep
-    ^ id
-  in
-  (* a .cmti file can contain locations from other files.
-    For instance:
-        module M : Set.S with type elt = int
-    will create value definitions whose location is in set.mli
-  *)
-  if not loc.Location.loc_ghost
-  && (u = Utils.Filepath.unit loc.Location.loc_start.Lexing.pos_fname || u == _include)
-  && check_underscore id then
-    let state = State.get_current () in
-    let builddir = State.File_infos.get_builddir state.file_infos in
-    hashtbl_add_to_list stock loc.Location.loc_start (builddir, value)
-
-let unexport stock loc =
-  let state = State.get_current () in
-  (* The builddir works as a second key to ensure we are not removing
-     the location of another compilation unit.
-  *)
-  let builddir = State.File_infos.get_builddir state.file_infos in
-  let different_builddir (b, _v) =
-    not (String.equal b builddir)
-  in
-  hashtbl_find_list stock loc.Location.loc_start
-  |> List.filter different_builddir
-  |> hashtbl_replace_list stock loc.Location.loc_start
-
-
                 (**** REPORTING ****)
 
 (* Absolute path *)
