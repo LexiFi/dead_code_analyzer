@@ -38,7 +38,7 @@ val add_use:
     The use may be discarded if the [elt_kind]'s corresponding report section
     is disabled or if the use is out of scope (e.g. an internal value use
     when --internal is not configured).
-    If [elt_kind] is a [`Method], then it must be payloaded with the method's
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
     name and the [elt_loc] is the one of the owning object/class.
 
     This function is preferred over directly the corresponding element kind's
@@ -46,13 +46,30 @@ val add_use:
 *)
 
 val add_self_use:
-  elt_kind:[< `Method of string ] ->
+  elt_kind:[ `Method of string ] ->
   elt_loc:Lexing.position ->
   use_loc:Lexing.position ->
   t
   -> t
 (** [add_self_use ~elt_kind ~elt_loc ~use_loc] is similar to {!add_use] above
     but for self-referencing uses within an object or class definition.
+    Only [Method] is accepted as [elt_kind].
+*)
+
+val add_alias:
+  elt_kind:[< `Ctor_field | `Object | `Value ] ->
+  orig_loc:Lexing.position ->
+  alias_loc:Lexing.position ->
+  t
+  -> t
+(** [add_alias ~elt_kind ~orig_loc ~alias_loc state] stores an alias at
+    [alias_loc] for [orig_loc].
+    This implies that any use of [alias_loc] is equivalent to a use of [obj_loc]
+    The use may be discarded if the [elt_kind]'s corresponding report section
+    is disabled.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.add_alias]).
 *)
 
 val get_current : unit -> t

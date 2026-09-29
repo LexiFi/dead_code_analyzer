@@ -49,8 +49,8 @@ let add_equal loc1 loc2 =
     if loc1 = !last_class then
       last_class := loc2;
     let state = State.get_current () in
-    State.Methods.add_alias ~orig_loc:loc2 ~alias_loc:loc1 state.methods
-    |> ignore
+    State.add_alias ~elt_kind:`Object ~orig_loc:loc2 ~alias_loc:loc1 state
+    |> State.update
   end
 
 

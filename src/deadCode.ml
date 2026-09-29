@@ -183,9 +183,8 @@ let expr super self e =
       !DeadLexiFi.ttype_of e
 
   | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
-      let elt_kind = `Value in
       let elt_loc = val_loc.Location.loc_start in
-      State.add_use ~elt_kind ~elt_loc ~use_loc:exp_loc state
+      State.add_use ~elt_kind:`Value ~elt_loc ~use_loc:exp_loc state
       |> State.update
 
   | (Texp_field (_, _, {lbl_loc = loc; _})
@@ -341,7 +340,7 @@ let read_interface export_collector state =
 
 
 (* Merge a location's references to another one's *)
-let assoc section (loc1, loc2) =
+let assoc elt_kind (loc1, loc2) =
   let state = State.get_current () in
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
@@ -352,47 +351,40 @@ let assoc section (loc1, loc2) =
     || ( Utils.Filepath.unit fn = sourceunit
       && DeadCommon.file_exists (fn ^ "i"))
   in
-  let is_iface fn loc =
+  let is_iface fn loc (state : State.t) =
     let is_exported =
-      match section with
-      | `Types ->
+      match elt_kind with
+      | `Ctor_field ->
           State.Ctors_fields.is_exported_declaration ~cf_loc:loc state.ctors_fields
-      | `Values ->
+      | `Value ->
           State.Values.is_exported_declaration ~val_loc:loc state.values
     in
     is_exported || Utils.Filepath.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
-  let merge_refs loc1 loc2 =
-    match section with
-    | `Types ->
-        State.Ctors_fields.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.ctors_fields
-        |> ignore
-    | `Values ->
-        State.Values.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.values
-        |> ignore;
-        (* for immediate objects : *)
-        State.Methods.add_alias ~orig_loc:loc1 ~alias_loc:loc2 state.methods
-        |> ignore
+  let merge_refs loc1 loc2 state =
+    State.add_alias ~elt_kind ~orig_loc:loc1 ~alias_loc:loc2 state
   in
-  if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
-    if (state.config.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      merge_refs loc2 loc1;
-    if is_iface fn1 loc1 then begin
-      if is_iface fn2 loc2 then
-        match section with
-        | `Types ->
-            State.Ctors_fields.add_use ~cf_loc:loc1 ~use_loc:loc2 state.ctors_fields
-            |> ignore
-        | `Values ->
-            State.Values.add_use ~val_loc:loc1 ~use_loc:loc2 state.values
-            |> ignore
+  let state =
+    if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then
+      let state =
+        if (state.config.internal || fn1 <> fn2)
+            && is_implem fn1 && is_implem fn2
+        then
+          merge_refs loc2 loc1 state
+        else state
+      in
+      if is_iface fn1 loc1 state then begin
+        if is_iface fn2 loc2 state then
+          State.add_use ~elt_kind ~elt_loc:loc1 ~use_loc:loc2 state
+        else
+          merge_refs loc1 loc2 state
+      end
       else
-        merge_refs loc1 loc2
-    end
-    else
-      merge_refs loc2 loc1
-  end
+        merge_refs loc2 loc1 state
+    else state
+  in
+  State.update state
 
 
 let clean section loc =
@@ -407,8 +399,8 @@ let clean section loc =
 let eof loc_dep =
   let state = State.get_current () in
   DeadArg.eof();
-  List.iter (assoc `Values) loc_dep;
-  List.iter (assoc `Types) !DeadType.dependencies;
+  List.iter (assoc `Value) loc_dep;
+  List.iter (assoc `Ctor_field) !DeadType.dependencies;
   let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
   if DeadCommon.file_exists (sourcepath ^ "i") then begin
     let clean section =

@@ -58,35 +58,45 @@ let change_file state cm_file =
 
 (* code-element related manipulations *)
 
+let report_section_is_enabled ~elt_kind state =
+  match elt_kind with
+  | `Ctor_field -> Config.must_report_section state.config.sections.types
+  | `Method _
+  | `Object -> Config.must_report_section state.config.sections.methods
+  | `Value -> Config.must_report_section state.config.sections.exported_values
+
 let should_track_use ~elt_kind ~elt_loc ~use_loc state =
   (* Uses are discarded if they should not be tracked for the given element.
      This is the case when the corrresponding report section is disabled
      or if the element is a value, the use is internal, and tracking
      internal uses is disabled.
   *)
+  let should_track_value_use elt_loc use_loc state =
+    let is_external () =
+      let elt_fname = elt_loc.Lexing.pos_fname in
+      String.ends_with ~suffix:"i" elt_fname (* elt_loc is in a .mli *)
+      || ( (* compare elt and use compilation units *)
+        let elt_unit = Utils.Filepath.unit elt_fname in
+        let use_fname = use_loc.Lexing.pos_fname in
+        let use_unit = Utils.Filepath.unit use_fname in
+        not (String.equal use_unit elt_unit))
+    in
+    let is_exported () =
+      match state.file_infos.cm_infos with
+      | _ when is_external () -> true
+      | Cmt {sign = None; _} ->
+          (* is_defined in current .ml but there is no .mli *)
+          true
+      | _ -> false
+    in
+    state.config.internal || is_exported ()
+  in
   match elt_kind with
-  | `Ctor_field -> Config.must_report_section state.config.sections.types
-  | `Method _ -> Config.must_report_section state.config.sections.methods
+  | `Ctor_field | `Method _ ->
+      report_section_is_enabled ~elt_kind state
   | `Value ->
-      let is_external () =
-        let elt_fname = elt_loc.Lexing.pos_fname in
-        String.ends_with ~suffix:"i" elt_fname (* elt_loc is in a .mli *)
-        || ( (* compare elt and use compilation units *)
-          let elt_unit = Utils.Filepath.unit elt_fname in
-          let use_fname = use_loc.Lexing.pos_fname in
-          let use_unit = Utils.Filepath.unit use_fname in
-          not (String.equal use_unit elt_unit))
-      in
-      let is_exported () =
-        match state.file_infos.cm_infos with
-        | _ when is_external () -> true
-        | Cmt {sign = None; _} ->
-            (* is_defined in current .ml but there is no .mli *)
-            true
-        | _ -> false
-      in
-      Config.must_report_section state.config.sections.exported_values
-      && (state.config.internal || is_exported ())
+      report_section_is_enabled ~elt_kind state
+      && should_track_value_use elt_loc use_loc state
 
 let add_use ~elt_kind ~elt_loc ~use_loc state =
   if not (should_track_use ~elt_kind ~elt_loc ~use_loc state) then state
@@ -117,6 +127,37 @@ let add_self_use ~elt_kind ~elt_loc ~use_loc state =
           Methods.add_self_use ~obj_loc:elt_loc ~meth_name ~use_loc state.methods
         in
         { state with methods }
+
+let add_alias ~elt_kind ~orig_loc ~alias_loc state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_alias ~orig_loc ~alias_loc state.methods
+        in
+        { state with methods }
+    | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_alias ~orig_loc ~alias_loc state.ctors_fields
+        in
+        { state with ctors_fields }
+    | `Value ->
+        let values =
+          Values.add_alias ~orig_loc ~alias_loc state.values
+        in
+        { state with values }
+
+let add_alias ~elt_kind ~orig_loc ~alias_loc state =
+  let state =
+    (* An immediate object is a value with methods. Thus, a value alias
+       may also be an immediate object alias.
+    *)
+    match elt_kind with
+    | `Value -> add_alias ~elt_kind:`Object ~alias_loc ~orig_loc state
+    | `Object | `Ctor_field -> state
+  in
+  add_alias ~elt_kind ~orig_loc ~alias_loc state
 
 (** Analysis' state *)
 let current = ref

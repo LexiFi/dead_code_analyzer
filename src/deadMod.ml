@@ -81,13 +81,11 @@ let expr m = match m.mod_desc with
           let use_loc = m.mod_loc.Location.loc_start in
           if elt_is_expected elt then
             match elt with
-            | `Value (_, val_loc) ->
-                let elt_kind = `Value in
-                State.add_use ~elt_kind ~elt_loc:val_loc ~use_loc state
+            | `Value (_, elt_loc) ->
+                State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
                 |> State.update
-            | `Type (_, cf_loc) ->
-                let elt_kind = `Ctor_field in
-                State.add_use ~elt_kind ~elt_loc:cf_loc ~use_loc state
+            | `Type (_, elt_loc) ->
+                State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
                 |> State.update
             | `Method _ -> (* TODO *) ()
         )
