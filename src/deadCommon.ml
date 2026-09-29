@@ -107,21 +107,6 @@ let rec get_deep_desc typ =
   | t -> t
 
 
-let exported section loc =
-  let state = State.get_current () in
-  match section with
-  | `Types ->
-      Config.must_report_section state.config.sections.types
-  | `Values ->
-      let fn = loc.Lexing.pos_fname in
-      let sourceunit = State.File_infos.get_sourceunit state.file_infos in
-      Config.must_report_section state.config.sections.exported_values
-      && (state.config.internal
-          || fn.[String.length fn - 1] = 'i'
-          || sourceunit <> Utils.Filepath.unit fn
-          || not (file_exists (fn ^ "i")))
-
-
 (* Section printer:
  * section:     `.> SECTION: '
  *              `==========='

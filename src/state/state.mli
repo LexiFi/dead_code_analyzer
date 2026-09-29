@@ -24,11 +24,39 @@ val update_config : Config.t -> t -> t
 (** [update_config config state] changes the analysis configuration *)
 
 val change_file : t -> string -> (t, string) result
-(** [change_file t cmti_file] prepare the analysis to move on to [cmti_file].
+(** [change_file state cmti_file] prepare the analysis to move on to [cmti_file].
     See [File_infos.change_file] for error cases. *)
+
+val add_use:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  elt_loc:Lexing.position ->
+  use_loc:Lexing.position ->
+  t
+  -> t
+(** [add_use ~elt_kind ~elt_loc ~use_loc state] stores a use of [elt_loc]
+    at [use_loc].
+    The use may be discarded if the [elt_kind]'s corresponding report section
+    is disabled or if the use is out of scope (e.g. an internal value use
+    when --internal is not configured).
+    If [elt_kind] is a [`Method], then it must be payloaded with the method's
+    name and the [elt_loc] is the one of the owning object/class.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.add_use]).
+*)
+
+val add_self_use:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  use_loc:Lexing.position ->
+  t
+  -> t
+(** [add_self_use ~elt_kind ~elt_loc ~use_loc] is similar to {!add_use] above
+    but for self-referencing uses within an object or class definition.
+*)
 
 val get_current : unit -> t
 (** [get_current ()] returns the state used during the analysis. *)
 
 val update : t -> unit
-(** [update t] replaces the analysis' state with [t]. *)
+(** [update state] replaces the analysis' state with [state]. *)

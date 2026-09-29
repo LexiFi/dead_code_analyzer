@@ -120,8 +120,9 @@ let correct_export t =
 
 let collect_references cf_loc use_loc =
   let state = State.get_current() in
-  State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
-  |> ignore
+  let elt_kind = `Ctor_field in
+  State.add_use ~elt_kind ~elt_loc:cf_loc ~use_loc state
+  |> State.update
 
 
 (* Look for bad style typing *)

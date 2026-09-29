@@ -173,11 +173,17 @@ let collect_references ~meth ~call_site expr =
     let state = State.get_current () in
     let meth_name = meth in
     let use_loc = call_site in
-    State.Methods.add_use ~obj_loc ~meth_name ~use_loc state.methods
-    |> ignore;
-    if obj_loc = !last_class then
-      State.Methods.add_self_use ~obj_loc ~meth_name ~use_loc state.methods
-      |> ignore
+    let elt_kind = `Method meth_name in
+    let state =
+      State.add_use ~elt_kind ~elt_loc:obj_loc ~use_loc state
+    in
+    let state =
+      if obj_loc = !last_class then
+        State.add_self_use ~elt_kind ~elt_loc:obj_loc ~use_loc state
+      else
+        state
+    in
+    State.update state
   end
 
 
@@ -377,8 +383,9 @@ let coerce expr typ =
   let use meth_name =
     let state = State.get_current () in
     let use_loc = expr.exp_loc.Location.loc_start in
-    State.Methods.add_use ~obj_loc:loc ~meth_name ~use_loc state.methods
-    |> ignore
+    let elt_kind = `Method meth_name in
+    State.add_use ~elt_kind ~elt_loc:loc ~use_loc state
+    |> State.update
   in
   treat_fields use typ
 

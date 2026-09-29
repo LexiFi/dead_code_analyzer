@@ -159,8 +159,7 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
           let lab : Types.label_description = lab in
           #endif
           let lab_loc = lab.lbl_loc.Location.loc_start in
-          if exported `Types lab_loc then
-            DeadType.collect_references lab_loc pat_loc
+          DeadType.collect_references lab_loc pat_loc
         )
         l
   | _ -> ()
@@ -183,21 +182,23 @@ let expr super self e =
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
       !DeadLexiFi.ttype_of e
 
-  | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
-    when exported `Values loc ->
-      State.Values.add_use ~val_loc:loc ~use_loc:exp_loc state.values
-      |> ignore
+  | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+      let elt_kind = `Value in
+      let elt_loc = val_loc.Location.loc_start in
+      State.add_use ~elt_kind ~elt_loc ~use_loc:exp_loc state
+      |> State.update
 
-  | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
-  | Texp_construct (_, {cstr_loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _)
-    when exported `Types loc ->
-      DeadType.collect_references loc exp_loc
+  | (Texp_field (_, _, {lbl_loc = loc; _})
+     | Texp_construct (_, {cstr_loc = loc; _}, _))
+    when not loc.Location.loc_ghost ->
+      let cf_loc = loc.Location.loc_start in
+      DeadType.collect_references cf_loc exp_loc
 
   | Texp_send (e2, Tmeth_name meth) ->
-    DeadObj.collect_references ~meth ~call_site:e.exp_loc.Location.loc_start e2
+      DeadObj.collect_references ~meth ~call_site:e.exp_loc.Location.loc_start e2
   | Texp_send (e2, Tmeth_val id)
   | Texp_send (e2, Tmeth_ancestor (id, _)) ->
-    DeadObj.collect_references ~meth:(Ident.name id) ~call_site:e.exp_loc.Location.loc_start e2
+      DeadObj.collect_references ~meth:(Ident.name id) ~call_site:e.exp_loc.Location.loc_start e2
 
 
   | Texp_apply (exp, args) ->

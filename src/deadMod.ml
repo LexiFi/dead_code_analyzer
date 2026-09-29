@@ -10,9 +10,6 @@
 open Types
 open Typedtree
 
-open DeadCommon
-
-
 
 let item maker = function
   | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}, _) ->
@@ -81,20 +78,18 @@ let expr m = match m.mod_desc with
       List.iter
         (fun elt ->
           let state = State.get_current () in
-          let sections = state.config.sections in
           let use_loc = m.mod_loc.Location.loc_start in
           if elt_is_expected elt then
             match elt with
-            | `Value (_, val_loc) when exported `Values val_loc ->
-                State.Values.add_use ~val_loc ~use_loc state.values
-                |> ignore
-            | `Type (_, cf_loc) when exported `Types cf_loc ->
-                State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
-                |> ignore
-            | `Method _ when Config.must_report_section sections.methods ->
-              (* TODO *)
-              ()
-            | _ -> ()
+            | `Value (_, val_loc) ->
+                let elt_kind = `Value in
+                State.add_use ~elt_kind ~elt_loc:val_loc ~use_loc state
+                |> State.update
+            | `Type (_, cf_loc) ->
+                let elt_kind = `Ctor_field in
+                State.add_use ~elt_kind ~elt_loc:cf_loc ~use_loc state
+                |> State.update
+            | `Method _ -> (* TODO *) ()
         )
         arg_elts
   | _ -> ()
