@@ -400,7 +400,7 @@ let prepare_report () =
 let report () =
   prepare_report ();
   let state = State.get_current () in
-  Report.report state `Method
+  Report.report ~elt_kind:`Object state
 
 
 

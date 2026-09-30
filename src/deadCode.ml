@@ -614,7 +614,7 @@ let report_opt_args s l =
 
 let report_unused_exported () =
   let state = State.get_current () in
-  Report.report state `Value
+  Report.report ~elt_kind:`Value state
 
 
 let report_style () =

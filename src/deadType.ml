@@ -311,7 +311,7 @@ let prepare_report () =
 
 let report () =
   let state = State.get_current () in
-  Report.report state `Type
+  Report.report ~elt_kind:`Ctor_field state
 
 
                 (********   WRAPPING  ********)

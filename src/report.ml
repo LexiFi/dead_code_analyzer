@@ -1,73 +1,8 @@
-type ('storage, 'key) main_report_configuration = {
-  title: string;
-  section: Config.Sections.main_section;
-  data: 'storage;
-  get_unused: max_uses:int -> (int, 'key list) Hashtbl.t;
-  get_reportable: 'key -> (string * Lexing.position * string);
-    (** returns the [filepath], [location], and [path] to report *)
-  get_uses: 'key -> Lexing.position list;
-}
-
-let main_report_configuration (state : State.t) = function
-  | `Value ->
-      let title = "UNUSED EXPORTED VALUES" in
-      let section = state.config.sections.exported_values in
-      let data = state.values in
-      let get_unused ~max_uses =
-        State.Values.get_unused ~max_uses data
-      in
-      let get_reportable (val_loc, builddir) =
-        let val_path = State.Values.get_val_path ~builddir ~val_loc data in
-        match val_path with
-        | None -> assert false
-        | Some val_path ->
-            let filepath = Filename.concat builddir val_loc.Lexing.pos_fname in
-            (filepath, val_loc, val_path)
-      in
-      let get_uses (val_loc, _builddir) =
-        State.Values.get_uses ~val_loc data
-      in
-      `Value { title; section; data; get_unused; get_reportable; get_uses }
-  | `Type ->
-      let title = "UNUSED CONSTRUCTORS/RECORD FIELDS" in
-      let section = state.config.sections.types in
-      let data = state.ctors_fields in
-      let get_unused ~max_uses =
-        State.Ctors_fields.get_unused ~max_uses data
-      in
-      let get_reportable (cf_loc, builddir) =
-        let cf_path = State.Ctors_fields.get_cf_path ~builddir ~cf_loc data in
-        match cf_path with
-        | None -> assert false
-        | Some cf_path ->
-            let filepath = Filename.concat builddir cf_loc.Lexing.pos_fname in
-            (filepath, cf_loc, cf_path)
-      in
-      let get_uses (cf_loc, _builddir) =
-        State.Ctors_fields.get_uses ~cf_loc data
-      in
-      `Type { title; section; data; get_unused; get_reportable; get_uses }
-  | `Method ->
-      let title = "UNUSED METHODS" in
-      let section = state.config.sections.methods in
-      let data = state.methods in
-      let get_unused ~max_uses =
-        State.Methods.get_unused ~max_uses data
-      in
-      let get_reportable (obj_loc, meth_name, builddir) =
-        let meth_path =
-          State.Methods.get_meth_path ~builddir ~obj_loc ~meth_name data
-        in
-        match meth_path with
-        | None -> assert false
-        | Some meth_path ->
-            let filepath = Filename.concat builddir obj_loc.Lexing.pos_fname in
-            (filepath, obj_loc, meth_path)
-      in
-      let get_uses (obj_loc, meth_name, _builddir) =
-        State.Methods.get_uses ~obj_loc ~meth_name data
-      in
-      `Method { title; section; data; get_unused; get_reportable; get_uses }
+let get_title ~elt_kind =
+  match elt_kind with
+  | `Ctor_field -> "UNUSED CONSTRUCTORS/RECORD FIELDS"
+  | `Object -> "UNUSED METHODS"
+  | `Value -> "UNUSED EXPORTED VALUES"
 
 let print_section_title title =
   (* `.> TITLE:'
@@ -92,14 +27,35 @@ let print_subsection_title ~nb_uses title =
   in
   Printf.printf ".>->  %s:\n%s\n" title underline
 
-let print_section_footer =
+let print_section_footer : unit -> unit =
   let msg = "Nothing else to report in this section" in
   let separator = String.make 80 '-' in
   fun () -> Printf.printf "\n%s\n%s\n\n\n" msg separator
 
-let print_subsection_separator =
+let print_subsection_separator : unit -> unit =
   let separator = "--------" in
   fun () -> Printf.printf "%s\n\n\n" separator
+
+
+(** returns the [filepath], [location], and [path] to report *)
+let get_reportable ~elt (state : State.t) =
+  let (elt_kind, elt_loc, builddir) = elt in
+  let elt_path =
+    State.get_exported_declaration_path ~elt_kind ~builddir ~elt_loc state
+  in
+  match elt_path with
+  | None -> assert false
+  | Some elt_path ->
+      let filepath = Filename.concat builddir elt_loc.Lexing.pos_fname in
+      (filepath, elt_loc, elt_path)
+
+
+let get_section_config ~elt_kind (state : State.t) =
+  match elt_kind with
+  | `Value -> state.config.sections.exported_values
+  | `Ctor_field -> state.config.sections.types
+  | `Object -> state.config.sections.methods
+
 
 (** [string_of_location ?filepath ?print_col loc] returns a string of the
     format : "filepath:line" if [not print_col] or "filepath:line:col"
@@ -125,8 +81,9 @@ let string_of_location ?filepath ?(print_col=false) loc =
   else
     Printf.sprintf "%s:%d" filepath line
 
-let print_uses key report_config =
-  let uses = report_config.get_uses key in
+let print_uses ~elt state =
+  let (elt_kind, elt_loc, _builddir) = elt in
+  let uses = State.get_uses ~elt_kind ~elt_loc state in
   List.fast_sort compare uses
   |> List.iter (fun use_loc ->
       (* TODO: store the use_loc's builddir for better output info *)
@@ -134,18 +91,18 @@ let print_uses key report_config =
       |> Printf.printf "%s\n"
   )
 
-let print_unused keys ~nb_uses report_config =
-  let reportable_and_keys =
+let print_unused ~elts ~nb_uses state section_config =
+  let reportable_and_elts =
     (* Reportable infos, sorted in lexicographical order.
-       The keys are kept in case the uses must be printed as well.
+       The elts are kept in case the uses must be printed as well.
     *)
     List.map
-      (fun key ->
-        let reportable = report_config.get_reportable key in
-        (reportable, key)
+      (fun elt ->
+        let reportable = get_reportable ~elt state in
+        (reportable, elt)
       )
-      keys
-    |> List.fast_sort (fun rk1 rk2 -> compare (fst rk1) (fst rk2))
+      elts
+    |> List.fast_sort (fun re1 re2 -> compare (fst re1) (fst re2))
   in
   let remove_comp_unit path =
     (* Remove the compilation unit from the path. E.g. CompU.Foo.x -> Foo.x
@@ -164,7 +121,7 @@ let print_unused keys ~nb_uses report_config =
          that we will encounter so there will be no extra white line before
          the 1st report
       *)
-      match reportable_and_keys with
+      match reportable_and_elts with
       | ((filepath, _, _), _)::_ -> ref (Filename.dirname filepath)
       | [] -> ref "" (* Dummy value, there won't be anything to compare with *)
     in
@@ -174,11 +131,11 @@ let print_unused keys ~nb_uses report_config =
         Printf.printf "\n";
       prev_dir := dir
   in
-  let print (reportable, key) =
+  let print (reportable, elt) =
     let (filepath, loc, path) = reportable in
     print_dir_separator filepath;
     let must_report_call_sites =
-      nb_uses > 0 && Config.must_report_call_sites report_config.section
+      nb_uses > 0 && Config.must_report_call_sites section_config
     in
     let call_sites_marker =
       if must_report_call_sites then "    Call sites:\n"
@@ -188,32 +145,28 @@ let print_unused keys ~nb_uses report_config =
     let path = remove_comp_unit path in
     Printf.printf "%s: %s%s\n" loc path call_sites_marker;
     if must_report_call_sites then
-      print_uses key report_config
+      print_uses ~elt state
   in
-  List.iter print reportable_and_keys
+  List.iter print reportable_and_elts
 
-let report report_config =
-  let max_uses = Config.get_main_threshold report_config.section in
-  let unused = report_config.get_unused ~max_uses in
-  print_section_title report_config.title;
+let report ~elt_kind state section_config =
+  let title = get_title ~elt_kind in
+  let max_uses = Config.get_main_threshold section_config in
+  let unused = State.get_unused ~elt_kind ~max_uses state in
+  print_section_title title;
   for nb_uses = 0 to max_uses do
     match Hashtbl.find_opt unused nb_uses with
     | None -> ()
-    | Some unused_i ->
+    | Some elts ->
         if nb_uses > 0 then
-          print_subsection_title ~nb_uses report_config.title;
-        print_unused unused_i ~nb_uses report_config;
+          print_subsection_title ~nb_uses title;
+        print_unused ~elts ~nb_uses state section_config;
         if nb_uses < max_uses then
           print_subsection_separator ()
   done;
   print_section_footer ()
 
-let report report_config =
-  if Config.must_report_section report_config.section then
-    report report_config
-
-let report state section =
-  match main_report_configuration state section with
-  | `Value report_config -> report report_config
-  | `Type report_config -> report report_config
-  | `Method report_config -> report report_config
+let report ~elt_kind state =
+  let section_config = get_section_config ~elt_kind state in
+  if Config.must_report_section section_config then
+    report ~elt_kind state section_config
