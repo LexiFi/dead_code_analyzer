@@ -77,11 +77,10 @@ let rec correct_export : Types.signature_item -> unit = function
   | Sig_value (_, {Types.val_loc; _}, _)
     when not val_loc.Location.loc_ghost ->
       let state = State.get_current () in
-      let builddir = State.File_infos.get_builddir state.file_infos in
       let loc = val_loc in
-      let val_loc = loc.Location.loc_start in
-      State.Values.remove_exported_declaration ~val_loc ~builddir state.values
-      |> ignore;
+      let elt_loc = loc.Location.loc_start in
+      State.remove_exported_declaration ~elt_kind:`Value ~elt_loc state
+      |> State.update;
       DeadObj.correct_export loc;
       (* For optional arguments, every use is stored during the analysis.
          The uses are then filtered before reporting. Thus, we need to
@@ -89,7 +88,7 @@ let rec correct_export : Types.signature_item -> unit = function
       *)
       let state = State.get_current () in
       if Config.must_report_opt_args state.config then
-        Hashtbl.replace DeadCommon.implicit_decs val_loc ()
+        Hashtbl.replace DeadCommon.implicit_decs elt_loc ()
 
   | Sig_type (_, t, _, _) -> DeadType.correct_export t
 

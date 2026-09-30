@@ -92,6 +92,38 @@ let add_exported_declaration ~elt_kind ~elt_loc ~elt_path state =
         in
         { state with values }
 
+let remove_exported_declaration ~elt_kind ~elt_loc state =
+  let builddir = File_infos.get_builddir state.file_infos in
+  match elt_kind with
+  | `Method meth_name ->
+      let methods =
+        Methods.remove_exported_declaration
+          ~builddir ~obj_loc:elt_loc ~meth_name
+          state.methods
+      in
+      { state with methods }
+  | `Object ->
+      let methods =
+        Methods.remove_exported_declarations
+          ~builddir ~obj_loc:elt_loc
+          state.methods
+      in
+      { state with methods }
+  | `Ctor_field ->
+      let ctors_fields =
+        Ctors_fields.remove_exported_declaration
+          ~builddir ~cf_loc:elt_loc
+          state.ctors_fields
+      in
+      { state with ctors_fields }
+  | `Value ->
+      let values =
+        Values.remove_exported_declaration
+          ~builddir ~val_loc:elt_loc
+          state.values
+      in
+      { state with values }
+
 let is_exported_declaration ~elt_kind ~elt_loc state =
   match elt_kind with
   | `Object ->
@@ -155,6 +187,29 @@ let add_use ~elt_kind ~elt_loc ~use_loc state =
           Values.add_use ~val_loc:elt_loc ~use_loc state.values
         in
         { state with values }
+
+let remove_uses ~elt_kind ~elt_loc state =
+  match elt_kind with
+  | `Method meth_name ->
+      let methods =
+        Methods.remove_uses ~obj_loc:elt_loc ~meth_name state.methods
+      in
+      { state with methods }
+  | `Object ->
+      let methods =
+        Methods.remove_uses ~obj_loc:elt_loc state.methods
+      in
+      { state with methods }
+  | `Ctor_field ->
+      let ctors_fields =
+        Ctors_fields.remove_uses ~cf_loc:elt_loc state.ctors_fields
+      in
+      { state with ctors_fields }
+  | `Value ->
+      let values =
+        Values.remove_uses ~val_loc:elt_loc state.values
+      in
+      { state with values }
 
 let add_self_use ~elt_kind ~elt_loc ~use_loc state =
   if not (should_track_use ~elt_kind ~elt_loc ~use_loc state) then state

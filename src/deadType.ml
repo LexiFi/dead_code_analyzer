@@ -105,10 +105,9 @@ let collect_export path t =
 let correct_export t =
   let unexport loc =
     let state = State.get_current () in
-    let builddir = State.File_infos.get_builddir state.file_infos in
-    let cf_loc = loc.Location.loc_start in
-    State.Ctors_fields.remove_exported_declaration ~cf_loc ~builddir state.ctors_fields
-    |> ignore
+    let elt_loc = loc.Location.loc_start in
+    State.remove_exported_declaration ~elt_kind:`Ctor_field ~elt_loc state
+    |> State.update
   in
   match t.type_kind with
     | Type_record (l, _) ->

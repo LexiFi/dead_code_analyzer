@@ -46,6 +46,22 @@ val add_exported_declaration:
     dedicated function (e.g. [Values.add_exported_declaration]).
 *)
 
+val remove_exported_declaration:
+  elt_kind:[< `Ctor_field | `Method of string | `Object | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** [remove_exported_declaration ~elt_kind ~elt_loc state] removes the
+    exported element at [elt_loc] in the current builddir.
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name, and only this method's declaration is removed.
+    If [elt_kind] is an [Object], then all its associated method declarations
+    are removed.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.remove_exported_declaration]).
+*)
+
 val is_exported_declaration:
   elt_kind:[< `Ctor_field | `Object | `Value ] ->
   elt_loc:Lexing.position ->
@@ -78,6 +94,22 @@ val add_use:
 
     This function is preferred over directly the corresponding element kind's
     dedicated function (e.g. [Values.add_use]).
+*)
+
+val remove_uses:
+  elt_kind:[< `Ctor_field | `Method of string | `Object | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** [remove_uses ~elt_kind ~elt_loc state] removes the uses associated
+    with element at [elt_loc].
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name, and only this method's uses are removed.
+    If [elt_kind] is an [Object], then all its associated methods' uses are
+    removed.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.uses]).
 *)
 
 val add_self_use:

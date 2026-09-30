@@ -160,10 +160,9 @@ let collect_export path ~obj ~cltyp loc =
 
 let correct_export loc =
   let state = State.get_current () in
-  let builddir = State.File_infos.get_builddir state.file_infos in
-  let obj_loc = loc.Location.loc_start in
-  State.Methods.remove_exported_declarations ~obj_loc ~builddir state.methods
-  |> ignore
+  let elt_loc = loc.Location.loc_start in
+  State.remove_exported_declaration ~elt_kind:`Object ~elt_loc state
+  |> State.update
 
 
 let collect_references ~meth ~call_site expr =

@@ -383,14 +383,13 @@ let assoc elt_kind (loc1, loc2) =
   State.update state
 
 
-let clean section loc =
+let clean elt_kind elt_loc =
   let state = State.get_current () in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
-  let fn = loc.Lexing.pos_fname in
+  let fn = elt_loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
-    match section with
-    | `Types -> State.Ctors_fields.remove_uses ~cf_loc:loc state.ctors_fields |> ignore
-    | `Values -> State.Values.remove_uses ~val_loc:loc state.values |> ignore
+    State.remove_uses ~elt_kind ~elt_loc state
+    |> State.update
 
 let eof loc_dep =
   let state = State.get_current () in
@@ -405,8 +404,8 @@ let eof loc_dep =
           clean section loc1; clean section loc2
         )
     in
-    clean `Values loc_dep;
-    clean `Types !DeadType.dependencies;
+    clean `Value loc_dep;
+    clean `Ctor_field !DeadType.dependencies;
   end;
   VdNode.eof ();
   DeadObj.eof ();
