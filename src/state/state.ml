@@ -65,6 +65,44 @@ let report_section_is_enabled ~elt_kind state =
   | `Object -> Config.must_report_section state.config.sections.methods
   | `Value -> Config.must_report_section state.config.sections.exported_values
 
+let add_exported_declaration ~elt_kind ~elt_loc ~elt_path state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Method meth_name ->
+        let methods =
+          Methods.add_exported_declaration
+            ~builddir ~obj_loc:elt_loc ~meth_name ~meth_path:elt_path
+            state.methods
+        in
+        { state with methods }
+    | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_exported_declaration
+            ~builddir ~cf_loc:elt_loc ~cf_path:elt_path
+            state.ctors_fields
+        in
+        { state with ctors_fields }
+    | `Value ->
+        let values =
+          Values.add_exported_declaration
+            ~builddir ~val_loc:elt_loc ~val_path:elt_path
+            state.values
+        in
+        { state with values }
+
+let is_exported_declaration ~elt_kind ~elt_loc state =
+  match elt_kind with
+  | `Object ->
+      Methods.is_exported_declaration ~obj_loc:elt_loc state.methods
+  | `Ctor_field ->
+      Ctors_fields.is_exported_declaration ~cf_loc:elt_loc state.ctors_fields
+  | `Value ->
+      Values.is_exported_declaration ~val_loc:elt_loc state.values
+
+
+
 let should_track_use ~elt_kind ~elt_loc ~use_loc state =
   (* Uses are discarded if they should not be tracked for the given element.
      This is the case when the corrresponding report section is disabled

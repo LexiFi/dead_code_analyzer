@@ -353,11 +353,7 @@ let assoc elt_kind (loc1, loc2) =
   in
   let is_iface fn loc (state : State.t) =
     let is_exported =
-      match elt_kind with
-      | `Ctor_field ->
-          State.Ctors_fields.is_exported_declaration ~cf_loc:loc state.ctors_fields
-      | `Value ->
-          State.Values.is_exported_declaration ~val_loc:loc state.values
+      State.is_exported_declaration ~elt_kind ~elt_loc:loc state
     in
     is_exported || Utils.Filepath.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)

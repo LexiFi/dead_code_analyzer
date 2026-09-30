@@ -27,6 +27,41 @@ val change_file : t -> string -> (t, string) result
 (** [change_file state cmti_file] prepare the analysis to move on to [cmti_file].
     See [File_infos.change_file] for error cases. *)
 
+val add_exported_declaration:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  elt_loc:Lexing.position ->
+  elt_path:string ->
+  t
+  -> t
+(** [add_exported_declaration ~elt_kind ~elt_loc ~elt_path state] stores
+    a new exported element at [elt_loc] in the current builddir with fully
+    qualified path [elt_path].
+    The element may be discarded if the [elt_kind]'s corresponding report section
+    is disabled.
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name, the [elt_loc] is the one of the owning object/class, and the
+    [elt_path] the method's path.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.add_exported_declaration]).
+*)
+
+val is_exported_declaration:
+  elt_kind:[< `Ctor_field | `Object | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> bool
+(** [is_exported_declaration ~elt_kind ~elt_loc state] returns [true]
+    if the provided [elt_loc] is stored as an exported declaration for
+    the given [elt_kind]
+    If [elt_kind] is an [Object], then it returns true if any of its methods
+    was stored as an exported declaration (see {!add_exported_declaration}
+    above)
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.is_exported_declaration]).
+*)
+
 val add_use:
   elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
   elt_loc:Lexing.position ->

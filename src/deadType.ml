@@ -76,9 +76,13 @@ let collect_export path t =
     let cf_loc = loc.Location.loc_start in
     if t.type_manifest = None then begin
       (* do not export t1 when there is an explicit equation t1 = t2 *)
-      let state = State.get_current () in
-      let builddir = State.File_infos.get_builddir state.file_infos in
-      State.Ctors_fields.add_exported_declaration ~cf_loc ~builddir ~cf_path state.ctors_fields
+      let state =
+        State.get_current ()
+        |> State.add_exported_declaration
+            ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~elt_path:cf_path
+      in
+      State.update state;
+      state.ctors_fields
       |> State.Ctors_fields.add_component ~type_loc ~cf_name:id ~cf_loc
       |> State.Ctors_fields.add_loc_binding ~path:cf_path ~loc:cf_loc
       |> State.Ctors_fields.add_loc_binding ~path:type_path ~loc:type_loc

@@ -132,14 +132,14 @@ let collect_export path ~obj ~cltyp loc =
        compiled projects. Without it, looking up for an existing csml below will
        always fail and can lead to false positive *)
     if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then begin
-      let meth_path =
+      let elt_path =
         String.concat "." (List.rev path)
         ^ "#" ^ id
       in
-      let obj_loc = loc.Location.loc_start in
-      let builddir = State.File_infos.get_builddir state.file_infos in
-      State.Methods.add_exported_declaration ~obj_loc ~meth_name:id ~builddir ~meth_path state.methods
-      |> ignore
+      let elt_loc = loc.Location.loc_start in
+      let elt_kind = `Method id in
+      State.add_exported_declaration ~elt_kind ~elt_loc ~elt_path state
+      |> State.update
     end
   in
 

@@ -42,13 +42,12 @@ let export_value ~path id value =
       && DeadCommon.check_underscore id
       && is_defined_in_comp_unit loc
   then
-    let val_loc = loc.Location.loc_start in
-    let val_path =
+    let elt_loc = loc.Location.loc_start in
+    let elt_path =
       id::path |> List.rev |> String.concat "."
     in
-    let builddir = State.File_infos.get_builddir state.file_infos in
-    State.Values.add_exported_declaration ~val_loc ~builddir ~val_path state.values
-    |> ignore
+    State.add_exported_declaration ~elt_kind:`Value ~elt_loc ~elt_path state
+    |> State.update
 
 let export_type ~path id t =
   let path = id :: path in
