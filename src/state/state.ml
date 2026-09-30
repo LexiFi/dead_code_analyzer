@@ -133,6 +133,14 @@ let is_exported_declaration ~elt_kind ~elt_loc state =
   | `Value ->
       Values.is_exported_declaration ~val_loc:elt_loc state.values
 
+let get_exported_declaration_path ~elt_kind ~builddir ~elt_loc state =
+  match elt_kind with
+  | `Method meth_name ->
+      Methods.get_meth_path ~builddir ~obj_loc:elt_loc ~meth_name state.methods
+  | `Ctor_field ->
+      Ctors_fields.get_cf_path ~builddir ~cf_loc:elt_loc state.ctors_fields
+  | `Value ->
+      Values.get_val_path ~builddir ~val_loc:elt_loc state.values
 
 
 let should_track_use ~elt_kind ~elt_loc ~use_loc state =
@@ -211,6 +219,15 @@ let remove_uses ~elt_kind ~elt_loc state =
       in
       { state with values }
 
+let get_uses ~elt_kind ~elt_loc state =
+  match elt_kind with
+  | `Method meth_name ->
+      Methods.get_uses ~obj_loc:elt_loc ~meth_name state.methods
+  | `Ctor_field ->
+      Ctors_fields.get_uses ~cf_loc:elt_loc state.ctors_fields
+  | `Value ->
+      Values.get_uses ~val_loc:elt_loc state.values
+
 let add_self_use ~elt_kind ~elt_loc ~use_loc state =
   if not (should_track_use ~elt_kind ~elt_loc ~use_loc state) then state
   else
@@ -251,6 +268,42 @@ let add_alias ~elt_kind ~orig_loc ~alias_loc state =
     | `Object | `Ctor_field -> state
   in
   add_alias ~elt_kind ~orig_loc ~alias_loc state
+
+type element =
+  [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
+  * Lexing.position (* elt loc *)
+  * string (* elt builddir *)
+
+let get_unused ~elt_kind ?(max_uses = 0) state =
+  let with_elt_kind ~add_elt_kind tbl =
+    let res = Hashtbl.create (max_uses + 1) in
+    Hashtbl.iter
+      (fun nb_uses elts ->
+        List.map add_elt_kind elts
+        |> Hashtbl.add res nb_uses
+      )
+      tbl;
+    res
+  in
+  match elt_kind with
+  | `Object ->
+      let add_elt_kind (obj_loc, meth_name, builddir) =
+        (`Method meth_name, obj_loc, builddir)
+      in
+      Methods.get_unused ~max_uses state.methods
+      |> with_elt_kind ~add_elt_kind
+  | `Ctor_field ->
+      let add_elt_kind (cf_loc, builddir) =
+        (`Ctor_field, cf_loc, builddir)
+      in
+      Ctors_fields.get_unused ~max_uses state.ctors_fields
+      |> with_elt_kind ~add_elt_kind
+  | `Value ->
+      let add_elt_kind (val_loc, builddir) =
+        (`Value, val_loc, builddir)
+      in
+      Values.get_unused ~max_uses state.values
+      |> with_elt_kind ~add_elt_kind
 
 (** Analysis' state *)
 let current = ref

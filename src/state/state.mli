@@ -78,6 +78,21 @@ val is_exported_declaration:
     dedicated function (e.g. [Values.is_exported_declaration]).
 *)
 
+val get_exported_declaration_path:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  builddir:string ->
+  elt_loc:Lexing.position ->
+  t
+  -> string option
+(** [get_exported_declaration_path ~elt_kind ~builddir ~elt_loc state]
+    returns [Some elt_path] if the [elt_loc] is stored as an exported
+    declaration of the [elt_kind] in [builddir].
+    See {!add_exported_declaration} above for more information.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.get_val_path]).
+*)
+
 val add_use:
   elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
   elt_loc:Lexing.position ->
@@ -112,6 +127,20 @@ val remove_uses:
     dedicated function (e.g. [Values.uses]).
 *)
 
+val get_uses:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> Lexing.position list
+(** [get_use ~elt_kind ~elt_loc state] returns all the uses known for the
+    element.
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name and the [elt_loc] is the one of the owning object/class.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.get_uses]).
+*)
+
 val add_self_use:
   elt_kind:[ `Method of string ] ->
   elt_loc:Lexing.position ->
@@ -137,6 +166,29 @@ val add_alias:
 
     This function is preferred over directly the corresponding element kind's
     dedicated function (e.g. [Values.add_alias]).
+*)
+
+type element =
+  [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
+  * Lexing.position (* elt loc *)
+  * string (* elt builddir *)
+
+val get_unused:
+  elt_kind:[< `Ctor_field | `Object | `Value ] ->
+  ?max_uses:int ->
+  t
+  -> (int, element list) Hashtbl.t
+(** [get_unused ~elt_kind ?max_uses state] returns a table containing the
+    elements used up to [max_uses] (included).
+    The keys are the number of uses.
+    The elements are identified by their kind, location, and builddir.
+    If [elt_kind] is [Object], then the elements kind is [Method] payloaded
+    with the corresponding method names. Otherwise the elements kind is the
+    same as [elt_kind].
+    [max_uses = 0] by default.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.get_unused]).
 *)
 
 val get_current : unit -> t
