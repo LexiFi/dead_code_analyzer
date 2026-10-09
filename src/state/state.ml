@@ -143,21 +143,20 @@ let get_exported_declaration_path ~elt_kind ~builddir ~elt_loc state =
       Values.get_val_path ~builddir ~val_loc:elt_loc state.values
 
 
-let should_track_use ~elt_kind ~elt_loc ~use_loc state =
+let should_track_use ~elt_kind ~elt_loc state =
   (* Uses are discarded if they should not be tracked for the given element.
      This is the case when the corrresponding report section is disabled
      or if the element is a value, the use is internal, and tracking
      internal uses is disabled.
   *)
-  let should_track_value_use elt_loc use_loc state =
+  let should_track_value_use elt_loc state =
     let is_external () =
       let elt_fname = elt_loc.Lexing.pos_fname in
       String.ends_with ~suffix:"i" elt_fname (* elt_loc is in a .mli *)
-      || ( (* compare elt and use compilation units *)
+      || ( (* compare elt and current compilation units *)
         let elt_unit = Utils.Filepath.unit elt_fname in
-        let use_fname = use_loc.Lexing.pos_fname in
-        let use_unit = Utils.Filepath.unit use_fname in
-        not (String.equal use_unit elt_unit))
+        let curr_unit = File_infos.get_sourceunit state.file_infos in
+        not (String.equal curr_unit elt_unit))
     in
     let is_exported () =
       match state.file_infos.cm_infos with
@@ -174,10 +173,10 @@ let should_track_use ~elt_kind ~elt_loc ~use_loc state =
       report_section_is_enabled ~elt_kind state
   | `Value ->
       report_section_is_enabled ~elt_kind state
-      && should_track_value_use elt_loc use_loc state
+      && should_track_value_use elt_loc state
 
 let add_use ~elt_kind ~elt_loc ~use_loc state =
-  if not (should_track_use ~elt_kind ~elt_loc ~use_loc state) then state
+  if not (should_track_use ~elt_kind ~elt_loc state) then state
   else
     match elt_kind with
     | `Method meth_name ->
@@ -229,7 +228,7 @@ let get_uses ~elt_kind ~elt_loc state =
       Values.get_uses ~val_loc:elt_loc state.values
 
 let add_self_use ~elt_kind ~elt_loc ~use_loc state =
-  if not (should_track_use ~elt_kind ~elt_loc ~use_loc state) then state
+  if not (should_track_use ~elt_kind ~elt_loc state) then state
   else
     match elt_kind with
     | `Method meth_name ->
