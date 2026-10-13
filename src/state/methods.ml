@@ -204,6 +204,7 @@ let add_any_use ~obj_loc ~meth_name ~use_loc use_tbl =
   StringHash.replace meth_tbl meth_name use_set
 
 let add_use ~obj_loc ~meth_name ~use_loc meths =
+  let obj_loc = get_orig_loc ~obj_loc meths in
   add_any_use ~obj_loc ~meth_name ~use_loc meths.uses;
   meths
 
@@ -288,7 +289,10 @@ let is_marked_defined ~builddir ~obj_loc ~meth_name meths =
     |> Option.value ~default:false
 
 let add_alias ~orig_loc ~alias_loc meths =
-  Utils.LocHash.replace meths.aliases alias_loc orig_loc;
+  let orig_loc = get_orig_loc ~obj_loc:orig_loc meths in
+  let alias_loc = get_orig_loc ~obj_loc:alias_loc meths in
+  if orig_loc <> alias_loc then
+    Utils.LocHash.replace meths.aliases alias_loc orig_loc;
   meths
 
 let copy_uses ~orig_loc ~alias_loc ~meth_name src_tbl dst_tbl =

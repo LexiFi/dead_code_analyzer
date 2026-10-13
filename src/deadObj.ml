@@ -24,11 +24,6 @@ let last_class = ref Lexing.dummy_pos            (* last class met *)
                 (********   HELPERS   ********)
 
 
-let repr_loc obj_loc =
-  let state = State.get_current () in
-  State.Methods.get_orig_loc ~obj_loc state.methods
-
-
 let add_path obj_path obj_loc =
   State.get_current ()
   |> State.add_loc_binding ~elt_kind:`Object ~elt_path:obj_path ~elt_loc:obj_loc
@@ -39,13 +34,10 @@ let get_loc obj_path =
   let state = State.get_current () in
   let obj_path = State.Methods.get_orig_path ~obj_path state.methods in
   State.find_loc ~elt_kind:`Object ~elt_path:obj_path state
-  |> Option.map repr_loc
 
 
 let add_equal loc1 loc2 =
-  let loc1 = repr_loc loc1
-  and loc2 = repr_loc loc2 in
-  if loc1 <> loc2 && not (is_ghost loc1 || is_ghost loc2) then begin
+  if not (is_ghost loc1 || is_ghost loc2) then begin
     if loc1 = !last_class then
       last_class := loc2;
     let state = State.get_current () in
@@ -83,7 +75,7 @@ let locate expr =
     | Texp_instvar (_, _, {Asttypes.loc; _})
     | Texp_new (_, _, {Types.cty_loc=loc; _})
     | Texp_ident (_, _, {Types.val_loc=loc; _}) ->
-        repr_loc loc.Location.loc_start
+        loc.Location.loc_start
     | _ -> Lexing.dummy_pos
   in repr_exp expr locate
 
@@ -177,6 +169,7 @@ let collect_references ~meth ~call_site expr =
       State.add_use ~elt_kind ~elt_loc:obj_loc ~use_loc state
     in
     let state =
+      let obj_loc = State.Methods.get_orig_loc ~obj_loc state.methods in
       if obj_loc = !last_class then
         State.add_self_use ~elt_kind ~elt_loc:obj_loc ~use_loc state
       else
