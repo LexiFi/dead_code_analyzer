@@ -60,7 +60,8 @@ let change_file state cm_file =
 
 let report_section_is_enabled ~elt_kind state =
   match elt_kind with
-  | `Ctor_field -> Config.must_report_section state.config.sections.types
+  | `Ctor_field
+  | `Type -> Config.must_report_section state.config.sections.types
   | `Method _
   | `Object -> Config.must_report_section state.config.sections.methods
   | `Value -> Config.must_report_section state.config.sections.exported_values
@@ -267,6 +268,32 @@ let add_alias ~elt_kind ~orig_loc ~alias_loc state =
     | `Object | `Ctor_field -> state
   in
   add_alias ~elt_kind ~orig_loc ~alias_loc state
+
+let add_loc_binding ~elt_kind ~elt_path ~elt_loc state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_loc_binding
+            ~obj_path:elt_path ~obj_loc:elt_loc
+            state.methods
+        in
+        { state with methods }
+    | `Type | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_loc_binding
+            ~path:elt_path ~loc:elt_loc
+            state.ctors_fields
+        in
+        { state with ctors_fields }
+
+let find_loc ~elt_kind ~elt_path state =
+  match elt_kind with
+  | `Object ->
+      Methods.find_loc ~obj_path:elt_path state.methods
+  | `Type | `Ctor_field ->
+      Ctors_fields.find_loc ~path:elt_path state.ctors_fields
 
 type element =
   [ `Ctor_field | `Method of string | `Value ] (* elt kind *)

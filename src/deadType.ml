@@ -63,44 +63,54 @@ let is_type s =
       assert false
 
 
+let add_component ~type_loc ~cf_name ~cf_path ~cf_loc state =
+  let open State in
+  Ctors_fields.add_component ~type_loc ~cf_name ~cf_loc state.ctors_fields
+  |> ignore;
+  add_loc_binding ~elt_kind:`Ctor_field ~elt_path:cf_path ~elt_loc:cf_loc state
 
                 (********   PROCESSING  ********)
 
 let collect_export path t =
-
+  let state = State.get_current () in
   let type_loc = t.type_loc.Location.loc_start in
   let type_path = List.rev path |> String.concat "." in
-  let save id loc =
-    let id = Ident.name id in
-    let cf_path = String.concat "." [type_path; id] in
-    let cf_loc = loc.Location.loc_start in
+  let add_declaration id loc state =
     if t.type_manifest = None then begin
       (* do not export t1 when there is an explicit equation t1 = t2 *)
-      let state =
-        State.get_current ()
-        |> State.add_exported_declaration
-            ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~elt_path:cf_path
-      in
-      State.update state;
-      state.ctors_fields
-      |> State.Ctors_fields.add_component ~type_loc ~cf_name:id ~cf_loc
-      |> State.Ctors_fields.add_loc_binding ~path:cf_path ~loc:cf_loc
-      |> State.Ctors_fields.add_loc_binding ~path:type_path ~loc:type_loc
-      |> ignore
-    end;
+      let cf_name = Ident.name id in
+      let cf_path = String.concat "." [type_path; cf_name] in
+      let cf_loc = loc.Location.loc_start in
+      state
+      |> State.add_exported_declaration
+          ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~elt_path:cf_path
+      |> State.add_loc_binding
+          ~elt_kind:`Type ~elt_path:type_path ~elt_loc:type_loc
+      |> add_component ~type_loc ~cf_name ~cf_path ~cf_loc
+    end
+    else state
   in
 
-  match t.type_kind with
-    | Type_record (l, _) ->
-        List.iter
-          (fun {Types.ld_id; ld_loc; ld_type; _} ->
-            save ld_id ld_loc;
-            !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type)
-          )
-          l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
-    | _ -> ()
+  let ids_locs =
+    match t.type_kind with
+      | Type_record (l, _) ->
+          List.map
+            (fun {Types.ld_id; ld_loc; ld_type; _} ->
+              !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type);
+              (ld_id, ld_loc)
+            )
+            l
+      | Type_variant (l, _) ->
+          List.map (fun {Types.cd_id; cd_loc; _} -> (cd_id, cd_loc)) l
+      | _ -> []
+  in
+  let state =
+    List.fold_left
+      (fun state (id, loc) -> add_declaration id loc state)
+      state
+      ids_locs
+  in
+  State.update state
 
 let correct_export t =
   let unexport loc =
@@ -153,28 +163,32 @@ let add_type_eq ~t1_path ~t2_path =
 
 
 let collect_eq_from_typ_decl ~t1_path ~t2_path type_decl =
-  let state = State.get_current() in
   add_type_eq ~t1_path ~t2_path;
+  let state = State.get_current() in
   let type_loc = type_decl.type_loc.Location.loc_start in
-  let add_field loc component_id =
+  let add_field loc component_id state =
     let cf_loc = loc.Location.loc_start in
     let cf_name = Ident.name component_id in
     let cf_path = t1_path ^ "." ^ cf_name in
-    match State.Ctors_fields.find_loc ~path:cf_path state.ctors_fields with
+    match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
-        state.ctors_fields
-        |> State.Ctors_fields.add_component ~type_loc ~cf_name ~cf_loc
-        |> State.Ctors_fields.add_loc_binding ~path:cf_path ~loc:cf_loc
-        |> State.Ctors_fields.add_loc_binding ~path:t1_path ~loc:type_loc
-        |> ignore
-    | _ -> ()
+        add_component ~type_loc ~cf_name ~cf_path ~cf_loc state
+        |> State.add_loc_binding
+            ~elt_kind:`Type ~elt_path:t1_path ~elt_loc:type_loc
+    | _ -> state
   in
-  match type_decl.type_kind with
-    | Type_record (l, _) ->
-        List.iter (fun {Types.ld_id; ld_loc; _} -> add_field ld_loc ld_id) l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_id; cd_loc; _} -> add_field cd_loc cd_id) l
-    | _ -> ()
+  let ids_locs =
+    match type_decl.type_kind with
+      | Type_record (l, _) ->
+          List.map (fun {Types.ld_id; ld_loc; _} -> (ld_id, ld_loc)) l
+      | Type_variant (l, _) ->
+          List.map (fun {Types.cd_id; cd_loc; _} -> (cd_id, cd_loc)) l
+      | _ -> []
+  in
+  let state =
+    List.fold_left (fun state (id, loc) -> add_field loc id state) state ids_locs
+  in
+  State.update state
 
 
 let find_longest_known_type_path rev_type_path =
@@ -185,7 +199,7 @@ let find_longest_known_type_path rev_type_path =
         type_path
     | local_type_path :: rev_internal_path as rev_type_path ->
         let type_path = List.rev rev_type_path |> String.concat "." in
-        match State.Ctors_fields.find_loc ~path:type_path state.ctors_fields with
+        match State.find_loc ~elt_kind:`Type ~elt_path:type_path state with
         | Some _ -> (* known path *)
             type_path
         | None -> (* path unknown; remove the latest module in the path *)
@@ -266,41 +280,44 @@ let tstr typ =
     | _ -> ()
   end;
 
-  let assoc name cf_loc =
+  let state = State.get_current() in
+  let assoc name cf_loc state =
     (* store the association from name to loc in fields,
        the dependencies and the equivalences *)
     let cf_name = name.Asttypes.txt in
     let cf_path = String.concat "." [t1_path; cf_name] in
-    match State.Ctors_fields.find_loc ~path:cf_path state.ctors_fields with
+    match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
-        state.ctors_fields
-        |> State.Ctors_fields.add_component ~type_loc:t1_loc ~cf_name ~cf_loc
-        |> State.Ctors_fields.add_loc_binding ~path:cf_path ~loc:cf_loc
-        |> State.Ctors_fields.add_loc_binding ~path:t1_path ~loc:t1_loc
-        |> ignore
+        add_component ~type_loc:t1_loc ~cf_name ~cf_path ~cf_loc state
+        |> State.add_loc_binding
+            ~elt_kind:`Type ~elt_path:t1_path ~elt_loc:t1_loc
     | Some known_loc when known_loc <> cf_loc ->
         (* The path is known because the current compilation unit exports it *)
         (* store dependency between .ml and .mli *)
-        dependencies := (known_loc, cf_loc) :: !dependencies
-    | _ -> ()
+        dependencies := (known_loc, cf_loc) :: !dependencies;
+        state
+    | _ -> state
   in
-  let assoc name loc ctyp =
-    assoc name loc;
-    !DeadLexiFi.tstr_type typ ctyp
+  let names_locs =
+    match typ.typ_kind with
+      | Ttype_record l ->
+          List.map
+            (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
+              !DeadLexiFi.tstr_type typ (to_string ld_type.ctyp_type);
+              (ld_name, ld_loc)
+            )
+            l
+      | Ttype_variant l ->
+          List.map (fun {Typedtree.cd_name; cd_loc; _} -> (cd_name, cd_loc)) l
+      | _ -> []
   in
-
-  match typ.typ_kind with
-    | Ttype_record l ->
-        List.iter
-          (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
-            assoc ld_name ld_loc.Location.loc_start (to_string ld_type.ctyp_type)
-          )
-          l
-    | Ttype_variant l ->
-        List.iter
-          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc.Location.loc_start _variant)
-          l
-    | _ -> ()
+  let state =
+    List.fold_left
+      (fun state (name, loc) -> assoc name loc.Location.loc_start state)
+      state
+      names_locs
+  in
+  State.update state
 
 
 let prepare_report () =

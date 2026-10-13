@@ -30,15 +30,15 @@ let repr_loc obj_loc =
 
 
 let add_path obj_path obj_loc =
-  let state = State.get_current () in
-  State.Methods.add_loc_binding ~obj_path ~obj_loc state.methods
-  |> ignore
+  State.get_current ()
+  |> State.add_loc_binding ~elt_kind:`Object ~elt_path:obj_path ~elt_loc:obj_loc
+  |> State.update
 
 
 let get_loc obj_path =
   let state = State.get_current () in
   let obj_path = State.Methods.get_orig_path ~obj_path state.methods in
-  State.Methods.find_loc ~obj_path state.methods
+  State.find_loc ~elt_kind:`Object ~elt_path:obj_path state
   |> Option.map repr_loc
 
 

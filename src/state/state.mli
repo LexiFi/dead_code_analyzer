@@ -168,6 +168,29 @@ val add_alias:
     dedicated function (e.g. [Values.add_alias]).
 *)
 
+val add_loc_binding:
+  elt_kind:[< `Ctor_field | `Object | `Type ] ->
+  elt_path:string ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** [add_loc_binding ~elt_kind ~elt_path ~elt_loc state] associates
+    [elt_loc] to [elt_path] for the [elt_kind]. This binding can later be
+    retrieved via {!find_loc} (see below)
+*)
+
+val find_loc:
+  elt_kind:[< `Ctor_field | `Object | `Type ] ->
+  elt_path:string ->
+  t
+  -> Lexing.position option
+(** [find_loc ~elt_kind ~elt_path state] retrieve the loc of [elt_path]
+    for [elt_kind].
+    If the path was bound via {!add_loc_binding} above, then it returns
+    [Some elt_loc] with [elt_loc] the latest binding to the path.
+    Otherwise, it returns [None].
+*)
+
 type element =
   [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
   * Lexing.position (* elt loc *)
