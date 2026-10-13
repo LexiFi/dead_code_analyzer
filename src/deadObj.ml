@@ -24,10 +24,11 @@ let last_class = ref Lexing.dummy_pos            (* last class met *)
                 (********   HELPERS   ********)
 
 
-let add_path obj_path obj_loc =
-  State.get_current ()
-  |> State.add_loc_binding ~elt_kind:`Object ~elt_path:obj_path ~elt_loc:obj_loc
-  |> State.update
+let add_path elt_path elt_loc state =
+  State.add_loc_binding ~elt_kind:`Object ~elt_path ~elt_loc state
+
+let add_path_alias orig_path alias_path state =
+  State.add_local_path_alias ~elt_kind:`Object ~orig_path ~alias_path state
 
 
 let get_loc obj_path =
@@ -36,13 +37,12 @@ let get_loc obj_path =
   State.find_loc ~elt_kind:`Object ~elt_path:obj_path state
 
 
-let add_equal loc1 loc2 =
-  if not (is_ghost loc1 || is_ghost loc2) then begin
+let add_equal loc1 loc2 state =
+  if is_ghost loc1 || is_ghost loc2 then state
+  else begin
     if loc1 = !last_class then
       last_class := loc2;
-    let state = State.get_current () in
     State.add_alias ~elt_kind:`Object ~orig_loc:loc2 ~alias_loc:loc1 state
-    |> State.update
   end
 
 
@@ -81,8 +81,9 @@ let locate expr =
 
 
 let eof () =
-  let state = State.get_current () in
-  State.Methods.reset_path_aliases state.methods |> ignore;
+  State.get_current ()
+  |> State.reset_local_path_aliases
+  |> State.update;
   last_class := Lexing.dummy_pos
 
 
@@ -91,7 +92,6 @@ let eof () =
 
 
 let collect_from_include ?incl_path ~rev_curr_path path =
-  let state = State.get_current () in
   let alias_path = List.rev path |> String.concat "." in
   let rev_mod_path =
     match incl_path with
@@ -99,26 +99,27 @@ let collect_from_include ?incl_path ~rev_curr_path path =
     | Some incl_path -> Utils.normalize_mod_path ~rev_curr_path incl_path
   in
   let orig_path = List.rev (alias_path::rev_mod_path) |> String.concat "." in
-  State.Methods.add_path_alias ~alias_path ~orig_path state.methods
-  |> ignore
+  State.get_current ()
+  |> add_path_alias orig_path alias_path
+  |> State.update
 
 
 let collect_export path ~obj ~cltyp loc =
-
   let state = State.get_current () in
   let pos = loc.Location.loc_start in
-
-  begin match List.rev path with
-  | h :: t ->
-      let short = String.concat "." t in
-      let path = h ^ "." ^ short in
-      State.Methods.add_path_alias ~alias_path:short ~orig_path:path state.methods
-      |> ignore;
-      add_path path pos
-  | _ -> ()
-  end;
+  let state =
+    match List.rev path with
+    | h :: t ->
+        let short = String.concat "." t in
+        let path = h ^ "." ^ short in
+        add_path_alias path short state
+        |> add_path path pos
+    | _ -> state
+  in
+  State.update state;
 
   let save id =
+    let state = State.get_current () in
     let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
     (* TODO: resolve the builddir ('/workspace_root') in the case of dune
        compiled projects. Without it, looking up for an existing csml below will
@@ -189,11 +190,9 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
   in
   let modname = State.File_infos.get_modname state.file_infos in
   let path = modname ^ "." ^ short in
-  begin
+  let state =
     match State.Methods.find_orig_path ~obj_path:short state.methods with
-    | None ->
-        State.Methods.add_path_alias ~alias_path:short ~orig_path:path state.methods
-        |> ignore
+    | None -> add_path_alias path short state
     | Some _ ->
         let loc =
           match get_loc short with
@@ -201,20 +200,23 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
           | some -> some
         in
         match loc with
-        | Some loc when loc <> !last_class -> add_equal !last_class loc
-        | _ -> add_path path !last_class
-  end;
+        | Some loc when loc <> !last_class -> add_equal !last_class loc state
+        | _ -> add_path path !last_class state
+  in
 
-  let rec make_dep ci_expr =
+  let rec make_dep ci_expr state =
     match ci_expr.cl_desc with
     | Tcl_ident (path, _, _) ->
-        get_loc (Path.name path)
-        |> Option.iter (add_equal !last_class)
+        begin match get_loc (Path.name path) with
+        | None -> state
+        | Some orig_loc -> add_equal !last_class orig_loc state
+        end
     | Tcl_fun (_, _, _, ci_expr, _)
-    | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr
-    | _ -> ()
+    | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr state
+    | _ -> state
   in
-  make_dep ci_expr
+  make_dep ci_expr state
+  |> State.update
 
 
 let add_var loc expr =
@@ -254,94 +256,110 @@ let add_var loc expr =
     (* Default *)
     | _ -> `Ignore
   in
-  match repr_exp expr kind with
-  | `Obj ->
-      last_class := loc;
-  | `New cty_loc -> add_equal loc cty_loc
-  | `Ident id_loc ->
-      let expr_loc : Location.t = expr.exp_loc in
-      if id_loc >= expr_loc.loc_start && id_loc <= expr_loc.loc_end then
-        (* ident is defined within expr *)
-        add_equal id_loc loc
-  | `Ignore -> ()
+  let state = State.get_current () in
+  let state =
+    match repr_exp expr kind with
+    | `Obj ->
+        last_class := loc;
+        state
+    | `New cty_loc -> add_equal loc cty_loc state
+    | `Ident id_loc ->
+        let expr_loc : Location.t = expr.exp_loc in
+        if id_loc >= expr_loc.loc_start && id_loc <= expr_loc.loc_end then
+          (* ident is defined within expr *)
+          add_equal id_loc loc state
+        else state
+    | `Ignore -> state
+  in
+  State.update state
 
 
 let class_structure cl_struct =
-  let rec add_aliases pat =
-    begin match pat.pat_desc with
-    | Tpat_alias _
-    | Tpat_var _ when not pat.pat_loc.Location.loc_ghost ->
-        add_equal pat.pat_loc.Location.loc_start !last_class
-    | _ -> () end;
+  let rec add_aliases pat state =
+    let state =
+      match pat.pat_desc with
+      | Tpat_alias _
+      | Tpat_var _ when not pat.pat_loc.Location.loc_ghost ->
+          add_equal pat.pat_loc.Location.loc_start !last_class state
+      | _ -> state
+    in
     match Utils.Compat.get_alias_data pat.pat_desc with
-    | Ok (pat, _, _, _) -> add_aliases pat
-    | _ -> ()
+    | Ok (pat, _, _, _) -> add_aliases pat state
+    | _ -> state
   in
-  add_aliases cl_struct.cstr_self
+  State.get_current ()
+  |> add_aliases cl_struct.cstr_self
+  |> State.update
 
+let collect_inheritance ~inherited_path ~elt_loc ~methods state =
+  let state = (* mark each method as inherited *)
+    List.fold_left
+      (fun state (meth_name, _) ->
+        let elt_kind = `Method meth_name in
+        State.mark_inherited ~elt_kind ~elt_loc ~inherited_path state
+      )
+      state
+      methods
+  in
+  State.inherit_initializer ~elt_kind:`Object ~elt_loc ~inherited_path state
 
-let class_field f =
-  let state = State.get_current () in
-  let rec locate cl_exp = match cl_exp.cl_desc with
+let add_equal_parent ~inherited_path ~cl_exp ~cf state =
+  let cl_exp_loc = cl_exp.cl_loc.Location.loc_start in
+  let state =
+    let cf_loc = cf.cf_loc.Location.loc_start in
+    add_equal cf_loc cl_exp_loc state
+  in
+  match get_loc inherited_path with
+  | None ->
+      (* path has not been located yet. Try again later. *)
+      let equal () =
+        let state = State.get_current () in
+        let state =
+          match get_loc inherited_path with
+          | None -> state
+          | Some orig_loc -> add_equal cl_exp_loc orig_loc state
+        in
+        State.update state
+      in
+      at_eof := equal :: !at_eof;
+      state
+  | Some loc ->
+      add_equal cl_exp_loc loc state
+
+let class_field cf =
+  let rec locate cl_exp (state: State.t) =
+    match cl_exp.cl_desc with
     | Tcl_ident (path, _, _) ->
         let path = Path.name path in
         State.Methods.get_orig_path ~obj_path:path state.methods
     | Tcl_fun (_, _, _, cl_exp, _)
     | Tcl_apply (cl_exp, _)
     | Tcl_let (_, _, _, cl_exp)
-    | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp
+    | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp state
     | Tcl_structure _ | Tcl_open _ -> _none
   in
-  match f.cf_desc with
-  | Tcf_inherit (_, cl_exp, _, _, l) ->
-      let path = locate cl_exp in
-      if path != _none then begin
-        let builddir = State.File_infos.get_builddir state.file_infos in
-        List.iter
-          (fun (meth_name, _) ->
-            State.Methods.mark_inherited
-              ~builddir ~obj_loc:!last_class ~meth_name
-              ~inherited_path:path
-              state.methods
-            |> ignore
-          )
-          l;
-        State.Methods.inherit_initializer
-          ~builddir ~obj_loc:!last_class
-          ~inherited_path:path state.methods
-        |> ignore;
-        add_equal f.cf_loc.Location.loc_start cl_exp.cl_loc.Location.loc_start;
-        match get_loc path with
-        | None ->
-            (* path has not been located yet. Try again later. *)
-            let equal () =
-              get_loc path
-              |> Option.iter (add_equal cl_exp.cl_loc.Location.loc_start)
-            in
-            at_eof := equal :: !at_eof
-        | Some loc ->
-            add_equal cl_exp.cl_loc.Location.loc_start loc
-      end
+  let state = State.get_current () in
+  let state =
+    let elt_loc = !last_class in
+    match cf.cf_desc with
+    | Tcf_inherit (_, cl_exp, _, _, methods) ->
+        let inherited_path = locate cl_exp state in
+        if inherited_path == _none then state
+        else
+          collect_inheritance ~inherited_path ~elt_loc ~methods state
+          |> add_equal_parent ~inherited_path ~cl_exp ~cf
 
-  | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
-      let state = State.get_current () in
-      let builddir = State.File_infos.get_builddir state.file_infos in
-      State.Methods.mark_virtual ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
-      |> ignore
-  | Tcf_method ({txt; _}, _, _) ->
-      let state = State.get_current () in
-      let builddir = State.File_infos.get_builddir state.file_infos in
-      State.Methods.mark_defined ~builddir ~obj_loc:!last_class ~meth_name:txt state.methods
-      |> ignore
-
-  | Tcf_initializer _ ->
-      let state = State.get_current () in
-      let builddir = State.File_infos.get_builddir state.file_infos in
-      State.Methods.add_initializer
-        ~builddir ~obj_loc:!last_class state.methods
-      |> ignore
-
-  | _ -> ()
+    | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
+        let elt_kind = `Method txt in
+        State.mark_virtual ~elt_kind ~elt_loc state
+    | Tcf_method ({txt; _}, _, _) ->
+        let elt_kind = `Method txt in
+        State.mark_defined ~elt_kind ~elt_loc state
+    | Tcf_initializer _ ->
+        State.add_initializer ~elt_kind:`Object ~elt_loc state
+    | _ -> state
+  in
+  State.update state
 
 
 let arg typ args =

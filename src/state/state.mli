@@ -168,6 +168,23 @@ val add_alias:
     dedicated function (e.g. [Values.add_alias]).
 *)
 
+val add_local_path_alias:
+  elt_kind:[< `Object ] ->
+  orig_path:string ->
+  alias_path:string ->
+  t
+  -> t
+(** [add_loc_binding ~elt_kind ~orig_path ~alias_path state] is similar to
+    adding an alias (see {!add_alias} above) but for paths rather than
+    locations, and is meant for local storage (i.e. be reset in between
+    compilation units via {!reset_local_path_aliases} below)
+*)
+
+val reset_local_path_aliases : t -> t
+(** [reset_local_path_aliases state] removes all the path aliases that were
+    added via {!add_local_path_alias} above.
+*)
+
 val add_loc_binding:
   elt_kind:[< `Ctor_field | `Object | `Type ] ->
   elt_path:string ->
@@ -190,6 +207,41 @@ val find_loc:
     [Some elt_loc] with [elt_loc] the latest binding to the path.
     Otherwise, it returns [None].
 *)
+
+val add_initializer:
+  elt_kind:[< `Object ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+
+val inherit_initializer:
+  elt_kind:[< `Object ] ->
+  elt_loc:Lexing.position ->
+  inherited_path:string ->
+  t
+  -> t
+
+val mark_defined:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** Mark the method as defined *)
+
+val mark_virtual:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** Mark the method as virtual *)
+
+val mark_inherited:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  inherited_path:string ->
+  t
+  -> t
+(** Mark the method as inherited *)
 
 type element =
   [ `Ctor_field | `Method of string | `Value ] (* elt kind *)

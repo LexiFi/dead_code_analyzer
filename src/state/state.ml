@@ -269,6 +269,22 @@ let add_alias ~elt_kind ~orig_loc ~alias_loc state =
   in
   add_alias ~elt_kind ~orig_loc ~alias_loc state
 
+let add_local_path_alias ~elt_kind ~orig_path ~alias_path state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_path_alias ~orig_path ~alias_path state.methods
+        in
+        { state with methods }
+
+let reset_local_path_aliases state =
+  let methods =
+    Methods.reset_path_aliases state.methods
+  in
+  { state with methods }
+
 let add_loc_binding ~elt_kind ~elt_path ~elt_loc state =
   if not (report_section_is_enabled ~elt_kind state) then state
   else
@@ -294,6 +310,53 @@ let find_loc ~elt_kind ~elt_path state =
       Methods.find_loc ~obj_path:elt_path state.methods
   | `Type | `Ctor_field ->
       Ctors_fields.find_loc ~path:elt_path state.ctors_fields
+
+let add_initializer ~elt_kind ~elt_loc state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_initializer ~builddir ~obj_loc:elt_loc state.methods
+        in
+        { state with methods }
+
+let inherit_initializer ~elt_kind ~elt_loc ~inherited_path state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.inherit_initializer
+            ~builddir ~obj_loc:elt_loc ~inherited_path
+            state.methods
+        in
+        { state with methods }
+
+let mark_method ~elt_kind ~elt_loc mark_fun state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Method meth_name ->
+        let methods =
+          mark_fun ~builddir ~obj_loc:elt_loc ~meth_name state.methods
+        in
+        { state with methods }
+
+let mark_defined ~elt_kind ~elt_loc state =
+  let mark_fun = Methods.mark_defined in
+  mark_method ~elt_kind ~elt_loc mark_fun state
+
+let mark_virtual ~elt_kind ~elt_loc state =
+  let mark_fun = Methods.mark_virtual in
+  mark_method ~elt_kind ~elt_loc mark_fun state
+
+let mark_inherited ~elt_kind ~elt_loc ~inherited_path state =
+  let mark_fun = Methods.mark_inherited ~inherited_path in
+  mark_method ~elt_kind ~elt_loc mark_fun state
 
 type element =
   [ `Ctor_field | `Method of string | `Value ] (* elt kind *)

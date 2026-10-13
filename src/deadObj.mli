@@ -39,7 +39,7 @@ val collect_references :
 
 
 val add_equal :
-  Lexing.position -> Lexing.position -> unit
+  Lexing.position -> Lexing.position -> State.t -> State.t
 
 
 val tstr :

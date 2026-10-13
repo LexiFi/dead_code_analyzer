@@ -71,7 +71,9 @@ let value_binding super self x =
       | Texp_ident (_, _, {val_loc; _}) when not val_loc.Location.loc_ghost ->
           let val_loc = val_loc.Location.loc_start in
           VdNode.merge_locs pat_loc val_loc;
-          DeadObj.add_equal pat_loc val_loc
+          State.get_current ()
+          |> DeadObj.add_equal pat_loc val_loc
+          |> State.update
       | _ ->
           let exp = x.vb_expr in
           DeadArg.bind pat_loc exp;
@@ -455,11 +457,15 @@ let load_file fn state =
     | Neither | Cmti _ -> report_error (fn ^ ": missing structure")
     | Cmt {strc; location_dependencies; _} ->
         regabs state;
-        let prepare (loc1, loc2) =
-          DeadObj.add_equal loc1 loc2;
-          VdNode.merge_locs ~force:true loc2 loc1
+        let prepare (loc1, loc2) state =
+          VdNode.merge_locs ~force:true loc2 loc1;
+          DeadObj.add_equal loc1 loc2 state
         in
-        List.iter prepare location_dependencies;
+        let state =
+          List.fold_left (fun state locs -> prepare locs state)
+            state
+            location_dependencies
+        in
         collect_references.Tast_mapper.structure collect_references strc
         |> ignore;
         let loc_dep =
