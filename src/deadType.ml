@@ -72,69 +72,62 @@ let add_component ~type_loc ~type_path ~cf_loc ~cf_name state =
       ~elt_kind:`Ctor_field ~elt_path:cf_path ~elt_loc:cf_loc
   |> State.add_type_component ~type_loc ~cf_name ~cf_loc
 
+
+let fold_components ~f type_decl state =
+  match type_decl.type_kind with
+    | Type_record (fields, _) ->
+        let f state {Types.ld_id; ld_loc; _} =
+          f ld_id ld_loc state
+        in
+        List.fold_left f state fields
+    | Type_variant (ctors, _) ->
+        let f state {Types.cd_id; cd_loc; _} =
+          f cd_id cd_loc state
+        in
+        List.fold_left f state ctors
+    | _ -> state
+
                 (********   PROCESSING  ********)
 
 let collect_export path t =
   let state = State.get_current () in
   let type_loc = t.type_loc.Location.loc_start in
   let type_path = List.rev path |> String.concat "." in
-  let add_declaration cf_name loc state =
-    if t.type_manifest = None then begin
+  let add_declaration cf_id cf_loc state =
+    let cf_name = Ident.name cf_id in
+    if DeadCommon.should_export cf_loc cf_name
+      && t.type_manifest = None
       (* do not export t1 when there is an explicit equation t1 = t2 *)
+    then
       let cf_path = String.concat "." [type_path; cf_name] in
-      let cf_loc = loc.Location.loc_start in
+      let cf_loc = cf_loc.Location.loc_start in
       state
       |> State.add_exported_declaration
           ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~elt_path:cf_path
       |> add_component ~type_loc ~type_path ~cf_loc ~cf_name
-    end
     else state
   in
-  let add_declaration id loc state =
-    let cf_name = Ident.name id in
-    if DeadCommon.should_export loc cf_name then
-      add_declaration cf_name loc state
-    else state
-  in
-
-  let ids_locs =
+  let state = fold_components ~f:add_declaration t state in
+  let _apply_lexifi =
     match t.type_kind with
-      | Type_record (l, _) ->
-          List.map
-            (fun {Types.ld_id; ld_loc; ld_type; _} ->
-              !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type);
-              (ld_id, ld_loc)
+      | Type_record (fields, _) ->
+          List.iter
+            (fun {Types.ld_loc; ld_type; _} ->
+              !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type)
             )
-            l
-      | Type_variant (l, _) ->
-          List.map (fun {Types.cd_id; cd_loc; _} -> (cd_id, cd_loc)) l
-      | _ -> []
-  in
-  let state =
-    List.fold_left
-      (fun state (id, loc) -> add_declaration id loc state)
-      state
-      ids_locs
+            fields
+      | _ -> ()
   in
   State.update state
 
 let correct_export t =
-  let unexport loc =
-    let state = State.get_current () in
+  let unexport loc state =
     let elt_loc = loc.Location.loc_start in
     State.remove_exported_declaration ~elt_kind:`Ctor_field ~elt_loc state
-    |> State.update
   in
-  match t.type_kind with
-    | Type_record (l, _) ->
-        List.iter
-          (fun {Types.ld_loc; _} ->
-            unexport ld_loc;
-          )
-          l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_loc; _} -> unexport cd_loc) l
-    | _ -> ()
+  State.get_current ()
+  |> fold_components ~f:(fun _id -> unexport) t
+  |> State.update
 
 
 let collect_references cf_loc use_loc =
@@ -165,27 +158,17 @@ let collect_eq_from_typ_decl ~t1_path ~t2_path type_decl =
   let state = State.get_current() in
   let state = State.add_type_equivalence ~t1_path ~t2_path state in
   let type_loc = type_decl.type_loc.Location.loc_start in
-  let add_field loc component_id state =
-    let cf_loc = loc.Location.loc_start in
-    let cf_name = Ident.name component_id in
+  let add_component cf_id cf_loc state =
+    let cf_loc = cf_loc.Location.loc_start in
+    let cf_name = Ident.name cf_id in
     let cf_path = t1_path ^ "." ^ cf_name in
     match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
         add_component ~type_loc ~type_path:t1_path ~cf_loc ~cf_name state
     | _ -> state
   in
-  let ids_locs =
-    match type_decl.type_kind with
-      | Type_record (l, _) ->
-          List.map (fun {Types.ld_id; ld_loc; _} -> (ld_id, ld_loc)) l
-      | Type_variant (l, _) ->
-          List.map (fun {Types.cd_id; cd_loc; _} -> (cd_id, cd_loc)) l
-      | _ -> []
-  in
-  let state =
-    List.fold_left (fun state (id, loc) -> add_field loc id state) state ids_locs
-  in
-  State.update state
+  fold_components ~f:add_component type_decl state
+  |> State.update
 
 
 let find_longest_known_type_path rev_type_path =
@@ -263,9 +246,9 @@ let tstr typ =
 
   (* A type equation [type t1 = t2 = ...] produces a
      [typ_manifest = Some (Ttyp_constr t2)] in t1
-     In this situation, we want to remember the equality between t1 and t2's
-     components, for later resolution of equivalence classes and merging
-     all their references (see {!prepare_report} below).
+     In this situation, we want to remember the equivalence between t1 and t2
+     for later resolution of equivalence classes and merging all their
+     references (see {!prepare_report} below).
   *)
   let state =
     match typ.typ_manifest with
@@ -278,10 +261,10 @@ let tstr typ =
     | _ -> state
   in
 
-  let assoc name cf_loc state =
-    (* store the association from name to loc in fields,
-       the dependencies and the equivalences *)
-    let cf_name = name.Asttypes.txt in
+  let assoc cf_name cf_loc state =
+    (* store the association from name to loc *)
+    let cf_name = cf_name.Asttypes.txt in
+    let cf_loc = cf_loc.Location.loc_start in
     let cf_path = String.concat "." [t1_path; cf_name] in
     match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
@@ -293,24 +276,29 @@ let tstr typ =
         state
     | _ -> state
   in
-  let names_locs =
-    match typ.typ_kind with
-      | Ttype_record l ->
-          List.map
-            (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
-              !DeadLexiFi.tstr_type typ (to_string ld_type.ctyp_type);
-              (ld_name, ld_loc)
-            )
-            l
-      | Ttype_variant l ->
-          List.map (fun {Typedtree.cd_name; cd_loc; _} -> (cd_name, cd_loc)) l
-      | _ -> []
-  in
   let state =
-    List.fold_left
-      (fun state (name, loc) -> assoc name loc.Location.loc_start state)
-      state
-      names_locs
+    match typ.typ_kind with
+      | Ttype_record fields ->
+          let assoc state {Typedtree.ld_name; ld_loc; _} =
+            assoc ld_name ld_loc state
+          in
+          List.fold_left assoc state fields
+      | Ttype_variant ctors ->
+          let assoc state {Typedtree.cd_name; cd_loc; _} =
+            assoc cd_name cd_loc state
+          in
+          List.fold_left assoc state ctors
+      | _ -> state
+  in
+  let _apply_lexifi =
+    match typ.typ_kind with
+      | Ttype_record fields ->
+          List.iter
+            (fun {Typedtree.ld_type; _} ->
+              !DeadLexiFi.tstr_type typ (to_string ld_type.ctyp_type)
+            )
+            fields
+      | _ -> ()
   in
   State.update state
 
