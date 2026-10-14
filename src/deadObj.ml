@@ -16,7 +16,7 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let at_eof = ref []
+let at_eocb = ref []
 
 let last_class = ref Lexing.dummy_pos            (* last class met *)
 
@@ -81,9 +81,6 @@ let locate expr =
 
 
 let eof () =
-  State.get_current ()
-  |> State.reset_local_path_aliases
-  |> State.update;
   last_class := Lexing.dummy_pos
 
 
@@ -324,7 +321,7 @@ let add_equal_parent ~inherited_path ~cl_exp ~cf state =
         in
         State.update state
       in
-      at_eof := equal :: !at_eof;
+      at_eocb := equal :: !at_eocb;
       state
   | Some loc ->
       add_equal cl_exp_loc loc state
@@ -403,19 +400,8 @@ let coerce expr typ =
   treat_fields use typ
 
 
-let prepare_report () =
-  List.iter (fun f -> f ()) !at_eof;
-  let state = State.get_current () in
-  State.Methods.resolve_aliases state.methods
-  |> State.Methods.resolve_inheritances
-  |> ignore
-
-
-let report () =
-  prepare_report ();
-  let state = State.get_current () in
-  Report.report ~elt_kind:`Object state
-
+let eocb () =
+  List.iter (fun f -> f ()) !at_eocb
 
 
                 (********   WRAPPING  ********)
@@ -447,6 +433,3 @@ let class_field cl_field =
 
 let arg typ args =
   wrap (arg typ) args
-
-let report () =
-  wrap report ()

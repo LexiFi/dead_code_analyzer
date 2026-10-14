@@ -184,8 +184,19 @@ module VdNode = struct
   type t = (string list * Lexing.position option)
 
   let vd_nodes = Utils.LocHash.create 256
+  (** loc -> (opt_args * next) where next is the location of a partially
+      applied function returned by the value defined at loc.
+      I.e. next is the callee.
+      XXX: needs clarification
+  *)
 
   let parents = Utils.LocHash.create 256
+  (** loc -> pred where pred is the location of a value that returns the
+      partial application of the function defined at loc.
+      This is the reverse of vd_nodes, with loc = next and pred = loc.
+      I.e. pred is the caller.
+      XXX: needs clarification
+  *)
 
 
   (* Get or create a vd_node corresponding to the location *)
@@ -281,14 +292,9 @@ module VdNode = struct
       )
     in loop (func loc) lab occur
 
-  let eof () =
-    let state = State.get_current () in
-
-    let sons =
-      Utils.LocHash.fold (fun loc _ acc -> loc :: acc) parents []
-      |> List.sort_uniq compare
-    in
-
+  let eof (state : State.t) =
+    (* TODO: clarify this code (and the whole VdNode module) *)
+    let sons = Utils.LocHash.to_seq_keys parents |> List.of_seq in
     let delete loc =
       if seen loc then
         let met = Hashtbl.create 64 in
@@ -299,10 +305,10 @@ module VdNode = struct
             |> Utils.LocSet.iter loop;
             let pts =
               Utils.LocHash.find_set parents loc
-              |> Utils.LocSet.filter (Utils.LocHash.mem vd_nodes) in
+              |> Utils.LocSet.filter (Utils.LocHash.mem vd_nodes)
+            in
             if Utils.LocSet.is_empty pts then begin
-              if Utils.LocHash.mem parents loc then
-                Utils.LocHash.remove parents loc;
+              Utils.LocHash.remove parents loc;
               Utils.LocHash.remove vd_nodes loc;
             end
           end
@@ -330,7 +336,8 @@ module VdNode = struct
           end
       in loop (Utils.LocSet.singleton loc) []
     in
-    List.iter delete sons
+    List.iter delete sons;
+    state
 
 
 end

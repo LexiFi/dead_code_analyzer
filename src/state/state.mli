@@ -258,6 +258,12 @@ val mark_inherited:
   -> t
 (** Mark the method as inherited *)
 
+val prepare_report: t -> t
+(** Resolve pending operations, such as method inheritance and type equivalence
+    resolution.
+    To be used once before reporting.
+*)
+
 type element =
   [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
   * Lexing.position (* elt loc *)

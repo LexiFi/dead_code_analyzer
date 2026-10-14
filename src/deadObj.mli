@@ -67,8 +67,11 @@ val coerce:
 
 
 val eof : unit -> unit
-(** For use at the end of a [.cmt]'s analysis: reset internal state *)
+(** To use at the end of a [.cmt]'s analysis: reset internal state *)
 
 
-val report :
-  unit -> unit
+val eocb : unit -> unit
+(** To use at the end of the codebase analysis:
+    apply remaining deferred functions which required the analysis of future
+    locations, their respective files.
+    [eocb] = end of code base. *)

@@ -15,7 +15,7 @@ module Default = struct
   let type_decl _ = ()
   let tstr_type _ _ = ()
   let ttype_of _ = ()
-  let prepare_report _ = ()
+  let prepare_report state = state
 end
 
 let sig_value = ref Default.sig_value
@@ -120,8 +120,7 @@ module Extension = struct
     in
     dyn_rec := (name, e.exp_type, call_site) :: !dyn_rec
 
-  let prepare_report () =
-    let state = State.get_current () in
+  let prepare_report state =
     let state =
       List.fold_left
         (fun state (strin, pos) ->
@@ -164,25 +163,22 @@ module Extension = struct
       | _ -> ()
     in
     List.iter process !dyn_rec;
-    let state =
-      List.fold_left
-        (fun state (cf_loc, _, cf_path) ->
-          let rec get_type s pos =
-            if pos = 0 then s
-            else if s.[pos] = '.' then String.sub s 0 pos
-            else get_type s (pos - 1)
-          in
-          List.fold_left
-            (fun state use_loc ->
-              State.add_use ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~use_loc state
-            )
-            state
-            (hashtbl_find_list dyn_used (get_type cf_path (String.length cf_path - 1)))
-        )
-        state
-        (State.Ctors_fields.get_exported_declarations state.ctors_fields)
-    in
-    State.update state
+    List.fold_left
+      (fun state (cf_loc, _, cf_path) ->
+        let rec get_type s pos =
+          if pos = 0 then s
+          else if s.[pos] = '.' then String.sub s 0 pos
+          else get_type s (pos - 1)
+        in
+        List.fold_left
+          (fun state use_loc ->
+            State.add_use ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~use_loc state
+          )
+          state
+          (hashtbl_find_list dyn_used (get_type cf_path (String.length cf_path - 1)))
+      )
+      state
+      (State.Ctors_fields.get_exported_declarations state.ctors_fields)
 
 end
 

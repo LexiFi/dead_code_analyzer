@@ -303,17 +303,6 @@ let tstr typ =
   State.update state
 
 
-let prepare_report () =
-  let state = State.get_current () in
-  State.Ctors_fields.resolve_equivalences state.ctors_fields
-  |> ignore
-
-
-let report () =
-  let state = State.get_current () in
-  Report.report ~elt_kind:`Ctor_field state
-
-
                 (********   WRAPPING  ********)
 
 let wrap f x =
@@ -324,8 +313,6 @@ let wrap f x =
 
 let collect_export path t = wrap (collect_export path) t
 let tstr typ = wrap tstr typ
-let prepare_report () = wrap prepare_report ()
-let report () = wrap report ()
 
 let collect_eq_from_module_alias
     ~rev_alias_path ~original_path ~sub_path type_decl

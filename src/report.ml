@@ -170,3 +170,8 @@ let report ~elt_kind state =
   let section_config = get_section_config ~elt_kind state in
   if Config.must_report_section section_config then
     report ~elt_kind state section_config
+
+let report_main_sections state =
+  report ~elt_kind:`Value state;
+  report ~elt_kind:`Object state;
+  report ~elt_kind:`Ctor_field state

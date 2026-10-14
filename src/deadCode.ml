@@ -342,8 +342,7 @@ let read_interface export_collector state =
 
 
 (* Merge a location's references to another one's *)
-let assoc elt_kind (loc1, loc2) =
-  let state = State.get_current () in
+let assoc elt_kind loc1 loc2 (state : State.t) =
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
@@ -353,66 +352,68 @@ let assoc elt_kind (loc1, loc2) =
     || ( Utils.Filepath.unit fn = sourceunit
       && DeadCommon.file_exists (fn ^ "i"))
   in
-  let is_iface fn loc (state : State.t) =
-    let is_exported =
-      State.is_exported_declaration ~elt_kind ~elt_loc:loc state
-    in
-    is_exported || Utils.Filepath.unit fn <> sourceunit
+  let is_iface fn elt_loc (state : State.t) =
+    State.is_exported_declaration ~elt_kind ~elt_loc state
+    || Utils.Filepath.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
-  let merge_refs loc1 loc2 state =
-    State.add_alias ~elt_kind ~orig_loc:loc1 ~alias_loc:loc2 state
-  in
-  let state =
-    if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then
-      let state =
-        if (state.config.internal || fn1 <> fn2)
-            && is_implem fn1 && is_implem fn2
-        then
-          merge_refs loc2 loc1 state
-        else state
-      in
-      if is_iface fn1 loc1 state then begin
-        if is_iface fn2 loc2 state then
-          State.add_use ~elt_kind ~elt_loc:loc1 ~use_loc:loc2 state
-        else
-          merge_refs loc1 loc2 state
-      end
+  if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then
+    let state =
+      if (state.config.internal || fn1 <> fn2)
+          && is_implem fn1 && is_implem fn2
+      then
+        State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+      else state
+    in
+    if is_iface fn1 loc1 state then begin
+      if is_iface fn2 loc2 state then
+        State.add_use ~elt_kind ~elt_loc:loc1 ~use_loc:loc2 state
       else
-        merge_refs loc2 loc1 state
-    else state
-  in
-  State.update state
+        State.add_alias ~elt_kind ~orig_loc:loc1 ~alias_loc:loc2 state
+    end
+    else
+      State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+  else state
 
 
-let clean elt_kind elt_loc =
-  let state = State.get_current () in
+let clean elt_kind elt_loc (state : State.t) =
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let fn = elt_loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
     State.remove_uses ~elt_kind ~elt_loc state
-    |> State.update
+  else state
 
-let eof loc_dep =
-  let state = State.get_current () in
-  DeadArg.eof();
-  List.iter (assoc `Value) loc_dep;
-  List.iter (assoc `Ctor_field) !DeadType.dependencies;
+let process_dependencies elt_kind loc_dep state =
+  let state =
+    List.fold_left
+      (fun state (loc1, loc2) -> assoc elt_kind loc1 loc2 state)
+      state
+      loc_dep
+  in
   let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
-  if DeadCommon.file_exists (sourcepath ^ "i") then begin
-    let clean section =
-      List.iter
-        (fun (loc1, loc2) ->
-          clean section loc1; clean section loc2
-        )
-    in
-    clean `Value loc_dep;
-    clean `Ctor_field !DeadType.dependencies;
-  end;
-  VdNode.eof ();
+  if DeadCommon.file_exists (sourcepath ^ "i") then
+    List.fold_left
+      (fun state (loc1, loc2) ->
+        clean elt_kind loc1 state
+        |> clean elt_kind loc2
+      )
+      state
+      loc_dep
+  else state
+
+let eof loc_dep state =
+  DeadArg.eof ();
+  let state =
+    state
+    |> process_dependencies `Value loc_dep
+    |> process_dependencies `Ctor_field !DeadType.dependencies
+    |> State.reset_local_path_aliases
+    |> DeadCommon.VdNode.eof
+  in
   DeadObj.eof ();
   DeadSign.eof ();
-  DeadType.dependencies := []
+  DeadType.dependencies := [];
+  state
 
 
 (* Starting point *)
@@ -431,9 +432,9 @@ let load_file fn state =
         State.update state;
         f state;
         (* TODO: stateful computations should take and return the state when possible *)
-        state
+        State.get_current ()
   in
-  let process_interface fn =
+  let process_interface fn state =
     last_loc := Lexing.dummy_pos;
     if state.State.config.verbose then
       Printf.eprintf "Scanning interface from %s\n%!" fn;
@@ -448,7 +449,7 @@ let load_file fn state =
         read_interface export_collector state
     )
   in
-  let process_implementation fn =
+  let process_implementation fn state =
     last_loc := Lexing.dummy_pos;
     if state.State.config.verbose then
       Printf.eprintf "Scanning implementation from %s\n%!" fn;
@@ -466,8 +467,10 @@ let load_file fn state =
             state
             location_dependencies
         in
+        State.update state;
         collect_references.Tast_mapper.structure collect_references strc
         |> ignore;
+        let state = State.get_current () in
         let loc_dep =
           if Config.must_report_section state.config.sections.exported_values then
             let sourceunit =
@@ -485,16 +488,17 @@ let load_file fn state =
               location_dependencies
           else []
         in
-        eof loc_dep
+        eof loc_dep state
+        |> State.update
     )
   in
   let exclude filepath = Config.is_excluded filepath state.State.config in
   match Utils.Filepath.kind ~exclude fn with
-  | Cmti when !DeadCommon.declarations -> process_interface fn
-  | Cmt_with_mli -> process_implementation fn
+  | Cmti when !DeadCommon.declarations -> process_interface fn state
+  | Cmt_with_mli -> process_implementation fn state
   | Cmt_without_mli ->
-      let _state = process_interface fn in
-      process_implementation fn
+      process_interface fn state
+      |> process_implementation fn
   | Dir ->
       (* TODO : better error handling *)
       failwith ("Internal error : Unexpected directory "
@@ -618,11 +622,6 @@ let report_opt_args s l =
   in report_opt_args 0
 
 
-let report_unused_exported () =
-  let state = State.get_current () in
-  Report.report ~elt_kind:`Value state
-
-
 let report_style () =
   section "CODING STYLE";
   if !style <> [] then begin
@@ -674,7 +673,6 @@ try
       State.update_config config state
     in
     let state = run_on_references_only state in
-    State.update state;
 
     Printf.eprintf " [DONE]\n\n%!";
 
@@ -688,12 +686,13 @@ try
           file_string;
     in
 
-    !DeadLexiFi.prepare_report ();
-    DeadType.prepare_report ();
+    DeadObj.eocb ();
+    let state =
+      !DeadLexiFi.prepare_report state
+      |> State.prepare_report
+    in
+    Report.report_main_sections state;
     let sections = state.config.sections in
-    if Config.must_report_section sections.exported_values then report_unused_exported ();
-    DeadObj.report();
-    DeadType.report();
     if Config.must_report_opt_args state.config then begin
       let tmp = analyze_opt_args () in
       if Config.must_report_section sections.opta then report_opt_args "ALWAYS" tmp;

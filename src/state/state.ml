@@ -388,6 +388,16 @@ let mark_inherited ~elt_kind ~elt_loc ~inherited_path state =
   let mark_fun = Methods.mark_inherited ~inherited_path in
   mark_method ~elt_kind ~elt_loc mark_fun state
 
+let prepare_report state =
+  let methods =
+    Methods.resolve_aliases state.methods
+    |> Methods.resolve_inheritances
+  in
+  let ctors_fields =
+    Ctors_fields.resolve_equivalences state.ctors_fields
+  in
+  { state with ctors_fields; methods }
+
 type element =
   [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
   * Lexing.position (* elt loc *)
