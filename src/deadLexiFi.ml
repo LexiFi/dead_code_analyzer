@@ -122,16 +122,19 @@ module Extension = struct
 
   let prepare_report () =
     let state = State.get_current () in
-    List.iter
-      (fun (strin, pos) ->
-        hashtbl_find_list str strin
-        |> List.iter
-          (fun loc ->
-              State.Values.add_use ~val_loc:loc ~use_loc:pos state.values
-              |> ignore
-          )
-      )
-      !used;
+    let state =
+      List.fold_left
+        (fun state (strin, pos) ->
+          hashtbl_find_list str strin
+          |> List.fold_left
+            (fun state loc ->
+                State.add_use ~elt_kind:`Value ~elt_loc:loc ~use_loc:pos state
+            )
+            state
+        )
+        state
+        !used
+    in
     let rec process (p, typ, call_site) =
       match get_deep_desc typ with
       | Tarrow (_, t, _, _) -> process (p, t, call_site)
@@ -161,21 +164,25 @@ module Extension = struct
       | _ -> ()
     in
     List.iter process !dyn_rec;
-    List.iter
-      (fun (cf_loc, _, cf_path) ->
-        let rec get_type s pos =
-          if pos = 0 then s
-          else if s.[pos] = '.' then String.sub s 0 pos
-          else get_type s (pos - 1)
-        in
-        List.iter
-          (fun use_loc ->
-            State.Ctors_fields.add_use ~cf_loc ~use_loc state.ctors_fields
-            |> ignore
-          )
-          (hashtbl_find_list dyn_used (get_type cf_path (String.length cf_path - 1)))
-      )
-      (State.Ctors_fields.get_exported_declarations state.ctors_fields)
+    let state =
+      List.fold_left
+        (fun state (cf_loc, _, cf_path) ->
+          let rec get_type s pos =
+            if pos = 0 then s
+            else if s.[pos] = '.' then String.sub s 0 pos
+            else get_type s (pos - 1)
+          in
+          List.fold_left
+            (fun state use_loc ->
+              State.add_use ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~use_loc state
+            )
+            state
+            (hashtbl_find_list dyn_used (get_type cf_path (String.length cf_path - 1)))
+        )
+        state
+        (State.Ctors_fields.get_exported_declarations state.ctors_fields)
+    in
+    State.update state
 
 end
 
