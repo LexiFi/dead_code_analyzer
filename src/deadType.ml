@@ -63,11 +63,14 @@ let is_type s =
       assert false
 
 
-let add_component ~type_loc ~cf_name ~cf_path ~cf_loc state =
-  let open State in
-  Ctors_fields.add_component ~type_loc ~cf_name ~cf_loc state.ctors_fields
-  |> ignore;
-  add_loc_binding ~elt_kind:`Ctor_field ~elt_path:cf_path ~elt_loc:cf_loc state
+let add_component ~type_loc ~type_path ~cf_loc ~cf_name state =
+  let cf_path = String.concat "." [type_path; cf_name] in
+  state
+  |> State.add_loc_binding
+      ~elt_kind:`Type ~elt_path:type_path ~elt_loc:type_loc
+  |> State.add_loc_binding
+      ~elt_kind:`Ctor_field ~elt_path:cf_path ~elt_loc:cf_loc
+  |> State.add_type_component ~type_loc ~cf_name ~cf_loc
 
                 (********   PROCESSING  ********)
 
@@ -83,9 +86,7 @@ let collect_export path t =
       state
       |> State.add_exported_declaration
           ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~elt_path:cf_path
-      |> State.add_loc_binding
-          ~elt_kind:`Type ~elt_path:type_path ~elt_loc:type_loc
-      |> add_component ~type_loc ~cf_name ~cf_path ~cf_loc
+      |> add_component ~type_loc ~type_path ~cf_loc ~cf_name
     end
     else state
   in
@@ -160,16 +161,9 @@ let rec check_style t loc =
       | _ -> ()
 
 
-let add_type_eq ~t1_path ~t2_path =
-  (* Store t1 = t2 equivalence *)
-  let state = State.get_current() in
-  State.Ctors_fields.add_equivalence ~t1_path ~t2_path state.ctors_fields
-  |> ignore
-
-
 let collect_eq_from_typ_decl ~t1_path ~t2_path type_decl =
-  add_type_eq ~t1_path ~t2_path;
   let state = State.get_current() in
+  let state = State.add_type_equivalence ~t1_path ~t2_path state in
   let type_loc = type_decl.type_loc.Location.loc_start in
   let add_field loc component_id state =
     let cf_loc = loc.Location.loc_start in
@@ -177,9 +171,7 @@ let collect_eq_from_typ_decl ~t1_path ~t2_path type_decl =
     let cf_path = t1_path ^ "." ^ cf_name in
     match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
-        add_component ~type_loc ~cf_name ~cf_path ~cf_loc state
-        |> State.add_loc_binding
-            ~elt_kind:`Type ~elt_path:t1_path ~elt_loc:type_loc
+        add_component ~type_loc ~type_path:t1_path ~cf_loc ~cf_name state
     | _ -> state
   in
   let ids_locs =
@@ -275,17 +267,17 @@ let tstr typ =
      components, for later resolution of equivalence classes and merging
      all their references (see {!prepare_report} below).
   *)
-  begin match typ.typ_manifest with
+  let state =
+    match typ.typ_manifest with
     | Some {ctyp_desc=Ttyp_constr (original_path, _, _); _} ->
         let t2_path =
           Utils.normalize_mod_path ~rev_curr_path original_path
           |> find_longest_known_type_path
         in
-        add_type_eq ~t1_path ~t2_path
-    | _ -> ()
-  end;
+        State.add_type_equivalence ~t1_path ~t2_path state
+    | _ -> state
+  in
 
-  let state = State.get_current() in
   let assoc name cf_loc state =
     (* store the association from name to loc in fields,
        the dependencies and the equivalences *)
@@ -293,9 +285,7 @@ let tstr typ =
     let cf_path = String.concat "." [t1_path; cf_name] in
     match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
-        add_component ~type_loc:t1_loc ~cf_name ~cf_path ~cf_loc state
-        |> State.add_loc_binding
-            ~elt_kind:`Type ~elt_path:t1_path ~elt_loc:t1_loc
+        add_component ~type_loc:t1_loc ~type_path:t1_path ~cf_loc ~cf_name state
     | Some known_loc when known_loc <> cf_loc ->
         (* The path is known because the current compilation unit exports it *)
         (* store dependency between .ml and .mli *)

@@ -283,6 +283,14 @@ let add_alias ~elt_kind ~orig_loc ~alias_loc state =
   in
   add_alias ~elt_kind ~orig_loc ~alias_loc state
 
+let add_type_equivalence ~t1_path ~t2_path state =
+  if not (report_section_is_enabled ~elt_kind:`Ctor_field state) then state
+  else
+    let ctors_fields =
+      Ctors_fields.add_equivalence ~t1_path ~t2_path state.ctors_fields
+    in
+    { state with ctors_fields }
+
 let add_local_path_alias ~elt_kind ~orig_path ~alias_path state =
   if not (report_section_is_enabled ~elt_kind state) then state
   else
@@ -335,6 +343,14 @@ let add_initializer ~elt_kind ~elt_loc state =
           Methods.add_initializer ~builddir ~obj_loc:elt_loc state.methods
         in
         { state with methods }
+
+let add_type_component ~type_loc ~cf_name ~cf_loc state =
+  if not (report_section_is_enabled ~elt_kind:`Ctor_field state) then state
+  else
+    let ctors_fields =
+      Ctors_fields.add_component ~type_loc ~cf_name ~cf_loc state.ctors_fields
+    in
+    { state with ctors_fields }
 
 let inherit_initializer ~elt_kind ~elt_loc ~inherited_path state =
   if not (report_section_is_enabled ~elt_kind state) then state

@@ -168,6 +168,21 @@ val add_alias:
     dedicated function (e.g. [Values.add_alias]).
 *)
 
+val add_type_equivalence: t1_path:string -> t2_path:string -> t -> t
+(** [add_type_equivalence ~t1_path ~t2_path state] is the same as
+    {!Ctors_fields.add_equivalence} at the state level
+*)
+
+val add_type_component:
+  type_loc:Lexing.position ->
+  cf_name:string ->
+  cf_loc:Lexing.position ->
+  t
+  -> t
+(** [add_type_component ~type_loc ~cf_name ~cf_loc state] is the same as
+    {!Ctors_fields.add_component} at the state level
+*)
+
 val add_local_path_alias:
   elt_kind:[< `Object ] ->
   orig_path:string ->
