@@ -16,21 +16,20 @@ let item maker = function
       (`Value (Ident.name id, loc))::[]
   | Sig_type (id, {type_kind; _}, _, _) ->
       let t = Ident.name id in
-      begin match type_kind with
-      | Type_record (l, _) ->
-          List.map
-            (fun {Types.ld_id; ld_loc = {Location.loc_start = loc; _}; _} ->
-              `Type (t ^ "." ^ (Ident.name ld_id), loc)
-            )
-            l
-      | Type_variant (l, _) ->
-          List.map
-            (fun {Types.cd_id; cd_loc = {Location.loc_start = loc; _}; _} ->
-              `Type (t ^ "." ^ Ident.name cd_id, loc)
-            )
-            l
-      | _ -> []
-    end
+      let build_cf cf_id cf_loc =
+        let cf_name = Ident.name cf_id in
+        let cf_loc = cf_loc.Location.loc_start in
+        `Ctor_field (t ^ "." ^ cf_name, cf_loc)
+      in
+      let ids_locs =
+        match type_kind with
+        | Type_record (l, _) ->
+            List.map (fun {Types.ld_id; ld_loc; _} -> (ld_id, ld_loc)) l
+        | Type_variant (l, _) ->
+            List.map (fun {Types.cd_id; cd_loc; _} -> (cd_id, cd_loc)) l
+        | _ -> []
+      in
+      List.map (fun (id, loc) -> build_cf id loc) ids_locs
   | Sig_module (id, _, {md_type; _}, _, _)
   | Sig_modtype (id, {mtd_type = Some md_type; _}, _) ->
       List.map
@@ -38,8 +37,8 @@ let item maker = function
           let update_path (path, loc) = (Ident.name id ^ "." ^ path, loc) in
           match elt with
           | `Value v -> `Value (update_path v)
-          | `Type t -> `Type (update_path t)
-          | `Method v -> `Method (update_path v)
+          | `Ctor_field cf -> `Ctor_field (update_path cf)
+          | `Method m -> `Method (update_path m)
         )
        (maker md_type)
   | Sig_class (id, {cty_loc = {Location.loc_start = loc; _}; _}, _, _) ->
@@ -68,28 +67,31 @@ let expr m = match m.mod_desc with
           (fun exp ->
             match exp, elt with
             | `Value (path_exp, _), `Value (path_elt, _)
-            | `Type (path_exp, _), `Type (path_elt, _)
+            | `Ctor_field (path_exp, _), `Ctor_field (path_elt, _)
             | `Method (path_exp, _), `Method (path_elt, _) ->
                 String.equal path_exp path_elt
             | _ -> false
           )
           exp_elts
       in
-      List.iter
-        (fun elt ->
-          let state = State.get_current () in
-          let use_loc = m.mod_loc.Location.loc_start in
-          if elt_is_expected elt then
-            match elt with
-            | `Value (_, elt_loc) ->
-                State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
-                |> State.update
-            | `Type (_, elt_loc) ->
-                State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
-                |> State.update
-            | `Method _ -> (* TODO *) ()
-        )
-        arg_elts
+      let state = State.get_current () in
+      let state =
+        List.fold_left
+          (fun state elt ->
+            let use_loc = m.mod_loc.Location.loc_start in
+            if elt_is_expected elt then
+              match elt with
+              | `Value (_, elt_loc) ->
+                  State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
+              | `Ctor_field (_, elt_loc) ->
+                  State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
+              | `Method _ -> (* TODO *) state
+            else state
+          )
+          state
+          arg_elts
+      in
+      State.update state
   | _ -> ()
 
 
