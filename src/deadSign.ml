@@ -24,24 +24,8 @@ let export_value ~path id value =
   export_object ~path id value;
   !DeadLexiFi.sig_value value;
   let state = State.get_current () in
-  let is_defined_in_comp_unit loc =
-    (* a .cmti file can contain locations from other files.
-      For instance:
-          module M : Set.S with type elt = int
-      will create value definitions whose location is in set.mli
-    *)
-    let loc_unit =
-      Utils.Filepath.unit loc.Location.loc_start.Lexing.pos_fname
-    in
-    let comp_unit = State.File_infos.get_sourceunit state.file_infos in
-    not loc.Location.loc_ghost
-    && (String.equal comp_unit loc_unit)
-  in
   let loc = value.Types.val_loc in
-  if Config.must_report_section state.config.sections.exported_values
-      && DeadCommon.check_underscore id
-      && is_defined_in_comp_unit loc
-  then
+  if DeadCommon.should_export loc id then
     let elt_loc = loc.Location.loc_start in
     let elt_path =
       id::path |> List.rev |> String.concat "."

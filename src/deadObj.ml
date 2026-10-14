@@ -135,6 +135,9 @@ let collect_export path ~obj ~cltyp loc =
       |> State.update
     end
   in
+  let save id =
+    if DeadCommon.should_export loc id then save id
+  in
 
 
   let rec sig_self = function

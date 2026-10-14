@@ -66,8 +66,22 @@ let report_section_is_enabled ~elt_kind state =
   | `Object -> Config.must_report_section state.config.sections.methods
   | `Value -> Config.must_report_section state.config.sections.exported_values
 
+let should_export ~elt_kind ~elt_loc state =
+  let is_defined_by_comp_unit elt_loc =
+    (* a .cmti file can contain locations from other files.
+      For instance:
+          module M : Set.S with type elt = int
+      will create value definitions whose location is in set.mli
+    *)
+    let elt_unit = Utils.Filepath.unit elt_loc.Lexing.pos_fname in
+    let curr_unit = File_infos.get_sourceunit state.file_infos in
+    String.equal curr_unit elt_unit
+  in
+  report_section_is_enabled ~elt_kind state
+  && is_defined_by_comp_unit elt_loc
+
 let add_exported_declaration ~elt_kind ~elt_loc ~elt_path state =
-  if not (report_section_is_enabled ~elt_kind state) then state
+  if not (should_export ~elt_kind ~elt_loc state) then state
   else
     let builddir = File_infos.get_builddir state.file_infos in
     match elt_kind with

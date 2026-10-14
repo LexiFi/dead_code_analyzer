@@ -52,6 +52,10 @@ let check_underscore name =
   state.config.underscore || name.[0] <> '_'
 
 
+let should_export loc name =
+  not loc.Location.loc_ghost && check_underscore name
+
+
 let hashtbl_find_list hashtbl key = Hashtbl.find_all hashtbl key
 
 let hashtbl_add_to_list hashtbl key elt = Hashtbl.add hashtbl key elt

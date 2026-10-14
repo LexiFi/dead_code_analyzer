@@ -75,10 +75,9 @@ let collect_export path t =
   let state = State.get_current () in
   let type_loc = t.type_loc.Location.loc_start in
   let type_path = List.rev path |> String.concat "." in
-  let add_declaration id loc state =
+  let add_declaration cf_name loc state =
     if t.type_manifest = None then begin
       (* do not export t1 when there is an explicit equation t1 = t2 *)
-      let cf_name = Ident.name id in
       let cf_path = String.concat "." [type_path; cf_name] in
       let cf_loc = loc.Location.loc_start in
       state
@@ -88,6 +87,12 @@ let collect_export path t =
           ~elt_kind:`Type ~elt_path:type_path ~elt_loc:type_loc
       |> add_component ~type_loc ~cf_name ~cf_path ~cf_loc
     end
+    else state
+  in
+  let add_declaration id loc state =
+    let cf_name = Ident.name id in
+    if DeadCommon.should_export loc cf_name then
+      add_declaration cf_name loc state
     else state
   in
 
