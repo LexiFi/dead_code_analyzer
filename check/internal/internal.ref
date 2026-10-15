@@ -64,17 +64,8 @@
 ./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:25: unused_closure
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:2: M.externally_used_by_param_requirement: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:3: M.externally_used_by_val_requirement: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:4: M.externally_used_by_val_constraint: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:5: M.internally_used_by_param_requirement: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:6: M.internally_used_by_val_requirement: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:7: M.internally_used_by_val_constraint: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:8: M.unused
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:2: M.externally_used_by_param_requirement: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:3: M.externally_used_by_val_requirement: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:4: M.externally_used_by_val_constraint: Should not be detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:8: M.unused
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:8: M.unused: Not detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:8: M.unused: Not detected
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int
@@ -88,17 +79,8 @@
 ./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:25: unused_closure
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:2: M.externally_used_by_param_requirement: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:3: M.externally_used_by_val_requirement: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:4: M.externally_used_by_val_constraint: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:5: M.internally_used_by_param_requirement: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:6: M.internally_used_by_val_requirement: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:7: M.internally_used_by_val_constraint: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:8: M.unused
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:2: M.externally_used_by_param_requirement: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:3: M.externally_used_by_val_requirement: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:4: M.externally_used_by_val_constraint: Should not be detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:8: M.unused
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:8: M.unused: Not detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:8: M.unused: Not detected
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int
@@ -742,7 +724,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 617
-Success: 593
-Failed: 24
-Ratio: 96.1102106969%
+Total: 599
+Success: 589
+Failed: 10
+Ratio: 98.3305509182%
