@@ -64,6 +64,7 @@
 ./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:25: unused_closure
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:5: M.unused
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int
@@ -77,6 +78,7 @@
 ./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:25: unused_closure
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:5: M.unused
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int
