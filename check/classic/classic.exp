@@ -91,6 +91,7 @@
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:6: M.internally_used_by_val_requirement
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:7: M.internally_used_by_val_constraint
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:8: M.unused
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:8: M.unused
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
@@ -115,6 +116,7 @@
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:6: M.internally_used_by_val_requirement
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:7: M.internally_used_by_val_constraint
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:8: M.unused
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:8: M.unused
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
