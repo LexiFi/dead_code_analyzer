@@ -26,6 +26,9 @@ let () =
 let () =
   Use_include_modtype.mark_used ()
 
+let () =
+  Use_first_class_module.mark_used ()
+
 let is_used = ref false
 let mark_used () =
   is_used := true

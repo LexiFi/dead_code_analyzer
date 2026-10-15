@@ -64,6 +64,10 @@
 ./examples/using_dune/unwrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:20: unused_alias_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:25: unused_closure
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:2: M.used_by_param_requirement: Should not be detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:3: M.used_by_val_requirement: Should not be detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:4: M.used_by_val_constraint: Should not be detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:5: M.unused
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:2: unused_int
@@ -77,6 +81,10 @@
 ./examples/using_dune/wrapped_lib/values/values.mli:14: unused_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:20: unused_alias_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:25: unused_closure
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:2: M.used_by_param_requirement: Should not be detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:3: M.used_by_val_requirement: Should not be detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:4: M.used_by_val_constraint: Should not be detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:5: M.unused
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:3: Exported.unused_int
 ./examples/using_dune/wrapped_lib/values/values_no_intf.ml:2: unused_int
@@ -227,6 +235,7 @@
 
 ./examples/using_dune/bin/use_unwrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_first_class_module.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args.mli:1: mark_used
@@ -243,6 +252,7 @@
 
 ./examples/using_dune/bin/use_wrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_constructors.mli:1: mark_used
+./examples/using_dune/bin/use_wrapped_lib/use_first_class_module.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args.mli:1: mark_used
@@ -307,6 +317,10 @@
 ./examples/using_dune/unwrapped_lib/values/values.mli:21: externally_used_alias_fun
 ./examples/using_dune/unwrapped_lib/values/values.mli:26: internally_used_closure
 ./examples/using_dune/unwrapped_lib/values/values.mli:27: externally_used_closure
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:2: M.used_by_param_requirement: Not detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:3: M.used_by_val_requirement: Not detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:4: M.used_by_val_constraint: Not detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module.mli:20: expect_param
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:5: Exported.externally_used_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules_no_intf.ml:4: Exported.internally_used_int
@@ -345,6 +359,10 @@
 ./examples/using_dune/wrapped_lib/values/values.mli:21: externally_used_alias_fun
 ./examples/using_dune/wrapped_lib/values/values.mli:26: internally_used_closure
 ./examples/using_dune/wrapped_lib/values/values.mli:27: externally_used_closure
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:2: M.used_by_param_requirement: Not detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:3: M.used_by_val_requirement: Not detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:4: M.used_by_val_constraint: Not detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module.mli:20: expect_param
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:5: Exported.externally_used_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules_no_intf.ml:4: Exported.internally_used_int
@@ -1240,7 +1258,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1033
-Success: 1027
-Failed: 6
-Ratio: 99.4191674734%
+Total: 1051
+Success: 1033
+Failed: 18
+Ratio: 98.2873453853%
