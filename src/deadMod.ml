@@ -43,7 +43,7 @@ let item maker = function
        (maker md_type)
   | Sig_class (id, {cty_loc = {Location.loc_start = loc; _}; _}, _, _) ->
       (* TODO: actually explore the methods in the class_declaration *)
-    `Method (Ident.name id ^ "#", loc) :: []
+      `Method (Ident.name id ^ "#", loc) :: []
   | _ -> []
 
 let rec make_content typ =
@@ -56,42 +56,70 @@ let rec make_arg typ =
   |> List.flatten
 
 
-let expr m = match m.mod_desc with
+let retrieve_signature mod_env mod_type =
+  match mod_type with
+  | Mty_ident _ | Mty_alias _ ->
+      begin try
+        let env = Utils.Envaux.load_env mod_env in
+        Env.scrape_alias env mod_type
+      with Envaux.(Error (Module_not_found _)) ->
+        mod_type
+      end
+  | _ -> mod_type
+
+
+let apply_by_content_requirement mod_expr expected_content actual_content =
+  let elt_is_expected elt =
+    expected_content = []
+    || List.exists
+      (fun exp ->
+        match exp, elt with
+        | `Value (path_exp, _), `Value (path_elt, _)
+        | `Ctor_field (path_exp, _), `Ctor_field (path_elt, _)
+        | `Method (path_exp, _), `Method (path_elt, _) ->
+            String.equal path_exp path_elt
+        | _ -> false
+      )
+      expected_content
+  in
+  let state = State.get_current () in
+  let state =
+    List.fold_left
+      (fun state elt ->
+        let use_loc = mod_expr.mod_loc.Location.loc_start in
+        if elt_is_expected elt then
+          match elt with
+          | `Value (_, elt_loc) ->
+              State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
+          | `Ctor_field (_, elt_loc) ->
+              State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
+          | `Method _ -> (* TODO *) state
+        else state
+      )
+      state
+      actual_content
+  in
+  State.update state
+
+
+let apply_by_requirement mod_expr =
+  match mod_expr.mod_desc with
+  | Tmod_constraint (me, mt, _, _) ->
+    let exp_mt = retrieve_signature mod_expr.mod_env mt in
+    let act_mt = retrieve_signature mod_expr.mod_env me.mod_type in
+    let exp_content = make_content exp_mt in
+    let act_content = make_content act_mt in
+    apply_by_content_requirement mod_expr exp_content act_content
+  | _ -> ()
+
+
+let expr mod_expr =
+  match mod_expr.mod_desc with
   | Tmod_apply (m1, m2, _) ->
       (* Add a use for each element in [m2] expected by [m1] *)
       let exp_elts = make_arg m1.mod_type in
       let arg_elts = make_content m2.mod_type in
-      let elt_is_expected elt =
-        exp_elts = []
-        || List.exists
-          (fun exp ->
-            match exp, elt with
-            | `Value (path_exp, _), `Value (path_elt, _)
-            | `Ctor_field (path_exp, _), `Ctor_field (path_elt, _)
-            | `Method (path_exp, _), `Method (path_elt, _) ->
-                String.equal path_exp path_elt
-            | _ -> false
-          )
-          exp_elts
-      in
-      let state = State.get_current () in
-      let state =
-        List.fold_left
-          (fun state elt ->
-            let use_loc = m.mod_loc.Location.loc_start in
-            if elt_is_expected elt then
-              match elt with
-              | `Value (_, elt_loc) ->
-                  State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
-              | `Ctor_field (_, elt_loc) ->
-                  State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
-              | `Method _ -> (* TODO *) state
-            else state
-          )
-          state
-          arg_elts
-      in
-      State.update state
+      apply_by_content_requirement mod_expr exp_elts arg_elts
   | _ -> ()
 
 
