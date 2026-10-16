@@ -55,7 +55,7 @@ let init_from_all_cm_infos ~cm_file cmt_infos =
         Cmt {strc; sign = None; location_dependencies}
     | _ -> Neither
   in
-  Utils.Envaux.set_loadpaths cmt_infos.cmt_loadpath;
+  Utils.Envaux.set_loadpaths builddir cmt_infos.cmt_loadpath;
   {builddir; cm_file; cm_infos; modname; sourcepath}
 
 (** [init_from_cm_file cm_file] returns an [Ok t] with [t] filled with general

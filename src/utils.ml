@@ -106,8 +106,23 @@ module Envaux = struct
     Load_path.init paths
     #endif
 
-  let set_loadpaths paths =
+  let set_loadpaths builddir paths =
     let reset () =
+      let fix_relative_path path =
+        (* relative paths are relative to the builddir, not to the analysis *)
+        if Filename.is_relative path then Filename.concat builddir path
+        else path
+      in
+      let paths =
+        #if OCAML_VERSION >= (5, 2, 0)
+        let open Load_path in
+        let visible = List.map fix_relative_path paths.visible in
+        let hidden = List.map fix_relative_path paths.hidden in
+        { visible; hidden }
+        #else
+        List.map fix_relative_path paths
+        #endif
+      in
       init_load_path paths;
       Envaux.reset_cache ()
     in
