@@ -256,6 +256,8 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:42: partially_used_mix_1.Partially_used_no_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:48: partially_used_mix_2.Partially_used_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
+./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:8: M.record_unused.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -283,6 +285,8 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:42: partially_used_mix_1.Partially_used_no_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:48: partially_used_mix_2.Partially_used_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
+./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:8: M.record_unused.f
+./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -724,7 +728,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 599
-Success: 593
+Total: 603
+Success: 597
 Failed: 6
-Ratio: 98.9983305509%
+Ratio: 99.0049751244%
