@@ -323,9 +323,9 @@
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:2: M.externally_used_by_param_requirement
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:3: M.externally_used_by_val_requirement
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:4: M.externally_used_by_val_constraint
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:5: M.internally_used_by_param_requirement: Not detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:6: M.internally_used_by_val_requirement: Not detected
-./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:7: M.internally_used_by_val_constraint: Not detected
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:5: M.internally_used_by_param_requirement
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:6: M.internally_used_by_val_requirement
+./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:7: M.internally_used_by_val_constraint
 ./examples/using_dune/unwrapped_lib/values/values_in_first_class_module_no_intf.ml:23: expect_param
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
 ./examples/using_dune/unwrapped_lib/values/values_in_submodules.mli:5: Exported.externally_used_int
@@ -375,9 +375,9 @@
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:2: M.externally_used_by_param_requirement
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:3: M.externally_used_by_val_requirement
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:4: M.externally_used_by_val_constraint
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:5: M.internally_used_by_param_requirement: Not detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:6: M.internally_used_by_val_requirement: Not detected
-./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:7: M.internally_used_by_val_constraint: Not detected
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:5: M.internally_used_by_param_requirement
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:6: M.internally_used_by_val_requirement
+./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:7: M.internally_used_by_val_constraint
 ./examples/using_dune/wrapped_lib/values/values_in_first_class_module_no_intf.ml:23: expect_param
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:4: Exported.internally_used_int
 ./examples/using_dune/wrapped_lib/values/values_in_submodules.mli:5: Exported.externally_used_int
@@ -1275,6 +1275,6 @@ Nothing else to report in this section
 
 
 Total: 1067
-Success: 1055
-Failed: 12
-Ratio: 98.8753514527%
+Success: 1061
+Failed: 6
+Ratio: 99.4376757263%

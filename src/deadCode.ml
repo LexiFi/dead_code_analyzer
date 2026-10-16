@@ -349,32 +349,42 @@ let assoc elt_kind loc1 loc2 (state : State.t) =
   and fn2 = loc2.Lexing.pos_fname in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
   let is_implem fn = fn.[String.length fn - 1] <> 'i' in
-  let has_iface fn =
-    fn.[String.length fn - 1] = 'i'
-    || ( Utils.Filepath.unit fn = sourceunit
-      && DeadCommon.file_exists (fn ^ "i"))
-  in
-  let is_iface fn elt_loc (state : State.t) =
-    State.is_exported_declaration ~elt_kind ~elt_loc state
+  let is_exported loc =
+    (* An exported location is either:
+          1. already encountered and stored as exported,
+          2. coming from a .mli,
+          3. coming from another compilation unit
+       There exists cases where elements found in the current unit's .mli
+       are not stored as exported (e.g. types with an explicit equation).
+    *)
+    let fn = loc.Lexing.pos_fname in
+    State.is_exported_declaration ~elt_kind ~elt_loc:loc state
+    || not (is_implem fn)
     || Utils.Filepath.unit fn <> sourceunit
-    || not (is_implem fn && has_iface fn)
+  in
+  let merge_internal_uses (state : State.t) =
+    if state.config.internal && is_implem fn1 && String.equal fn1 fn2 then
+      (* loc1 is an alias for loc2 *)
+      State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+    else state
+  in
+  let propagate_exported_uses state =
+    let loc1_is_exported = is_exported loc1 in
+    let loc2_is_exported = is_exported loc2 in
+    if loc1_is_exported && loc2_is_exported then
+      (* loc1 is used by requirement at loc2 *)
+      State.add_use ~elt_kind ~elt_loc:loc1 ~use_loc:loc2 state
+    else if loc1_is_exported then
+      (* loc1 is an exported version of loc2 *)
+      State.add_alias ~elt_kind ~orig_loc:loc1 ~alias_loc:loc2 state
+    else if loc2_is_exported then
+      (* loc2 is an exported version of loc1 *)
+      State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+    else state
   in
   if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then
-    let state =
-      if (state.config.internal || fn1 <> fn2)
-          && is_implem fn1 && is_implem fn2
-      then
-        State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
-      else state
-    in
-    if is_iface fn1 loc1 state then begin
-      if is_iface fn2 loc2 state then
-        State.add_use ~elt_kind ~elt_loc:loc1 ~use_loc:loc2 state
-      else
-        State.add_alias ~elt_kind ~orig_loc:loc1 ~alias_loc:loc2 state
-    end
-    else
-      State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+    merge_internal_uses state
+    |> propagate_exported_uses
   else state
 
 
