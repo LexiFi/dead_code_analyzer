@@ -66,7 +66,7 @@ module Envaux : sig
     string list
     #endif
 
-  val set_loadpaths : paths -> unit
+  val set_loadpaths : string -> paths -> unit
   (** Reset the load_path to the [paths]. Also calls Envaux.reset_cache.
       To call when loading a new .cmt *)
 
