@@ -1,22 +1,19 @@
 val collect_export_from_signature :
   path: string list ->
-  comp_unit: string ->
   Typedtree.signature
   -> unit
-(** [collect_export_from_signature ~path ~comp_unit signature]
+(** [collect_export_from_signature ~path signature]
     recursively traverse the [signature] items and store exported elements
     (values, constructors, ...) in {!DeadCommon.decs} (or equivalent).
-    - [path] is the current module path. E.g. for a value in a submodule,
-      the path is [Module.Submodule].
-    - [comp_unit] is the compilation unit of the [sig_item].
+    [path] is the current module path. E.g. for a value in a submodule,
+    the path is [Module.Submodule].
 *)
 
 val collect_export_from_structure :
   path: string list ->
-  comp_unit: string ->
   Typedtree.structure
   -> unit
-(** [collect_export_from_structure ~path ~comp_unit structure]
+(** [collect_export_from_structure ~path structure]
     recursively traverse the [structure] items and store exported elements
     (values, constructors, ...) in {!DeadCommon.decs} (or equivalent).
     See {!collect_export_from_signature} above for more information.

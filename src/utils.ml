@@ -61,7 +61,21 @@ let rec typedtree_signature_of_modtype ?(select_param = false) modtype =
   | Tmty_functor (Named (_, _, t), _) -> typedtree_signature_of_modtype t
   | _ -> None
 
+let normalize_mod_path ~rev_curr_path mod_path =
+  let path = Path.name mod_path in
+  if Path.head mod_path |> Ident.global then
+    (* External mod_path. Keep as is *)
+    path :: []
+  else
+    (* Internal mod_path *)
+    path :: rev_curr_path
+
 module StringSet = Set.Make(String)
+module StringHash =
+  Hashtbl.Make(struct
+    include String
+    let hash = Hashtbl.hash
+  end)
 
 module Envaux = struct
   (* Lazy set up of loadpaths for load_env.
@@ -101,6 +115,31 @@ module Envaux = struct
   let load_env env =
     force_setup ();
     Envaux.env_of_only_summary env
+end
+
+module LocSet = Set.Make(struct type t = Lexing.position let compare = compare end)
+
+module LocHash = struct
+  include
+    Hashtbl.Make(struct
+      type t = Lexing.position
+
+      let hash x =
+        let s = Filename.basename x.Lexing.pos_fname in
+        Hashtbl.hash (x.Lexing.pos_cnum, s)
+
+      let equal x y = x = y
+    end)
+
+  let find_set h k = try find h k with Not_found -> LocSet.empty
+
+  let add_set h k v =
+    let l = find_set h k in replace h k (LocSet.add v l)
+
+  let merge_set h1 k1 h2 k2 =
+    let l1 = find_set h1 k1 in
+    let l2 = find_set h2 k2 in
+    replace h1 k1 (LocSet.union l1 l2)
 end
 
 module Compat = struct

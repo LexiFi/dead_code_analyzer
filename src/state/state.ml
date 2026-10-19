@@ -1,10 +1,19 @@
 module File_infos = File_infos
 
+module Values = Values
+module Methods = Methods
+module Ctors_fields = Ctors_fields
+
 type t =
   { config : Config.t
   ; comp_unit_to_path : (string, string) Hashtbl.t
   ; file_infos : File_infos.t
+  ; values : Values.t
+  ; methods : Methods.t
+  ; ctors_fields : Ctors_fields.t
   }
+
+(* config-related manipulations *)
 
 let init config =
   Cmt.set_cache_size config.Config.cmt_cache_size;
@@ -19,12 +28,16 @@ let init config =
   { config
   ; comp_unit_to_path
   ; file_infos = File_infos.empty
+  ; values = Values.create ()
+  ; methods = Methods.create ()
+  ; ctors_fields = Ctors_fields.create ()
   }
 
 let update_config config state =
   Cmt.set_cache_size config.Config.cmt_cache_size;
   {state with config}
 
+(* file-related manipulations *)
 
 let change_file state cm_file =
   let file_infos = state.file_infos in
@@ -43,11 +56,392 @@ let change_file state cm_file =
     let file_infos = File_infos.init ~comp_unit_to_path cm_file in
     Result.map (fun file_infos -> {state with file_infos}) file_infos
 
+(* code-element related manipulations *)
+
+let report_section_is_enabled ~elt_kind state =
+  match elt_kind with
+  | `Ctor_field
+  | `Type -> Config.must_report_section state.config.sections.types
+  | `Method _
+  | `Object -> Config.must_report_section state.config.sections.methods
+  | `Value -> Config.must_report_section state.config.sections.exported_values
+
+let should_export ~elt_kind ~elt_loc state =
+  let is_defined_by_comp_unit elt_loc =
+    (* a .cmti file can contain locations from other files.
+      For instance:
+          module M : Set.S with type elt = int
+      will create value definitions whose location is in set.mli
+    *)
+    let elt_unit = Utils.Filepath.unit elt_loc.Lexing.pos_fname in
+    let curr_unit = File_infos.get_sourceunit state.file_infos in
+    String.equal curr_unit elt_unit
+  in
+  report_section_is_enabled ~elt_kind state
+  && is_defined_by_comp_unit elt_loc
+
+let add_exported_declaration ~elt_kind ~elt_loc ~elt_path state =
+  if not (should_export ~elt_kind ~elt_loc state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Method meth_name ->
+        let methods =
+          Methods.add_exported_declaration
+            ~builddir ~obj_loc:elt_loc ~meth_name ~meth_path:elt_path
+            state.methods
+        in
+        { state with methods }
+    | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_exported_declaration
+            ~builddir ~cf_loc:elt_loc ~cf_path:elt_path
+            state.ctors_fields
+        in
+        { state with ctors_fields }
+    | `Value ->
+        let values =
+          Values.add_exported_declaration
+            ~builddir ~val_loc:elt_loc ~val_path:elt_path
+            state.values
+        in
+        { state with values }
+
+let remove_exported_declaration ~elt_kind ~elt_loc state =
+  let builddir = File_infos.get_builddir state.file_infos in
+  match elt_kind with
+  | `Method meth_name ->
+      let methods =
+        Methods.remove_exported_declaration
+          ~builddir ~obj_loc:elt_loc ~meth_name
+          state.methods
+      in
+      { state with methods }
+  | `Object ->
+      let methods =
+        Methods.remove_exported_declarations
+          ~builddir ~obj_loc:elt_loc
+          state.methods
+      in
+      { state with methods }
+  | `Ctor_field ->
+      let ctors_fields =
+        Ctors_fields.remove_exported_declaration
+          ~builddir ~cf_loc:elt_loc
+          state.ctors_fields
+      in
+      { state with ctors_fields }
+  | `Value ->
+      let values =
+        Values.remove_exported_declaration
+          ~builddir ~val_loc:elt_loc
+          state.values
+      in
+      { state with values }
+
+let is_exported_declaration ~elt_kind ~elt_loc state =
+  match elt_kind with
+  | `Object ->
+      Methods.is_exported_declaration ~obj_loc:elt_loc state.methods
+  | `Ctor_field ->
+      Ctors_fields.is_exported_declaration ~cf_loc:elt_loc state.ctors_fields
+  | `Value ->
+      Values.is_exported_declaration ~val_loc:elt_loc state.values
+
+let get_exported_declaration_path ~elt_kind ~builddir ~elt_loc state =
+  match elt_kind with
+  | `Method meth_name ->
+      Methods.get_meth_path ~builddir ~obj_loc:elt_loc ~meth_name state.methods
+  | `Ctor_field ->
+      Ctors_fields.get_cf_path ~builddir ~cf_loc:elt_loc state.ctors_fields
+  | `Value ->
+      Values.get_val_path ~builddir ~val_loc:elt_loc state.values
+
+
+let should_track_use ~elt_kind ~elt_loc state =
+  (* Uses are discarded if they should not be tracked for the given element.
+     This is the case when the corrresponding report section is disabled
+     or if the element is a value, the use is internal, and tracking
+     internal uses is disabled.
+  *)
+  let should_track_value_use elt_loc state =
+    let is_external () =
+      let elt_fname = elt_loc.Lexing.pos_fname in
+      String.ends_with ~suffix:"i" elt_fname (* elt_loc is in a .mli *)
+      || ( (* compare elt and current compilation units *)
+        let elt_unit = Utils.Filepath.unit elt_fname in
+        let curr_unit = File_infos.get_sourceunit state.file_infos in
+        not (String.equal curr_unit elt_unit))
+    in
+    let is_exported () =
+      match state.file_infos.cm_infos with
+      | _ when is_external () -> true
+      | Cmt {sign = None; _} ->
+          (* is_defined in current .ml but there is no .mli *)
+          true
+      | _ -> false
+    in
+    state.config.internal || is_exported ()
+  in
+  match elt_kind with
+  | `Ctor_field | `Method _ ->
+      report_section_is_enabled ~elt_kind state
+  | `Value ->
+      report_section_is_enabled ~elt_kind state
+      && should_track_value_use elt_loc state
+
+let add_use ~elt_kind ~elt_loc ~use_loc state =
+  if not (should_track_use ~elt_kind ~elt_loc state) then state
+  else
+    match elt_kind with
+    | `Method meth_name ->
+        let methods =
+          Methods.add_use ~obj_loc:elt_loc ~meth_name ~use_loc state.methods
+        in
+        { state with methods }
+    | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_use ~cf_loc:elt_loc ~use_loc state.ctors_fields
+        in
+        { state with ctors_fields }
+    | `Value ->
+        let values =
+          Values.add_use ~val_loc:elt_loc ~use_loc state.values
+        in
+        { state with values }
+
+let remove_uses ~elt_kind ~elt_loc state =
+  match elt_kind with
+  | `Method meth_name ->
+      let methods =
+        Methods.remove_uses ~obj_loc:elt_loc ~meth_name state.methods
+      in
+      { state with methods }
+  | `Object ->
+      let methods =
+        Methods.remove_uses ~obj_loc:elt_loc state.methods
+      in
+      { state with methods }
+  | `Ctor_field ->
+      let ctors_fields =
+        Ctors_fields.remove_uses ~cf_loc:elt_loc state.ctors_fields
+      in
+      { state with ctors_fields }
+  | `Value ->
+      let values =
+        Values.remove_uses ~val_loc:elt_loc state.values
+      in
+      { state with values }
+
+let get_uses ~elt_kind ~elt_loc state =
+  match elt_kind with
+  | `Method meth_name ->
+      Methods.get_uses ~obj_loc:elt_loc ~meth_name state.methods
+  | `Ctor_field ->
+      Ctors_fields.get_uses ~cf_loc:elt_loc state.ctors_fields
+  | `Value ->
+      Values.get_uses ~val_loc:elt_loc state.values
+
+let add_self_use ~elt_kind ~elt_loc ~use_loc state =
+  if not (should_track_use ~elt_kind ~elt_loc state) then state
+  else
+    match elt_kind with
+    | `Method meth_name ->
+        let methods =
+          Methods.add_self_use ~obj_loc:elt_loc ~meth_name ~use_loc state.methods
+        in
+        { state with methods }
+
+let add_alias ~elt_kind ~orig_loc ~alias_loc state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_alias ~orig_loc ~alias_loc state.methods
+        in
+        { state with methods }
+    | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_alias ~orig_loc ~alias_loc state.ctors_fields
+        in
+        { state with ctors_fields }
+    | `Value ->
+        let values =
+          Values.add_alias ~orig_loc ~alias_loc state.values
+        in
+        { state with values }
+
+let add_alias ~elt_kind ~orig_loc ~alias_loc state =
+  let state =
+    (* An immediate object is a value with methods. Thus, a value alias
+       may also be an immediate object alias.
+    *)
+    match elt_kind with
+    | `Value -> add_alias ~elt_kind:`Object ~alias_loc ~orig_loc state
+    | `Object | `Ctor_field -> state
+  in
+  add_alias ~elt_kind ~orig_loc ~alias_loc state
+
+let add_type_equivalence ~t1_path ~t2_path state =
+  if not (report_section_is_enabled ~elt_kind:`Ctor_field state) then state
+  else
+    let ctors_fields =
+      Ctors_fields.add_equivalence ~t1_path ~t2_path state.ctors_fields
+    in
+    { state with ctors_fields }
+
+let add_local_path_alias ~elt_kind ~orig_path ~alias_path state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_path_alias ~orig_path ~alias_path state.methods
+        in
+        { state with methods }
+
+let reset_local_path_aliases state =
+  let methods =
+    Methods.reset_path_aliases state.methods
+  in
+  { state with methods }
+
+let add_loc_binding ~elt_kind ~elt_path ~elt_loc state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_loc_binding
+            ~obj_path:elt_path ~obj_loc:elt_loc
+            state.methods
+        in
+        { state with methods }
+    | `Type | `Ctor_field ->
+        let ctors_fields =
+          Ctors_fields.add_loc_binding
+            ~path:elt_path ~loc:elt_loc
+            state.ctors_fields
+        in
+        { state with ctors_fields }
+
+let find_loc ~elt_kind ~elt_path state =
+  match elt_kind with
+  | `Object ->
+      Methods.find_loc ~obj_path:elt_path state.methods
+  | `Type | `Ctor_field ->
+      Ctors_fields.find_loc ~path:elt_path state.ctors_fields
+
+let add_initializer ~elt_kind ~elt_loc state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.add_initializer ~builddir ~obj_loc:elt_loc state.methods
+        in
+        { state with methods }
+
+let add_type_component ~type_loc ~cf_name ~cf_loc state =
+  if not (report_section_is_enabled ~elt_kind:`Ctor_field state) then state
+  else
+    let ctors_fields =
+      Ctors_fields.add_component ~type_loc ~cf_name ~cf_loc state.ctors_fields
+    in
+    { state with ctors_fields }
+
+let inherit_initializer ~elt_kind ~elt_loc ~inherited_path state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Object ->
+        let methods =
+          Methods.inherit_initializer
+            ~builddir ~obj_loc:elt_loc ~inherited_path
+            state.methods
+        in
+        { state with methods }
+
+let mark_method ~elt_kind ~elt_loc mark_fun state =
+  if not (report_section_is_enabled ~elt_kind state) then state
+  else
+    let builddir = File_infos.get_builddir state.file_infos in
+    match elt_kind with
+    | `Method meth_name ->
+        let methods =
+          mark_fun ~builddir ~obj_loc:elt_loc ~meth_name state.methods
+        in
+        { state with methods }
+
+let mark_defined ~elt_kind ~elt_loc state =
+  let mark_fun = Methods.mark_defined in
+  mark_method ~elt_kind ~elt_loc mark_fun state
+
+let mark_virtual ~elt_kind ~elt_loc state =
+  let mark_fun = Methods.mark_virtual in
+  mark_method ~elt_kind ~elt_loc mark_fun state
+
+let mark_inherited ~elt_kind ~elt_loc ~inherited_path state =
+  let mark_fun = Methods.mark_inherited ~inherited_path in
+  mark_method ~elt_kind ~elt_loc mark_fun state
+
+let prepare_report state =
+  let methods =
+    Methods.resolve_aliases state.methods
+    |> Methods.resolve_inheritances
+  in
+  let ctors_fields =
+    Ctors_fields.resolve_equivalences state.ctors_fields
+  in
+  { state with ctors_fields; methods }
+
+type element =
+  [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
+  * Lexing.position (* elt loc *)
+  * string (* elt builddir *)
+
+let get_unused ~elt_kind ?(max_uses = 0) state =
+  let with_elt_kind ~add_elt_kind tbl =
+    let res = Hashtbl.create (max_uses + 1) in
+    Hashtbl.iter
+      (fun nb_uses elts ->
+        List.map add_elt_kind elts
+        |> Hashtbl.add res nb_uses
+      )
+      tbl;
+    res
+  in
+  match elt_kind with
+  | `Object ->
+      let add_elt_kind (obj_loc, meth_name, builddir) =
+        (`Method meth_name, obj_loc, builddir)
+      in
+      Methods.get_unused ~max_uses state.methods
+      |> with_elt_kind ~add_elt_kind
+  | `Ctor_field ->
+      let add_elt_kind (cf_loc, builddir) =
+        (`Ctor_field, cf_loc, builddir)
+      in
+      Ctors_fields.get_unused ~max_uses state.ctors_fields
+      |> with_elt_kind ~add_elt_kind
+  | `Value ->
+      let add_elt_kind (val_loc, builddir) =
+        (`Value, val_loc, builddir)
+      in
+      Values.get_unused ~max_uses state.values
+      |> with_elt_kind ~add_elt_kind
+
 (** Analysis' state *)
 let current = ref
     { config = Config.default_config
     ; comp_unit_to_path = Hashtbl.create 0
     ; file_infos = File_infos.empty
+    ; values = Values.create ()
+    ; methods = Methods.create ()
+    ; ctors_fields = Ctors_fields.create ()
     }
 
 let get_current () = !current

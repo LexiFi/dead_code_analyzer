@@ -7,8 +7,6 @@
 (*                                                                         *)
 (***************************************************************************)
 
-val decs : (Lexing.position, string * string) Hashtbl.t
-
 val dependencies : (Lexing.position * Lexing.position) list ref
 
 val to_string : Types.type_expr -> string
@@ -62,8 +60,6 @@ val is_type : string -> bool
 
 val collect_export :
   string list
-  -> string
-  -> (Lexing.position, string * string) Hashtbl.t
   -> Types.type_declaration
   -> unit
 
@@ -72,10 +68,3 @@ val correct_export : Types.type_declaration -> unit
 
 val collect_references :
   Lexing.position -> Lexing.position -> unit
-
-val prepare_report: unit -> unit
-(** To use at the end of the codebase analysis, before reporting.
-    This merges all the references of equivalent types
-*)
-
-val report: unit -> unit

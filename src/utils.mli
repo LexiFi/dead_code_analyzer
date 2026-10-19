@@ -39,7 +39,24 @@ val typedtree_signature_of_modtype :
     See {!signature_of_modtype} above for more information
 *)
 
+val normalize_mod_path : rev_curr_path:string list -> Path.t -> string list
+(** [normalize_mod_path ~rev_curr_path mod_path] returns a new reversed
+    path which either points within the current compilation unit
+    or outside it.
+    The head is always the [mod_path].
+    [rev_curr_path] is a reversed path. A reversed path is one with the
+    contained module at the head and the containing module at the tail.
+    E.g.
+      [normalize_mod_path ~rev_curr_path:["Sub"; "Mod"; "Comp_Unit" mod_path]
+      with [mod_path]'s string representation equal to ["Module.Sub"],
+      returns
+      - [["Module.Sub"]] if [Module] is a global identifier;
+      - [["Module.Sub"; "Sub"; "Mod"; "Comp_Unit"]] otherwise, pointing to
+        module [Comp_Unit.Mod.Sub.Module.Sub]
+*)
+
 module StringSet : Set.S with type elt = String.t
+module StringHash : Hashtbl.S with type key = String.t
 
 module Envaux : sig
   type paths =
@@ -56,6 +73,15 @@ module Envaux : sig
   val load_env : Env.t -> Env.t
   (** Same as Envaux.env_of_only_summary but ensures the paths submitted
       in set_loadpaths are actually set. *)
+end
+
+module LocSet : Set.S with type elt = Lexing.position
+
+module LocHash : sig
+  include Hashtbl.S with type key = Lexing.position
+  val find_set : LocSet.t t -> key -> LocSet.t
+  val add_set : LocSet.t t -> key -> LocSet.elt -> unit
+  val merge_set : LocSet.t t -> key -> LocSet.t t -> key -> unit
 end
 
 module Compat : sig

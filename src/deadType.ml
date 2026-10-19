@@ -17,11 +17,7 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let decs = Hashtbl.create 256
-
 let dependencies = ref []   (* like the cmt value_dependencies but for types *)
-
-let equivalences = ref []   (* t1 = t2 *)
 
 
 
@@ -67,53 +63,77 @@ let is_type s =
       assert false
 
 
+let add_component ~type_loc ~type_path ~cf_loc ~cf_name state =
+  let cf_path = String.concat "." [type_path; cf_name] in
+  state
+  |> State.add_loc_binding
+      ~elt_kind:`Type ~elt_path:type_path ~elt_loc:type_loc
+  |> State.add_loc_binding
+      ~elt_kind:`Ctor_field ~elt_path:cf_path ~elt_loc:cf_loc
+  |> State.add_type_component ~type_loc ~cf_name ~cf_loc
+
+
+let fold_components ~f type_decl state =
+  match type_decl.type_kind with
+    | Type_record (fields, _) ->
+        let f state {Types.ld_id; ld_loc; _} =
+          f ld_id ld_loc state
+        in
+        List.fold_left f state fields
+    | Type_variant (ctors, _) ->
+        let f state {Types.cd_id; cd_loc; _} =
+          f cd_id cd_loc state
+        in
+        List.fold_left f state ctors
+    | _ -> state
 
                 (********   PROCESSING  ********)
 
-let collect_export path u stock t =
-
-  let stock =
-    if stock == DeadCommon.decs then decs
-    else stock
-  in
-
-  let save id loc =
-    let id = Ident.name id in
-    if t.type_manifest = None then
+let collect_export path t =
+  let state = State.get_current () in
+  let type_loc = t.type_loc.Location.loc_start in
+  let type_path = List.rev path |> String.concat "." in
+  let add_declaration cf_id cf_loc state =
+    let cf_name = Ident.name cf_id in
+    if DeadCommon.should_export cf_loc cf_name
+      && t.type_manifest = None
       (* do not export t1 when there is an explicit equation t1 = t2 *)
-      export path u stock id loc;
-    let path = String.concat "." @@ List.rev (id::path) in
-    Hashtbl.replace fields path loc.Location.loc_start
+    then
+      let cf_path = String.concat "." [type_path; cf_name] in
+      let cf_loc = cf_loc.Location.loc_start in
+      state
+      |> State.add_exported_declaration
+          ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~elt_path:cf_path
+      |> add_component ~type_loc ~type_path ~cf_loc ~cf_name
+    else state
   in
-
-  match t.type_kind with
-    | Type_record (l, _) ->
-        List.iter
-          (fun {Types.ld_id; ld_loc; ld_type; _} ->
-            save ld_id ld_loc;
-            !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type)
-          )
-          l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_id; cd_loc; _} -> save cd_id cd_loc) l
-    | _ -> ()
+  let state = fold_components ~f:add_declaration t state in
+  let _apply_lexifi =
+    match t.type_kind with
+      | Type_record (fields, _) ->
+          List.iter
+            (fun {Types.ld_loc; ld_type; _} ->
+              !DeadLexiFi.export_type ld_loc.Location.loc_start (to_string ld_type)
+            )
+            fields
+      | _ -> ()
+  in
+  State.update state
 
 let correct_export t =
-  let unexport loc = DeadCommon.unexport decs loc in
-  match t.type_kind with
-    | Type_record (l, _) ->
-        List.iter
-          (fun {Types.ld_loc; _} ->
-            unexport ld_loc;
-          )
-          l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_loc; _} -> unexport cd_loc) l
-    | _ -> ()
+  let unexport loc state =
+    let elt_loc = loc.Location.loc_start in
+    State.remove_exported_declaration ~elt_kind:`Ctor_field ~elt_loc state
+  in
+  State.get_current ()
+  |> fold_components ~f:(fun _id -> unexport) t
+  |> State.update
 
 
-let collect_references loc exp_loc =
-  LocHash.add_set references loc exp_loc
+let collect_references cf_loc use_loc =
+  let state = State.get_current() in
+  State.add_use ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~use_loc state
+  |> State.update
 
 
 (* Look for bad style typing *)
@@ -134,74 +154,67 @@ let rec check_style t loc =
       | _ -> ()
 
 
-let add_type_eq component_path eq_type_path component_name =
-  (* Store t1 = t2 equivalence *)
-  let eq_path = eq_type_path ^ "." ^ component_name in
-  equivalences := (component_path, eq_path) :: !equivalences
+let collect_eq_from_typ_decl ~t1_path ~t2_path type_decl =
+  let state = State.get_current() in
+  let state = State.add_type_equivalence ~t1_path ~t2_path state in
+  let type_loc = type_decl.type_loc.Location.loc_start in
+  let add_component cf_id cf_loc state =
+    let cf_loc = cf_loc.Location.loc_start in
+    let cf_name = Ident.name cf_id in
+    let cf_path = t1_path ^ "." ^ cf_name in
+    match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
+    | None ->
+        add_component ~type_loc ~type_path:t1_path ~cf_loc ~cf_name state
+    | _ -> state
+  in
+  fold_components ~f:add_component type_decl state
+  |> State.update
 
 
-let rec add_type_eq_internal ~internal_path ~component_path ~component_name =
-  match internal_path with
-  | [] -> assert false (* There must be at least one element *)
-  | external_type_path :: [] -> (* external alias *)
-      add_type_eq component_path external_type_path component_name
-  | external_type_path :: rev_internal_path ->
-      let eq_type_path =
-        List.rev internal_path |> String.concat "."
-      in
-      let eq_component_path = eq_type_path ^ "." ^ component_name in
-      match Hashtbl.find_opt fields eq_component_path with
-      | Some _ -> (* internal alias *)
-          add_type_eq component_path eq_type_path component_name
-      | None ->
-          let internal_path =
-            match rev_internal_path with
-            | [] | _::[] -> external_type_path :: []
-            | _::rev_internal_path -> external_type_path :: rev_internal_path
-          in
-          add_type_eq_internal ~internal_path ~component_path ~component_name
+let find_longest_known_type_path rev_type_path =
+  let state = State.get_current() in
+  let rec find_longest_known_path = function
+    | [] -> assert false (* There must be at least one element *)
+    | type_path :: [] -> (* external module *)
+        type_path
+    | local_type_path :: rev_internal_path as rev_type_path ->
+        let type_path = List.rev rev_type_path |> String.concat "." in
+        match State.find_loc ~elt_kind:`Type ~elt_path:type_path state with
+        | Some _ -> (* known path *)
+            type_path
+        | None -> (* path unknown; remove the latest module in the path *)
+            let reduced_path =
+              match rev_internal_path with
+              | [] | _::[] -> local_type_path :: []
+              | _::rev_internal_path -> local_type_path::rev_internal_path
+            in
+            find_longest_known_path reduced_path
+  in
+  find_longest_known_path rev_type_path
 
 
-let normalize_mod_path rev_current_path mod_path =
-  let path = Path.name mod_path in
-  if Path.head mod_path |> Ident.global then
-    (* External mod_path. Keep as is *)
-    path :: []
-  else
-    (* Internal mod_path *)
-    path :: rev_current_path
-
+let find_longest_known_path ~mod_path type_path =
+  match mod_path with
+  | [] -> assert false
+  | mod_path::rev_internal_path ->
+      let local_type_path = String.concat "." [mod_path; type_path] in
+      find_longest_known_type_path (local_type_path :: rev_internal_path)
 
 let collect_eq_from_module_alias
     ~rev_alias_path ~original_path ~sub_path type_decl
 =
-  let type_path =
-    List.rev_append rev_alias_path sub_path
+  let local_type_path = String.concat "." sub_path in
+  let t1_path =
+    List.rev (local_type_path::rev_alias_path)
     |> String.concat "."
   in
-  let internal_path =
-    let normalized_original_path =
-      normalize_mod_path (List.tl rev_alias_path) original_path
+  let t2_path =
+    let mod_path =
+      Utils.normalize_mod_path ~rev_curr_path:(List.tl rev_alias_path) original_path
     in
-    match normalized_original_path with
-    | original_path :: rev_path ->
-        let original_type_path = String.concat "." (original_path :: sub_path) in
-        original_type_path :: rev_path
-    | [] -> assert false
+    find_longest_known_path ~mod_path local_type_path
   in
-  let add_type_eq loc component_id =
-    let component_name = Ident.name component_id in
-    let component_path = type_path ^ "." ^ component_name in
-    if not (Hashtbl.mem fields component_path) then
-      Hashtbl.add fields component_path loc.Location.loc_start;
-    add_type_eq_internal ~internal_path ~component_path ~component_name
-  in
-  match type_decl.type_kind with
-    | Type_record (l, _) ->
-        List.iter (fun {Types.ld_id; ld_loc; _} -> add_type_eq ld_loc ld_id) l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_id; cd_loc; _} -> add_type_eq cd_loc cd_id) l
-    | _ -> ()
+  collect_eq_from_typ_decl ~t1_path ~t2_path type_decl
 
 
 let collect_eq_from_include ~incl_path ~path type_decl =
@@ -209,189 +222,85 @@ let collect_eq_from_include ~incl_path ~path type_decl =
   let module_id = State.File_infos.get_modname state.file_infos in
   (* internal path *)
   let rev_curr_path = !DeadCommon.mods @ [module_id] in
-  let type_path =
-    List.rev_append rev_curr_path path
+  let local_type_path = String.concat "." path in
+  let t1_path =
+    List.rev (local_type_path::rev_curr_path)
     |> String.concat "."
   in
-  let internal_path =
-    let normalized_incl_path =
-      normalize_mod_path rev_curr_path incl_path
-    in
-    match normalized_incl_path with
-    | incl_path :: rev_path ->
-        let incl_type_path = String.concat "." (incl_path :: path) in
-        incl_type_path :: rev_path
-    | [] -> assert false
+  let t2_path =
+    let mod_path = Utils.normalize_mod_path ~rev_curr_path incl_path in
+    find_longest_known_path ~mod_path local_type_path
   in
-  let add_type_eq component_id =
-    let component_name = Ident.name component_id in
-    (* internal path *)
-    let component_path = type_path ^ "." ^ component_name in
-    add_type_eq_internal ~internal_path ~component_path ~component_name
-  in
-  match type_decl.type_kind with
-    | Type_record (l, _) ->
-        List.iter (fun {Types.ld_id; _} -> add_type_eq ld_id) l
-    | Type_variant (l, _) ->
-        List.iter (fun {Types.cd_id; _} -> add_type_eq cd_id) l
-    | _ -> ()
+  collect_eq_from_typ_decl ~t1_path ~t2_path type_decl
+
 
 let tstr typ =
   let state = State.get_current() in
   let modname = State.File_infos.get_modname state.file_infos in
+  let rev_curr_path = !DeadCommon.mods @ [modname] in
+  let t1_path =
+    List.rev (typ.typ_name.Asttypes.txt :: rev_curr_path)
+    |> String.concat "."
+  in
+  let t1_loc = typ.typ_loc.Location.loc_start in
 
   (* A type equation [type t1 = t2 = ...] produces a
      [typ_manifest = Some (Ttyp_constr t2)] in t1
-     In this situation, we want to remember the equality between t1 and t2's
-     components, for later resolution of equivalence classes and merging
-     all their references (see {!prepare_report} below).
+     In this situation, we want to remember the equivalence between t1 and t2
+     for later resolution of equivalence classes and merging all their
+     references (see {!prepare_report} below).
   *)
-  let eq_type_path =
+  let state =
     match typ.typ_manifest with
-    | Some {ctyp_desc=Ttyp_constr (_, {txt;  _}, _); _} ->
-        let path = String.concat "." (Longident.flatten txt) in
-        Some path
-    | _ -> None
+    | Some {ctyp_desc=Ttyp_constr (original_path, _, _); _} ->
+        let t2_path =
+          Utils.normalize_mod_path ~rev_curr_path original_path
+          |> find_longest_known_type_path
+        in
+        State.add_type_equivalence ~t1_path ~t2_path state
+    | _ -> state
   in
 
-  let handle_external_type_eq : string -> string -> unit =
-    match eq_type_path with
-    | None -> fun _ _ -> ()
-    | Some eq_type_path ->
-        fun component_path component_name ->
-          add_type_eq component_path eq_type_path component_name
-  in
-
-  let handle_internal_type_eq : string -> string -> unit =
-    (* Store t1 = t2 equivalence as a dependency, with t2 defined within the
-       current compilation unit *)
-    match eq_type_path with
-    | None -> fun _ _ -> ()
-    | Some eq_type_path ->
-        fun component_path component_name ->
-          let eq_type_path = String.concat "." [modname; eq_type_path] in
-          let eq_component_path =
-            String.concat "." [eq_type_path; component_name]
-          in
-          match Hashtbl.find_opt fields eq_component_path with
-          | None -> () (* t2 is not defined locally *)
-          | Some _ ->
-              add_type_eq component_path eq_type_path component_name
-  in
-
-  let handle_type_dep loc path_loc component_path component_name =
-    handle_internal_type_eq component_path component_name;
-    if path_loc <> loc then
-      (* store dependency between .ml and .mli *)
-      dependencies := (path_loc, loc) :: !dependencies
-  in
-
-  let assoc name loc =
-    (* store the association from name to loc in fields,
-       the dependenicies and the equivalences *)
-    let component_name = name.Asttypes.txt in
-    let path =
-      let partial_path_rev =
-        component_name :: typ.typ_name.Asttypes.txt :: !mods
-      in
-      modname :: List.rev partial_path_rev
-      |> String.concat "."
-    in
-    handle_external_type_eq path component_name;
-    match Hashtbl.find_opt fields path with
+  let assoc cf_name cf_loc state =
+    (* store the association from name to loc *)
+    let cf_name = cf_name.Asttypes.txt in
+    let cf_loc = cf_loc.Location.loc_start in
+    let cf_path = String.concat "." [t1_path; cf_name] in
+    match State.find_loc ~elt_kind:`Ctor_field ~elt_path:cf_path state with
     | None ->
-        Hashtbl.add fields path loc;
-        handle_internal_type_eq path component_name
-    | Some path_loc ->
+        add_component ~type_loc:t1_loc ~type_path:t1_path ~cf_loc ~cf_name state
+    | Some known_loc when known_loc <> cf_loc ->
         (* The path is known because the current compilation unit exports it *)
-        handle_type_dep loc path_loc path component_name
+        (* store dependency between .ml and .mli *)
+        dependencies := (known_loc, cf_loc) :: !dependencies;
+        state
+    | _ -> state
   in
-  let assoc name loc ctyp =
-    assoc name loc;
-    !DeadLexiFi.tstr_type typ ctyp
+  let state =
+    match typ.typ_kind with
+      | Ttype_record fields ->
+          let assoc state {Typedtree.ld_name; ld_loc; _} =
+            assoc ld_name ld_loc state
+          in
+          List.fold_left assoc state fields
+      | Ttype_variant ctors ->
+          let assoc state {Typedtree.cd_name; cd_loc; _} =
+            assoc cd_name cd_loc state
+          in
+          List.fold_left assoc state ctors
+      | _ -> state
   in
-
-  match typ.typ_kind with
-    | Ttype_record l ->
-        List.iter
-          (fun {Typedtree.ld_name; ld_loc; ld_type; _} ->
-            assoc ld_name ld_loc.Location.loc_start (to_string ld_type.ctyp_type)
-          )
-          l
-    | Ttype_variant l ->
-        List.iter
-          (fun {Typedtree.cd_name; cd_loc; _} -> assoc cd_name cd_loc.Location.loc_start _variant)
-          l
-    | _ -> ()
-
-
-let prepare_report () =
-  (* implement a pseudo union-find via 2 tables : references and reprs *)
-  (* references hold merged references of a union class with the
-     representative as key.*)
-  let references = LocHash.create 128 in
-  (* reprs points to another member of the location's equivalence class.
-     This memeber was the representative at some point. There are no
-     circular references.
-     _The_ representative of a class points to itself.
-     Use get_repr to get _the_ representative of a location's class.
-  *)
-  let reprs = Hashtbl.create 128 in
-  let init_refs loc =
-    (* the initial value for a single-element class is the set of references
-       gathered during the analysis *)
-    LocHash.find_set DeadCommon.references loc
-    |> LocHash.replace references loc
+  let _apply_lexifi =
+    match typ.typ_kind with
+      | Ttype_record fields ->
+          List.iter
+            (fun {Typedtree.ld_type; _} ->
+              !DeadLexiFi.tstr_type typ (to_string ld_type.ctyp_type)
+            )
+            fields
+      | _ -> ()
   in
-  let rec get_repr loc =
-    (* explore members of loc's class until finding the class representative *)
-    match Hashtbl.find_opt reprs loc with
-    | None ->
-        (* loc does not belong to a class yet. Setup its own *)
-        init_refs loc;
-        Hashtbl.add reprs loc loc;
-        loc
-    | Some repr when repr = loc -> loc (* class representative found *)
-    | Some repr ->  get_repr repr (* class member but not the representative *)
-  in
-  let merge_references (path1, path2) =
-    let loc1 = Hashtbl.find_opt fields path1 in
-    let loc2 = Hashtbl.find_opt fields path2 in
-    match loc1, loc2 with
-    | None, _ | _, None -> ()
-    | Some loc1, Some loc2 ->
-        let repr1 = get_repr loc1 in
-        let repr2 = get_repr loc2 in
-        Hashtbl.replace reprs repr1 repr2;
-        (* repr1 is now represented by repr2: its references are transfered *)
-        LocHash.merge_set references repr2 references repr1;
-        LocHash.remove references repr1
-  in
-  let update_references loc =
-    Option.iter
-      (fun loc ->
-        let repr = get_repr loc in
-        let refs = LocHash.find_set references repr in
-        (* refs include the references gathered for loc and all the members
-           of its equivalence class *)
-        LocHash.replace DeadCommon.references loc refs
-      )
-      loc
-  in
-  let update_references (path1, path2) =
-    Hashtbl.find_opt fields path1 |> update_references;
-    Hashtbl.find_opt fields path2 |> update_references
-  in
-  List.iter merge_references !equivalences;
-  List.iter update_references !equivalences
-
-
-let report () =
-  let state = State.get_current () in
-  report_basic
-    decs
-    "UNUSED CONSTRUCTORS/RECORD FIELDS"
-    state.config.sections.types
+  State.update state
 
 
                 (********   WRAPPING  ********)
@@ -402,10 +311,8 @@ let wrap f x =
     f x
   else ()
 
-let collect_export path u stock t = wrap (collect_export path u stock) t
+let collect_export path t = wrap (collect_export path) t
 let tstr typ = wrap tstr typ
-let prepare_report () = wrap prepare_report ()
-let report () = wrap report ()
 
 let collect_eq_from_module_alias
     ~rev_alias_path ~original_path ~sub_path type_decl

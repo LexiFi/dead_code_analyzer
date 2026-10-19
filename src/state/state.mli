@@ -2,11 +2,19 @@
 
 module File_infos = File_infos
 
+module Values = Values
+module Methods = Methods
+module Ctors_fields = Ctors_fields
+
 type t =
   { config : Config.t (** Configuration of the analysis *)
   ; comp_unit_to_path : (string, string) Hashtbl.t
       (** Compilation unit -> filepaths. Useful for quick filepath retrieval *)
   ; file_infos : File_infos.t (** Info about the file being analyzed *)
+  ; values : Values.t (** Info about exported values declarations and uses *)
+  ; methods : Methods.t (** Info about exported methods declarations and uses *)
+  ; ctors_fields : Ctors_fields.t
+      (** Info about exported constructors and fields *)
   }
 
 val init : Config.t -> t
@@ -16,11 +24,271 @@ val update_config : Config.t -> t -> t
 (** [update_config config state] changes the analysis configuration *)
 
 val change_file : t -> string -> (t, string) result
-(** [change_file t cmti_file] prepare the analysis to move on to [cmti_file].
+(** [change_file state cmti_file] prepare the analysis to move on to [cmti_file].
     See [File_infos.change_file] for error cases. *)
+
+val add_exported_declaration:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  elt_loc:Lexing.position ->
+  elt_path:string ->
+  t
+  -> t
+(** [add_exported_declaration ~elt_kind ~elt_loc ~elt_path state] stores
+    a new exported element at [elt_loc] in the current builddir with fully
+    qualified path [elt_path].
+    The element may be discarded if the [elt_kind]'s corresponding report section
+    is disabled.
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name, the [elt_loc] is the one of the owning object/class, and the
+    [elt_path] the method's path.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.add_exported_declaration]).
+*)
+
+val remove_exported_declaration:
+  elt_kind:[< `Ctor_field | `Method of string | `Object | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** [remove_exported_declaration ~elt_kind ~elt_loc state] removes the
+    exported element at [elt_loc] in the current builddir.
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name, and only this method's declaration is removed.
+    If [elt_kind] is an [Object], then all its associated method declarations
+    are removed.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.remove_exported_declaration]).
+*)
+
+val is_exported_declaration:
+  elt_kind:[< `Ctor_field | `Object | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> bool
+(** [is_exported_declaration ~elt_kind ~elt_loc state] returns [true]
+    if the provided [elt_loc] is stored as an exported declaration for
+    the given [elt_kind]
+    If [elt_kind] is an [Object], then it returns true if any of its methods
+    was stored as an exported declaration (see {!add_exported_declaration}
+    above)
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.is_exported_declaration]).
+*)
+
+val get_exported_declaration_path:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  builddir:string ->
+  elt_loc:Lexing.position ->
+  t
+  -> string option
+(** [get_exported_declaration_path ~elt_kind ~builddir ~elt_loc state]
+    returns [Some elt_path] if the [elt_loc] is stored as an exported
+    declaration of the [elt_kind] in [builddir].
+    See {!add_exported_declaration} above for more information.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.get_val_path]).
+*)
+
+val add_use:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  elt_loc:Lexing.position ->
+  use_loc:Lexing.position ->
+  t
+  -> t
+(** [add_use ~elt_kind ~elt_loc ~use_loc state] stores a use of [elt_loc]
+    at [use_loc].
+    The use may be discarded if the [elt_kind]'s corresponding report section
+    is disabled or if the use is out of scope (e.g. an internal value use
+    when --internal is not configured).
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name and the [elt_loc] is the one of the owning object/class.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.add_use]).
+*)
+
+val remove_uses:
+  elt_kind:[< `Ctor_field | `Method of string | `Object | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** [remove_uses ~elt_kind ~elt_loc state] removes the uses associated
+    with element at [elt_loc].
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name, and only this method's uses are removed.
+    If [elt_kind] is an [Object], then all its associated methods' uses are
+    removed.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.uses]).
+*)
+
+val get_uses:
+  elt_kind:[< `Ctor_field | `Method of string | `Value ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> Lexing.position list
+(** [get_use ~elt_kind ~elt_loc state] returns all the uses known for the
+    element.
+    If [elt_kind] is a [Method], then it must be payloaded with the method's
+    name and the [elt_loc] is the one of the owning object/class.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.get_uses]).
+*)
+
+val add_self_use:
+  elt_kind:[ `Method of string ] ->
+  elt_loc:Lexing.position ->
+  use_loc:Lexing.position ->
+  t
+  -> t
+(** [add_self_use ~elt_kind ~elt_loc ~use_loc] is similar to {!add_use] above
+    but for self-referencing uses within an object or class definition.
+    Only [Method] is accepted as [elt_kind].
+*)
+
+val add_alias:
+  elt_kind:[< `Ctor_field | `Object | `Value ] ->
+  orig_loc:Lexing.position ->
+  alias_loc:Lexing.position ->
+  t
+  -> t
+(** [add_alias ~elt_kind ~orig_loc ~alias_loc state] stores an alias at
+    [alias_loc] for [orig_loc].
+    This implies that any use of [alias_loc] is equivalent to a use of [obj_loc]
+    The use may be discarded if the [elt_kind]'s corresponding report section
+    is disabled.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.add_alias]).
+*)
+
+val add_type_equivalence: t1_path:string -> t2_path:string -> t -> t
+(** [add_type_equivalence ~t1_path ~t2_path state] is the same as
+    {!Ctors_fields.add_equivalence} at the state level
+*)
+
+val add_type_component:
+  type_loc:Lexing.position ->
+  cf_name:string ->
+  cf_loc:Lexing.position ->
+  t
+  -> t
+(** [add_type_component ~type_loc ~cf_name ~cf_loc state] is the same as
+    {!Ctors_fields.add_component} at the state level
+*)
+
+val add_local_path_alias:
+  elt_kind:[< `Object ] ->
+  orig_path:string ->
+  alias_path:string ->
+  t
+  -> t
+(** [add_loc_binding ~elt_kind ~orig_path ~alias_path state] is similar to
+    adding an alias (see {!add_alias} above) but for paths rather than
+    locations, and is meant for local storage (i.e. be reset in between
+    compilation units via {!reset_local_path_aliases} below)
+*)
+
+val reset_local_path_aliases : t -> t
+(** [reset_local_path_aliases state] removes all the path aliases that were
+    added via {!add_local_path_alias} above.
+*)
+
+val add_loc_binding:
+  elt_kind:[< `Ctor_field | `Object | `Type ] ->
+  elt_path:string ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** [add_loc_binding ~elt_kind ~elt_path ~elt_loc state] associates
+    [elt_loc] to [elt_path] for the [elt_kind]. This binding can later be
+    retrieved via {!find_loc} (see below)
+*)
+
+val find_loc:
+  elt_kind:[< `Ctor_field | `Object | `Type ] ->
+  elt_path:string ->
+  t
+  -> Lexing.position option
+(** [find_loc ~elt_kind ~elt_path state] retrieve the loc of [elt_path]
+    for [elt_kind].
+    If the path was bound via {!add_loc_binding} above, then it returns
+    [Some elt_loc] with [elt_loc] the latest binding to the path.
+    Otherwise, it returns [None].
+*)
+
+val add_initializer:
+  elt_kind:[< `Object ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+
+val inherit_initializer:
+  elt_kind:[< `Object ] ->
+  elt_loc:Lexing.position ->
+  inherited_path:string ->
+  t
+  -> t
+
+val mark_defined:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** Mark the method as defined *)
+
+val mark_virtual:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  t
+  -> t
+(** Mark the method as virtual *)
+
+val mark_inherited:
+  elt_kind:[< `Method of string ] ->
+  elt_loc:Lexing.position ->
+  inherited_path:string ->
+  t
+  -> t
+(** Mark the method as inherited *)
+
+val prepare_report: t -> t
+(** Resolve pending operations, such as method inheritance and type equivalence
+    resolution.
+    To be used once before reporting.
+*)
+
+type element =
+  [ `Ctor_field | `Method of string | `Value ] (* elt kind *)
+  * Lexing.position (* elt loc *)
+  * string (* elt builddir *)
+
+val get_unused:
+  elt_kind:[< `Ctor_field | `Object | `Value ] ->
+  ?max_uses:int ->
+  t
+  -> (int, element list) Hashtbl.t
+(** [get_unused ~elt_kind ?max_uses state] returns a table containing the
+    elements used up to [max_uses] (included).
+    The keys are the number of uses.
+    The elements are identified by their kind, location, and builddir.
+    If [elt_kind] is [Object], then the elements kind is [Method] payloaded
+    with the corresponding method names. Otherwise the elements kind is the
+    same as [elt_kind].
+    [max_uses = 0] by default.
+
+    This function is preferred over directly the corresponding element kind's
+    dedicated function (e.g. [Values.get_unused]).
+*)
 
 val get_current : unit -> t
 (** [get_current ()] returns the state used during the analysis. *)
 
 val update : t -> unit
-(** [update t] replaces the analysis' state with [t]. *)
+(** [update state] replaces the analysis' state with [state]. *)

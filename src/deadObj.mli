@@ -17,8 +17,6 @@ val last_class : Lexing.position ref
 
 val collect_export :
   string list
-  -> string
-  -> (Lexing.position, string * string) Hashtbl.t
   -> ?obj: Types.type_expr
   -> ?cltyp: Types.class_type
   -> Location.t
@@ -27,6 +25,11 @@ val collect_export :
 val correct_export : Location.t -> unit
 (** Undo export collection for the specified location *)
 
+val collect_from_include :
+  ?incl_path: Path.t
+  -> rev_curr_path:string list
+  -> string list (* the included element path *)
+  -> unit
 
 val collect_references :
   meth: string
@@ -36,7 +39,7 @@ val collect_references :
 
 
 val add_equal :
-  Lexing.position -> Lexing.position -> unit
+  Lexing.position -> Lexing.position -> State.t -> State.t
 
 
 val tstr :
@@ -64,8 +67,11 @@ val coerce:
 
 
 val eof : unit -> unit
-(** For use at the end of a [.cmt]'s analysis: reset internal state *)
+(** To use at the end of a [.cmt]'s analysis: reset internal state *)
 
 
-val report :
-  unit -> unit
+val eocb : unit -> unit
+(** To use at the end of the codebase analysis:
+    apply remaining deferred functions which required the analysis of future
+    locations, their respective files.
+    [eocb] = end of code base. *)

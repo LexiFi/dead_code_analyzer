@@ -71,7 +71,9 @@ let value_binding super self x =
       | Texp_ident (_, _, {val_loc; _}) when not val_loc.Location.loc_ghost ->
           let val_loc = val_loc.Location.loc_start in
           VdNode.merge_locs pat_loc val_loc;
-          DeadObj.add_equal pat_loc val_loc
+          State.get_current ()
+          |> DeadObj.add_equal pat_loc val_loc
+          |> State.update
       | _ ->
           let exp = x.vb_expr in
           DeadArg.bind pat_loc exp;
@@ -159,8 +161,7 @@ let pat: type k. Tast_mapper.mapper -> Tast_mapper.mapper -> k general_pattern -
           let lab : Types.label_description = lab in
           #endif
           let lab_loc = lab.lbl_loc.Location.loc_start in
-          if exported ~is_type:true sections.types lab_loc then
-            DeadType.collect_references lab_loc pat_loc
+          DeadType.collect_references lab_loc pat_loc
         )
         l
   | _ -> ()
@@ -183,20 +184,22 @@ let expr super self e =
   | Texp_ident (path, _, _) when Path.name path = "Mlfi_types.internal_ttype_of" ->
       !DeadLexiFi.ttype_of e
 
-  | Texp_ident (_, _, {Types.val_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
-    when exported sections.exported_values loc ->
-      LocHash.add_set references loc exp_loc
+  | Texp_ident (_, _, {Types.val_loc; _}) when not val_loc.Location.loc_ghost ->
+      let elt_loc = val_loc.Location.loc_start in
+      State.add_use ~elt_kind:`Value ~elt_loc ~use_loc:exp_loc state
+      |> State.update
 
-  | Texp_field (_, _, {lbl_loc = {Location.loc_start = loc; loc_ghost = false; _}; _})
-  | Texp_construct (_, {cstr_loc = {Location.loc_start = loc; loc_ghost = false; _}; _}, _)
-    when exported ~is_type:true sections.types loc ->
-      DeadType.collect_references loc exp_loc
+  | (Texp_field (_, _, {lbl_loc = loc; _})
+     | Texp_construct (_, {cstr_loc = loc; _}, _))
+    when not loc.Location.loc_ghost ->
+      let cf_loc = loc.Location.loc_start in
+      DeadType.collect_references cf_loc exp_loc
 
   | Texp_send (e2, Tmeth_name meth) ->
-    DeadObj.collect_references ~meth ~call_site:e.exp_loc.Location.loc_start e2
+      DeadObj.collect_references ~meth ~call_site:e.exp_loc.Location.loc_start e2
   | Texp_send (e2, Tmeth_val id)
   | Texp_send (e2, Tmeth_ancestor (id, _)) ->
-    DeadObj.collect_references ~meth:(Ident.name id) ~call_site:e.exp_loc.Location.loc_start e2
+      DeadObj.collect_references ~meth:(Ident.name id) ~call_site:e.exp_loc.Location.loc_start e2
 
 
   | Texp_apply (exp, args) ->
@@ -327,26 +330,19 @@ let regabs state =
     hashtbl_add_unique_to_list main_files (Utils.Filepath.unit fn) ()
 
 
-let read_interface fn export_collector state =
+let read_interface export_collector state =
   regabs state;
   if Config.must_report_main state.config then
-    let comp_unit =
-      if State.File_infos.has_sourcepath state.file_infos then
-        State.File_infos.get_sourceunit state.file_infos
-      else
-      Utils.Filepath.unit fn
-    in
     let module_id =
       State.File_infos.get_modname state.file_infos
     in
     let path = [module_id] in
-    export_collector ~path ~comp_unit;
+    export_collector ~path;
     last_loc := Lexing.dummy_pos
 
 
 (* Merge a location's references to another one's *)
-let assoc decs (loc1, loc2) =
-  let state = State.get_current () in
+let assoc elt_kind loc1 loc2 (state : State.t) =
   let fn1 = loc1.Lexing.pos_fname
   and fn2 = loc2.Lexing.pos_fname in
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
@@ -356,52 +352,68 @@ let assoc decs (loc1, loc2) =
     || ( Utils.Filepath.unit fn = sourceunit
       && DeadCommon.file_exists (fn ^ "i"))
   in
-  let is_iface fn loc =
-    Hashtbl.mem decs loc || Utils.Filepath.unit fn <> sourceunit
+  let is_iface fn elt_loc (state : State.t) =
+    State.is_exported_declaration ~elt_kind ~elt_loc state
+    || Utils.Filepath.unit fn <> sourceunit
     || not (is_implem fn && has_iface fn)
   in
-  if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then begin
-    if (state.config.internal || fn1 <> fn2) && is_implem fn1 && is_implem fn2 then
-      DeadCommon.LocHash.merge_set references loc2 references loc1;
-    if is_iface fn1 loc1 then begin
-      if is_iface fn2 loc2 then
-        DeadCommon.LocHash.add_set references loc1 loc2
+  if fn1 <> _none && fn2 <> _none && loc1 <> loc2 then
+    let state =
+      if (state.config.internal || fn1 <> fn2)
+          && is_implem fn1 && is_implem fn2
+      then
+        State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+      else state
+    in
+    if is_iface fn1 loc1 state then begin
+      if is_iface fn2 loc2 state then
+        State.add_use ~elt_kind ~elt_loc:loc1 ~use_loc:loc2 state
       else
-        DeadCommon.LocHash.merge_set references loc1 references loc2;
+        State.add_alias ~elt_kind ~orig_loc:loc1 ~alias_loc:loc2 state
     end
     else
-      DeadCommon.LocHash.merge_set references loc2 references loc1
-  end
+      State.add_alias ~elt_kind ~orig_loc:loc2 ~alias_loc:loc1 state
+  else state
 
 
-let clean references loc =
-  let state = State.get_current () in
+let clean elt_kind elt_loc (state : State.t) =
   let sourceunit = State.File_infos.get_sourceunit state.file_infos in
-  let fn = loc.Lexing.pos_fname in
+  let fn = elt_loc.Lexing.pos_fname in
   if (fn.[String.length fn - 1] <> 'i' && Utils.Filepath.unit fn = sourceunit) then
-    LocHash.remove references loc
+    State.remove_uses ~elt_kind ~elt_loc state
+  else state
 
-let eof loc_dep =
-  let state = State.get_current () in
-  DeadArg.eof();
-  List.iter (assoc decs) loc_dep;
-  List.iter (assoc DeadType.decs) !DeadType.dependencies;
+let process_dependencies elt_kind loc_dep state =
+  let state =
+    List.fold_left
+      (fun state (loc1, loc2) -> assoc elt_kind loc1 loc2 state)
+      state
+      loc_dep
+  in
   let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
-  if DeadCommon.file_exists (sourcepath ^ "i") then begin
-    let clean =
-      List.iter
-        (fun (loc1, loc2) ->
-          clean references loc1; clean references loc2
-        )
-    in
-    clean loc_dep;
-    clean !DeadType.dependencies;
-  end;
-  VdNode.eof ();
+  if DeadCommon.file_exists (sourcepath ^ "i") then
+    List.fold_left
+      (fun state (loc1, loc2) ->
+        clean elt_kind loc1 state
+        |> clean elt_kind loc2
+      )
+      state
+      loc_dep
+  else state
+
+let eof loc_dep state =
+  DeadArg.eof ();
+  let state =
+    state
+    |> process_dependencies `Value loc_dep
+    |> process_dependencies `Ctor_field !DeadType.dependencies
+    |> State.reset_local_path_aliases
+    |> DeadCommon.VdNode.eof
+  in
   DeadObj.eof ();
   DeadSign.eof ();
   DeadType.dependencies := [];
-  Hashtbl.reset incl
+  state
 
 
 (* Starting point *)
@@ -420,9 +432,9 @@ let load_file fn state =
         State.update state;
         f state;
         (* TODO: stateful computations should take and return the state when possible *)
-        state
+        State.get_current ()
   in
-  let process_interface fn =
+  let process_interface fn state =
     last_loc := Lexing.dummy_pos;
     if state.State.config.verbose then
       Printf.eprintf "Scanning interface from %s\n%!" fn;
@@ -431,13 +443,13 @@ let load_file fn state =
     | Neither -> report_error (fn ^ ": missing signature")
     | Cmti {sign; _} | Cmt {sign = Some sign; _} ->
         let export_collector = DeadSign.collect_export_from_signature sign in
-        read_interface fn export_collector state
+        read_interface export_collector state
     | Cmt {strc; _} ->
         let export_collector = DeadSign.collect_export_from_structure strc in
-        read_interface fn export_collector state
+        read_interface export_collector state
     )
   in
-  let process_implementation fn =
+  let process_implementation fn state =
     last_loc := Lexing.dummy_pos;
     if state.State.config.verbose then
       Printf.eprintf "Scanning implementation from %s\n%!" fn;
@@ -446,13 +458,19 @@ let load_file fn state =
     | Neither | Cmti _ -> report_error (fn ^ ": missing structure")
     | Cmt {strc; location_dependencies; _} ->
         regabs state;
-        let prepare (loc1, loc2) =
-          DeadObj.add_equal loc1 loc2;
-          VdNode.merge_locs ~force:true loc2 loc1
+        let prepare (loc1, loc2) state =
+          VdNode.merge_locs ~force:true loc2 loc1;
+          DeadObj.add_equal loc1 loc2 state
         in
-        List.iter prepare location_dependencies;
+        let state =
+          List.fold_left (fun state locs -> prepare locs state)
+            state
+            location_dependencies
+        in
+        State.update state;
         collect_references.Tast_mapper.structure collect_references strc
         |> ignore;
+        let state = State.get_current () in
         let loc_dep =
           if Config.must_report_section state.config.sections.exported_values then
             let sourceunit =
@@ -470,16 +488,17 @@ let load_file fn state =
               location_dependencies
           else []
         in
-        eof loc_dep
+        eof loc_dep state
+        |> State.update
     )
   in
   let exclude filepath = Config.is_excluded filepath state.State.config in
   match Utils.Filepath.kind ~exclude fn with
-  | Cmti when !DeadCommon.declarations -> process_interface fn
-  | Cmt_with_mli -> process_implementation fn
+  | Cmti when !DeadCommon.declarations -> process_interface fn state
+  | Cmt_with_mli -> process_implementation fn state
   | Cmt_without_mli ->
-      let _state = process_interface fn in
-      process_implementation fn
+      process_interface fn state
+      |> process_implementation fn
   | Dir ->
       (* TODO : better error handling *)
       failwith ("Internal error : Unexpected directory "
@@ -603,14 +622,6 @@ let report_opt_args s l =
   in report_opt_args 0
 
 
-let report_unused_exported () =
-  let state = State.get_current () in
-  report_basic
-    decs
-    "UNUSED EXPORTED VALUES"
-    state.config.sections.exported_values
-
-
 let report_style () =
   section "CODING STYLE";
   if !style <> [] then begin
@@ -662,7 +673,6 @@ try
       State.update_config config state
     in
     let state = run_on_references_only state in
-    State.update state;
 
     Printf.eprintf " [DONE]\n\n%!";
 
@@ -676,12 +686,13 @@ try
           file_string;
     in
 
-    !DeadLexiFi.prepare_report DeadType.decs;
-    DeadType.prepare_report ();
+    DeadObj.eocb ();
+    let state =
+      !DeadLexiFi.prepare_report state
+      |> State.prepare_report
+    in
+    Report.report_main_sections state;
     let sections = state.config.sections in
-    if Config.must_report_section sections.exported_values then report_unused_exported ();
-    DeadObj.report();
-    DeadType.report();
     if Config.must_report_opt_args state.config then begin
       let tmp = analyze_opt_args () in
       if Config.must_report_section sections.opta then report_opt_args "ALWAYS" tmp;

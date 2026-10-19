@@ -10,35 +10,40 @@
 open Types
 open Typedtree
 
-open DeadCommon
-
-
 
 let item maker = function
   | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}, _) ->
-    (Ident.name id, loc)::[]
+      (`Value (Ident.name id, loc))::[]
   | Sig_type (id, {type_kind; _}, _, _) ->
-    let t = Ident.name id in
-    begin match type_kind with
-    | Type_record (l, _) ->
-      List.map
-        (fun {Types.ld_id; ld_loc = {Location.loc_start = loc; _}; _} ->
-          (t ^ "." ^ (Ident.name ld_id), loc)
-        )
-        l
-    | Type_variant (l, _) ->
-      List.map
-        (fun {Types.cd_id; cd_loc = {Location.loc_start = loc; _}; _} ->
-          (t ^ "." ^ Ident.name cd_id, loc)
-        )
-        l
-    | _ -> []
-    end
+      let t = Ident.name id in
+      let build_cf cf_id cf_loc =
+        let cf_name = Ident.name cf_id in
+        let cf_loc = cf_loc.Location.loc_start in
+        `Ctor_field (t ^ "." ^ cf_name, cf_loc)
+      in
+      let ids_locs =
+        match type_kind with
+        | Type_record (l, _) ->
+            List.map (fun {Types.ld_id; ld_loc; _} -> (ld_id, ld_loc)) l
+        | Type_variant (l, _) ->
+            List.map (fun {Types.cd_id; cd_loc; _} -> (cd_id, cd_loc)) l
+        | _ -> []
+      in
+      List.map (fun (id, loc) -> build_cf id loc) ids_locs
   | Sig_module (id, _, {md_type; _}, _, _)
   | Sig_modtype (id, {mtd_type = Some md_type; _}, _) ->
-    List.map (fun (n, l) -> (Ident.name id ^ "." ^ n, l)) (maker md_type)
+      List.map
+        (fun elt ->
+          let update_path (path, loc) = (Ident.name id ^ "." ^ path, loc) in
+          match elt with
+          | `Value v -> `Value (update_path v)
+          | `Ctor_field cf -> `Ctor_field (update_path cf)
+          | `Method m -> `Method (update_path m)
+        )
+       (maker md_type)
   | Sig_class (id, {cty_loc = {Location.loc_start = loc; _}; _}, _, _) ->
-    (Ident.name id ^ "#", loc) :: []
+      (* TODO: actually explore the methods in the class_declaration *)
+    `Method (Ident.name id ^ "#", loc) :: []
   | _ -> []
 
 let rec make_content typ =
@@ -53,24 +58,40 @@ let rec make_arg typ =
 
 let expr m = match m.mod_desc with
   | Tmod_apply (m1, m2, _) ->
-    let l1 = make_arg m1.mod_type |> List.map fst in
-    let l2 = make_content m2.mod_type in
-    List.iter
-      (fun (x, loc) ->
-        let is_obj = String.contains x '#' in
-        let is_type = not is_obj && DeadType.is_type x in
-        let relevant_report_enabled =
-          let state = State.get_current () in
-          let sections = state.config.sections in
-          if is_obj then Config.must_report_section sections.methods
-          else if is_type then exported ~is_type sections.types loc
-          else exported sections.exported_values loc
-        in
-        let value_is_expected_by_modtype = List.mem x l1 || l1 = [] in
-        if value_is_expected_by_modtype && relevant_report_enabled then
-          LocHash.add_set references loc m.mod_loc.Location.loc_start
-      )
-      l2
+      (* Add a use for each element in [m2] expected by [m1] *)
+      let exp_elts = make_arg m1.mod_type in
+      let arg_elts = make_content m2.mod_type in
+      let elt_is_expected elt =
+        exp_elts = []
+        || List.exists
+          (fun exp ->
+            match exp, elt with
+            | `Value (path_exp, _), `Value (path_elt, _)
+            | `Ctor_field (path_exp, _), `Ctor_field (path_elt, _)
+            | `Method (path_exp, _), `Method (path_elt, _) ->
+                String.equal path_exp path_elt
+            | _ -> false
+          )
+          exp_elts
+      in
+      let state = State.get_current () in
+      let state =
+        List.fold_left
+          (fun state elt ->
+            let use_loc = m.mod_loc.Location.loc_start in
+            if elt_is_expected elt then
+              match elt with
+              | `Value (_, elt_loc) ->
+                  State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
+              | `Ctor_field (_, elt_loc) ->
+                  State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
+              | `Method _ -> (* TODO *) state
+            else state
+          )
+          state
+          arg_elts
+      in
+      State.update state
   | _ -> ()
 
 

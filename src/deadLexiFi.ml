@@ -15,7 +15,7 @@ module Default = struct
   let type_decl _ = ()
   let tstr_type _ _ = ()
   let ttype_of _ = ()
-  let prepare_report _ = ()
+  let prepare_report state = state
 end
 
 let sig_value = ref Default.sig_value
@@ -120,19 +120,20 @@ module Extension = struct
     in
     dyn_rec := (name, e.exp_type, call_site) :: !dyn_rec
 
-  let prepare_report decs =
-    let state = State.get_current () in
-    let sections = state.config.sections in
-    List.iter
-      (fun (strin, pos) ->
-        hashtbl_find_list str strin
-        |> List.iter
-          (fun loc ->
-            if exported sections.exported_values loc then
-              LocHash.add_set references loc pos
-          )
-      )
-      !used;
+  let prepare_report state =
+    let state =
+      List.fold_left
+        (fun state (strin, pos) ->
+          hashtbl_find_list str strin
+          |> List.fold_left
+            (fun state loc ->
+                State.add_use ~elt_kind:`Value ~elt_loc:loc ~use_loc:pos state
+            )
+            state
+        )
+        state
+        !used
+    in
     let rec process (p, typ, call_site) =
       match get_deep_desc typ with
       | Tarrow (_, t, _, _) -> process (p, t, call_site)
@@ -162,20 +163,22 @@ module Extension = struct
       | _ -> ()
     in
     List.iter process !dyn_rec;
-    Hashtbl.iter
-      (fun loc (_, path) ->
+    List.fold_left
+      (fun state (cf_loc, _, cf_path) ->
         let rec get_type s pos =
           if pos = 0 then s
           else if s.[pos] = '.' then String.sub s 0 pos
           else get_type s (pos - 1)
         in
-        List.iter
-          ( if exported ~is_type:true sections.types loc then LocHash.add_set references loc
-            else ignore
+        List.fold_left
+          (fun state use_loc ->
+            State.add_use ~elt_kind:`Ctor_field ~elt_loc:cf_loc ~use_loc state
           )
-          (hashtbl_find_list dyn_used (get_type path (String.length path - 1)))
+          state
+          (hashtbl_find_list dyn_used (get_type cf_path (String.length cf_path - 1)))
       )
-      decs
+      state
+      (State.Ctors_fields.get_exported_declarations state.ctors_fields)
 
 end
 

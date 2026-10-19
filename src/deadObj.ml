@@ -16,113 +16,33 @@ open DeadCommon
 
                 (********   ATTRIBUTES  ********)
 
-let decs = Hashtbl.create 256
-
-let references = Hashtbl.create 512                 (* references by loc->method->uses *)
-
-let self_ref = Hashtbl.create 512                   (* references by loc->method to itself *)
-
-let content = Hashtbl.create 512                    (* loc -> [field names] *)
-
-let inheritances = Hashtbl.create 512               (* inheritance links loc-> loc *)
-
-let equals = Hashtbl.create 64
-
-let at_eof = ref []
+let at_eocb = ref []
 
 let last_class = ref Lexing.dummy_pos            (* last class met *)
-
-let path2loc = Hashtbl.create 256
-
-let defined = Hashtbl.create 16
-
 
 
                 (********   HELPERS   ********)
 
 
-let repr_loc loc =
-  let met = Hashtbl.create 8 in
-  let rec loop loc =
-    if not (Hashtbl.mem equals loc) then loc
-    else
-      let next = Hashtbl.find equals loc in
-      if Hashtbl.mem met next then loc
-      else begin
-        Hashtbl.add met loc ();
-        loop next
-      end
-  in
-  Hashtbl.add met loc ();
-  loop loc
+let add_path elt_path elt_loc state =
+  State.add_loc_binding ~elt_kind:`Object ~elt_path ~elt_loc state
+
+let add_path_alias orig_path alias_path state =
+  State.add_local_path_alias ~elt_kind:`Object ~orig_path ~alias_path state
 
 
-let meth_tbl tbl loc =
-  if not (Hashtbl.mem tbl loc) then
-    Hashtbl.add tbl loc (Hashtbl.create 16);
-  Hashtbl.find tbl loc
+let get_loc obj_path =
+  let state = State.get_current () in
+  let obj_path = State.Methods.get_orig_path ~obj_path state.methods in
+  State.find_loc ~elt_kind:`Object ~elt_path:obj_path state
 
 
-let meth_ref = meth_tbl references
-let meth_self_ref = meth_tbl self_ref
-
-
-let add_path path loc =
-  Hashtbl.replace path2loc path loc
-
-
-let get_loc path =
-  let path =
-    let exported_path =
-      Hashtbl.to_seq_values incl
-      |> Seq.find (fun (_, exported_path) -> is_sub_path ~sep:"." path exported_path)
-    in
-    match exported_path with
-    | Some (_, exported_path) -> exported_path
-    | None ->
-      try Hashtbl.find defined path
-      with Not_found -> path
-  in
-  try repr_loc (Hashtbl.find path2loc path)
-  with Not_found -> Lexing.dummy_pos
-
-
-let know_path path =
-  let path = try Hashtbl.find defined path with Not_found -> path in
-  Hashtbl.mem path2loc path
-
-
-let get_method s =
-  let rec loop s pos =
-    if s.[pos] = '#' then String.sub s (pos + 1) (String.length s - pos - 1)
-    else if pos <= 0 then s
-    else loop s (pos - 1)
-  in loop s (String.length s - 1)
-
-
-let add_equal loc1 loc2 =
-  let loc1 = repr_loc loc1
-  and loc2 = repr_loc loc2 in
-  if loc1 <> loc2 && not (is_ghost loc1 || is_ghost loc2) then begin
-    Hashtbl.replace equals loc1 loc2;
+let add_equal loc1 loc2 state =
+  if is_ghost loc1 || is_ghost loc2 then state
+  else begin
     if loc1 = !last_class then
       last_class := loc2;
-    let meths =
-      let res = hashtbl_find_list content loc2 in
-      if res = [] then hashtbl_find_list content loc1
-      else res
-    in
-    List.iter
-      (fun (_, meth) ->
-        hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
-        hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth
-      )
-      meths;
-    hashtbl_merge_unique_list inheritances loc2 inheritances loc1;
-    hashtbl_remove_list inheritances loc1;
-    hashtbl_remove_list references loc1;
-    hashtbl_remove_list decs loc1;
-    hashtbl_remove_list content loc1
+    State.add_alias ~elt_kind:`Object ~orig_loc:loc2 ~alias_loc:loc1 state
   end
 
 
@@ -154,13 +74,13 @@ let locate expr =
     match expr.exp_desc with
     | Texp_instvar (_, _, {Asttypes.loc; _})
     | Texp_new (_, _, {Types.cty_loc=loc; _})
-    | Texp_ident (_, _, {Types.val_loc=loc; _}) -> repr_loc loc.Location.loc_start
+    | Texp_ident (_, _, {Types.val_loc=loc; _}) ->
+        loc.Location.loc_start
     | _ -> Lexing.dummy_pos
   in repr_exp expr locate
 
 
 let eof () =
-  Hashtbl.reset defined;
   last_class := Lexing.dummy_pos
 
 
@@ -168,26 +88,32 @@ let eof () =
                 (********   PROCESSING  ********)
 
 
-let collect_export path u stock ~obj ~cltyp loc =
-
-  let pos = loc.Location.loc_start in
-
-  begin match List.rev path with
-  | h :: t ->
-      let short = String.concat "." t in
-      let path = h ^ "." ^ short in
-      Hashtbl.add defined short path;
-      add_path path pos
-  | _ -> ()
-  end;
-
-  let stock =
-    if stock == DeadCommon.decs then decs
-    else begin
-      export (List.tl path) u stock (List.hd path) loc;
-      stock
-    end
+let collect_from_include ?incl_path ~rev_curr_path path =
+  let alias_path = List.rev path |> String.concat "." in
+  let rev_mod_path =
+    match incl_path with
+    | None -> rev_curr_path
+    | Some incl_path -> Utils.normalize_mod_path ~rev_curr_path incl_path
   in
+  let orig_path = List.rev (alias_path::rev_mod_path) |> String.concat "." in
+  State.get_current ()
+  |> add_path_alias orig_path alias_path
+  |> State.update
+
+
+let collect_export path ~obj ~cltyp loc =
+  let state = State.get_current () in
+  let pos = loc.Location.loc_start in
+  let state =
+    match List.rev path with
+    | h :: t ->
+        let short = String.concat "." t in
+        let path = h ^ "." ^ short in
+        add_path_alias path short state
+        |> add_path path pos
+    | _ -> state
+  in
+  State.update state;
 
   let save id =
     let state = State.get_current () in
@@ -195,8 +121,19 @@ let collect_export path u stock ~obj ~cltyp loc =
     (* TODO: resolve the builddir ('/workspace_root') in the case of dune
        compiled projects. Without it, looking up for an existing csml below will
        always fail and can lead to false positive *)
-    if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then
-      export ~sep:"#" path u stock id loc;
+    if not (Sys.file_exists (Filename.remove_extension sourcepath ^ ".csml")) then begin
+      let elt_path =
+        String.concat "." (List.rev path)
+        ^ "#" ^ id
+      in
+      let elt_loc = loc.Location.loc_start in
+      let elt_kind = `Method id in
+      State.add_exported_declaration ~elt_kind ~elt_loc ~elt_path state
+      |> State.update
+    end
+  in
+  let save id =
+    if DeadCommon.should_export loc id then save id
   in
 
 
@@ -214,16 +151,32 @@ let collect_export path u stock ~obj ~cltyp loc =
         treat_fields save typ
     | None -> ()
 
-let correct_export loc = DeadCommon.unexport decs loc
+let correct_export loc =
+  let state = State.get_current () in
+  let elt_loc = loc.Location.loc_start in
+  State.remove_exported_declaration ~elt_kind:`Object ~elt_loc state
+  |> State.update
 
 
 let collect_references ~meth ~call_site expr =
-  let loc = locate expr in
+  let obj_loc = locate expr in
 
-  if not (is_ghost loc) then begin
-    hashtbl_add_unique_to_list (meth_ref loc) meth call_site;
-    if loc = !last_class then
-      hashtbl_add_unique_to_list (meth_self_ref loc) meth call_site
+  if not (is_ghost obj_loc) then begin
+    let state = State.get_current () in
+    let meth_name = meth in
+    let use_loc = call_site in
+    let elt_kind = `Method meth_name in
+    let state =
+      State.add_use ~elt_kind ~elt_loc:obj_loc ~use_loc state
+    in
+    let state =
+      let obj_loc = State.Methods.get_orig_loc ~obj_loc state.methods in
+      if obj_loc = !last_class then
+        State.add_self_use ~elt_kind ~elt_loc:obj_loc ~use_loc state
+      else
+        state
+    in
+    State.update state
   end
 
 
@@ -237,33 +190,33 @@ let tstr ({ci_expr; ci_decl = {cty_loc = loc; _}; ci_id_name = {txt = name; _}; 
   in
   let modname = State.File_infos.get_modname state.file_infos in
   let path = modname ^ "." ^ short in
-  if not (Hashtbl.mem defined short) then
-    Hashtbl.add defined short path
-  else begin
-    (* using begin ... end because otherwise make_dep below is considered
-       part of this else *)
-    let loc =
-      if know_path short then get_loc short
-      else if know_path path then get_loc path
-      else Lexing.dummy_pos
-    in
-    if loc != Lexing.dummy_pos && loc <> !last_class then
-      add_equal !last_class loc
-    else
-      add_path path !last_class
-  end;
+  let state =
+    match State.Methods.find_orig_path ~obj_path:short state.methods with
+    | None -> add_path_alias path short state
+    | Some _ ->
+        let loc =
+          match get_loc short with
+          | None -> get_loc path
+          | some -> some
+        in
+        match loc with
+        | Some loc when loc <> !last_class -> add_equal !last_class loc state
+        | _ -> add_path path !last_class state
+  in
 
-  let rec make_dep ci_expr =
+  let rec make_dep ci_expr state =
     match ci_expr.cl_desc with
     | Tcl_ident (path, _, _) ->
-        let loc = get_loc (Path.name path) in
-        if loc != Lexing.dummy_pos then
-          add_equal !last_class loc
+        begin match get_loc (Path.name path) with
+        | None -> state
+        | Some orig_loc -> add_equal !last_class orig_loc state
+        end
     | Tcl_fun (_, _, _, ci_expr, _)
-    | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr
-    | _ -> ()
+    | Tcl_constraint (ci_expr, _, _, _, _) -> make_dep ci_expr state
+    | _ -> state
   in
-  make_dep ci_expr
+  make_dep ci_expr state
+  |> State.update
 
 
 let add_var loc expr =
@@ -303,80 +256,110 @@ let add_var loc expr =
     (* Default *)
     | _ -> `Ignore
   in
-  match repr_exp expr kind with
-  | `Obj ->
-      last_class := loc;
-  | `New cty_loc -> add_equal loc cty_loc
-  | `Ident id_loc ->
-      let expr_loc : Location.t = expr.exp_loc in
-      if id_loc >= expr_loc.loc_start && id_loc <= expr_loc.loc_end then
-        (* ident is defined within expr *)
-        add_equal id_loc loc
-  | `Ignore -> ()
+  let state = State.get_current () in
+  let state =
+    match repr_exp expr kind with
+    | `Obj ->
+        last_class := loc;
+        state
+    | `New cty_loc -> add_equal loc cty_loc state
+    | `Ident id_loc ->
+        let expr_loc : Location.t = expr.exp_loc in
+        if id_loc >= expr_loc.loc_start && id_loc <= expr_loc.loc_end then
+          (* ident is defined within expr *)
+          add_equal id_loc loc state
+        else state
+    | `Ignore -> state
+  in
+  State.update state
 
 
 let class_structure cl_struct =
-  let rec add_aliases pat =
-    begin match pat.pat_desc with
-    | Tpat_alias _
-    | Tpat_var _ when not pat.pat_loc.Location.loc_ghost ->
-        add_equal pat.pat_loc.Location.loc_start !last_class
-    | _ -> () end;
+  let rec add_aliases pat state =
+    let state =
+      match pat.pat_desc with
+      | Tpat_alias _
+      | Tpat_var _ when not pat.pat_loc.Location.loc_ghost ->
+          add_equal pat.pat_loc.Location.loc_start !last_class state
+      | _ -> state
+    in
     match Utils.Compat.get_alias_data pat.pat_desc with
-    | Ok (pat, _, _, _) -> add_aliases pat
-    | _ -> ()
+    | Ok (pat, _, _, _) -> add_aliases pat state
+    | _ -> state
   in
-  add_aliases cl_struct.cstr_self
+  State.get_current ()
+  |> add_aliases cl_struct.cstr_self
+  |> State.update
 
+let collect_inheritance ~inherited_path ~elt_loc ~methods state =
+  let state = (* mark each method as inherited *)
+    List.fold_left
+      (fun state (meth_name, _) ->
+        let elt_kind = `Method meth_name in
+        State.mark_inherited ~elt_kind ~elt_loc ~inherited_path state
+      )
+      state
+      methods
+  in
+  State.inherit_initializer ~elt_kind:`Object ~elt_loc ~inherited_path state
 
-let class_field f =
+let add_equal_parent ~inherited_path ~cl_exp ~cf state =
+  let cl_exp_loc = cl_exp.cl_loc.Location.loc_start in
+  let state =
+    let cf_loc = cf.cf_loc.Location.loc_start in
+    add_equal cf_loc cl_exp_loc state
+  in
+  match get_loc inherited_path with
+  | None ->
+      (* path has not been located yet. Try again later. *)
+      let equal () =
+        let state = State.get_current () in
+        let state =
+          match get_loc inherited_path with
+          | None -> state
+          | Some orig_loc -> add_equal cl_exp_loc orig_loc state
+        in
+        State.update state
+      in
+      at_eocb := equal :: !at_eocb;
+      state
+  | Some loc ->
+      add_equal cl_exp_loc loc state
 
-  let rec locate cl_exp = match cl_exp.cl_desc with
+let class_field cf =
+  let rec locate cl_exp (state: State.t) =
+    match cl_exp.cl_desc with
     | Tcl_ident (path, _, _) ->
         let path = Path.name path in
-        if Hashtbl.mem defined path then Hashtbl.find defined path
-        else path
+        State.Methods.get_orig_path ~obj_path:path state.methods
     | Tcl_fun (_, _, _, cl_exp, _)
     | Tcl_apply (cl_exp, _)
     | Tcl_let (_, _, _, cl_exp)
-    | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp
+    | Tcl_constraint (cl_exp, _, _, _, _) -> locate cl_exp state
     | Tcl_structure _ | Tcl_open _ -> _none
   in
+  let state = State.get_current () in
+  let state =
+    let elt_loc = !last_class in
+    match cf.cf_desc with
+    | Tcf_inherit (_, cl_exp, _, _, methods) ->
+        let inherited_path = locate cl_exp state in
+        if inherited_path == _none then state
+        else
+          collect_inheritance ~inherited_path ~elt_loc ~methods state
+          |> add_equal_parent ~inherited_path ~cl_exp ~cf
 
-  let update_overr b s =
-    let l = hashtbl_find_list content !last_class in
-    let l = (b, s) :: List.filter (fun (_, f) -> f <> s) l in
-    hashtbl_replace_list content !last_class l
+    | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
+        let elt_kind = `Method txt in
+        State.mark_virtual ~elt_kind ~elt_loc state
+    | Tcf_method ({txt; _}, _, _) ->
+        let elt_kind = `Method txt in
+        State.mark_defined ~elt_kind ~elt_loc state
+    | Tcf_initializer _ ->
+        State.add_initializer ~elt_kind:`Object ~elt_loc state
+    | _ -> state
   in
-
-  begin match f.cf_desc with
-  | Tcf_inherit (_, cl_exp, _, _, l) ->
-      let path = locate cl_exp in
-      if path != _none then begin
-        hashtbl_add_unique_to_list inheritances !last_class path;
-        add_equal f.cf_loc.Location.loc_start cl_exp.cl_loc.Location.loc_start;
-        let loc = get_loc path in
-        let equal () = add_equal cl_exp.cl_loc.Location.loc_start (get_loc path) in  (* for uses inside class def *)
-        if loc == Lexing.dummy_pos then at_eof := equal :: !at_eof
-        else equal ()
-      end;
-      List.iter (fun (s, _) -> update_overr false s) l
-
-  | Tcf_method ({txt; _}, _, Tcfk_virtual _) ->
-      let erase_from_tbl tbl =
-        hashtbl_find_list tbl !last_class
-        |> List.filter (fun (_, path) -> get_method path <> txt)
-        |> hashtbl_replace_list tbl !last_class
-      in
-      erase_from_tbl content;
-  | Tcf_method ({txt; _}, _, _) ->
-      update_overr true txt
-
-  | _ -> ()
-  end;
-  hashtbl_replace_list
-    content (repr_loc !last_class)
-    (hashtbl_find_list content !last_class)
+  State.update state
 
 
 let arg typ args =
@@ -407,115 +390,18 @@ let arg typ args =
 
 let coerce expr typ =
   let loc = locate expr in
-  let use meth =
-    hashtbl_add_unique_to_list (meth_ref loc) meth expr.exp_loc.Location.loc_start
+  let use meth_name =
+    let state = State.get_current () in
+    let use_loc = expr.exp_loc.Location.loc_start in
+    let elt_kind = `Method meth_name in
+    State.add_use ~elt_kind ~elt_loc:loc ~use_loc state
+    |> State.update
   in
   treat_fields use typ
 
 
-let prepare_report () =
-
-  List.iter (fun f -> f ()) !at_eof;
-
-  let apply_self meth loc1 loc2 =
-    let loc1 = repr_loc loc1
-    and loc2 = repr_loc loc2 in
-    hashtbl_merge_unique_list (meth_ref loc2) meth (meth_self_ref loc1) meth;
-    hashtbl_merge_unique_list (meth_self_ref loc2) meth (meth_self_ref loc1) meth;
-  in
-
-  let move_uses meth loc1 loc2 =
-    hashtbl_merge_unique_list (meth_ref loc2) meth (meth_ref loc1) meth;
-    hashtbl_remove_list (meth_ref loc1) meth;
-  in
-
-  Hashtbl.fold (fun loc _ acc -> loc :: acc) equals []
-  |> List.iter
-    (fun loc ->
-      let dst = repr_loc loc in
-      hashtbl_find_list content dst
-      |> List.iter (fun (_, meth) -> move_uses meth loc dst)
-    );
-
-  let sons =
-    Hashtbl.fold
-      (fun loc _ acc -> if not (List.mem loc acc) then loc :: acc else acc)
-      inheritances
-      []
-  in
-
-  List.iter
-    (fun clas ->
-      hashtbl_find_list inheritances clas
-      |> List.iter
-        (fun paren ->
-          let paren = get_loc paren in
-          hashtbl_find_list content clas
-          |> List.iter (fun (_, meth) -> apply_self meth paren clas)
-        )
-    )
-    sons;
-
-  let spread_ref loc =
-
-    let met = Hashtbl.create 16 in
-    let spread clas paren =
-      let paren = get_loc paren in
-      (hashtbl_find_list content clas)
-      |> List.iter
-        (function
-          | false, meth
-            when not (Hashtbl.mem met meth)
-            && List.exists (fun (_, meth2) -> meth2 = meth) (hashtbl_find_list content paren) ->
-              Hashtbl.add met meth ();
-              move_uses meth (repr_loc clas) paren
-          | _ -> ()
-        )
-    in
-    List.iter (spread loc) (hashtbl_find_list inheritances loc)
-  in
-  List.iter spread_ref sons
-
-
-let report () =
-  prepare_report ();
-
-  let cut_main s =
-    let rec loop s pos =
-      if pos = String.length s then s
-      else if s.[pos] = '.' then String.sub s (pos + 1) (String.length s - pos - 1)
-      else loop s (pos + 1)
-    in loop s 0
-  in
-  let no_star s =
-    let rec loop s pos =
-      if pos = String.length s then s
-      else if s.[pos] = '*' then
-        String.sub s 0 pos ^ String.sub s (pos + 1) (String.length s - pos - 1)
-      else loop s (pos + 1)
-    in cut_main (loop s 0)
-  in
-
-  let folder nb_call = fun loc (builddir, path) acc ->
-    let fn = Filename.concat builddir loc.Lexing.pos_fname in
-    let exists =
-      List.exists
-        (fun (overr, meth) -> overr && get_method path = meth)
-        (hashtbl_find_list content loc)
-    in
-    if exists then
-      match hashtbl_find_list (meth_ref loc) (get_method path) with
-      | exception Not_found when nb_call = 0 ->
-          (fn, no_star path, loc, []) :: acc
-      | exception Not_found -> acc
-      | l when check_length nb_call l -> (fn, no_star path, loc, l) :: acc
-      | _ -> acc
-    else acc
-  in
-
-  let state = State.get_current () in
-  report_basic ~folder decs "UNUSED METHODS" state.config.sections.methods
-
+let eocb () =
+  List.iter (fun f -> f ()) !at_eocb
 
 
                 (********   WRAPPING  ********)
@@ -527,8 +413,8 @@ let wrap f x =
     f x
   else ()
 
-let collect_export path u stock ?obj ?cltyp loc =
-  wrap (collect_export path u stock ~obj ~cltyp) loc
+let collect_export path ?obj ?cltyp loc =
+  wrap (collect_export path ~obj ~cltyp) loc
 
 let collect_references ~meth ~call_site exp =
   wrap (collect_references ~meth ~call_site) exp
@@ -547,6 +433,3 @@ let class_field cl_field =
 
 let arg typ args =
   wrap (arg typ) args
-
-let report () =
-  wrap report ()

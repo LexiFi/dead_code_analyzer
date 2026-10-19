@@ -13,30 +13,35 @@ let eof () =
 let export_module ~path mt =
   Hashtbl.add exported_modules path mt
 
-let export_object ~path ~comp_unit ~stock id value =
+let export_object ~path id value =
   (* export a value as an object *)
-  let path = (id ^ "*") :: path in
+  let path = id :: path in
   let obj = value.Types.val_type in
   let loc = value.Types.val_loc in
-  DeadObj.collect_export path comp_unit stock ~obj loc
+  DeadObj.collect_export path ~obj loc
 
-let export_value ~path ~comp_unit ~stock id value =
-  export_object ~path ~comp_unit ~stock id value;
+let export_value ~path id value =
+  export_object ~path id value;
   !DeadLexiFi.sig_value value;
   let state = State.get_current () in
-  if Config.must_report_section state.config.sections.exported_values then
-    let loc = value.Types.val_loc in
-    DeadCommon.export path comp_unit stock id loc
+  let loc = value.Types.val_loc in
+  if DeadCommon.should_export loc id then
+    let elt_loc = loc.Location.loc_start in
+    let elt_path =
+      id::path |> List.rev |> String.concat "."
+    in
+    State.add_exported_declaration ~elt_kind:`Value ~elt_loc ~elt_path state
+    |> State.update
 
-let export_type ~path ~comp_unit ~stock id t =
+let export_type ~path id t =
   let path = id :: path in
-  DeadType.collect_export path comp_unit stock t
+  DeadType.collect_export path t
 
-let export_class ~path ~comp_unit ~stock id cd =
+let export_class ~path id cd =
   let path = id :: path in
   let cltyp = cd.Types.cty_type in
   let loc = cd.Types.cty_loc in
-  DeadObj.collect_export path comp_unit stock ~cltyp loc
+  DeadObj.collect_export path ~cltyp loc
 
 
 let modtype ~on_mismatch (mt : Typedtree.module_type) =
@@ -55,15 +60,19 @@ let modtype ~on_mismatch (mt : Typedtree.module_type) =
 let rec correct_export : Types.signature_item -> unit = function
   | Sig_value (_, {Types.val_loc; _}, _)
     when not val_loc.Location.loc_ghost ->
-      DeadCommon.unexport DeadCommon.decs val_loc;
-      DeadObj.correct_export val_loc;
+      let state = State.get_current () in
+      let loc = val_loc in
+      let elt_loc = loc.Location.loc_start in
+      State.remove_exported_declaration ~elt_kind:`Value ~elt_loc state
+      |> State.update;
+      DeadObj.correct_export loc;
       (* For optional arguments, every use is stored during the analysis.
          The uses are then filtered before reporting. Thus, we need to
          remember "wrong" exports until then.
       *)
       let state = State.get_current () in
       if Config.must_report_opt_args state.config then
-        Hashtbl.replace DeadCommon.implicit_decs val_loc.Location.loc_start ()
+        Hashtbl.replace DeadCommon.implicit_decs elt_loc ()
 
   | Sig_type (_, t, _, _) -> DeadType.correct_export t
 
@@ -76,7 +85,7 @@ let rec correct_export : Types.signature_item -> unit = function
   | _ -> ()
 
 
-let collect_export_from_signature ~path ~comp_unit signature =
+let collect_export_from_signature ~path signature =
   let state = State.get_current () in
   let mark_modtype_elements mt =
     (* For optional arguments, every use is stored during the analysis.
@@ -94,25 +103,22 @@ let collect_export_from_signature ~path ~comp_unit signature =
 
     | Tsig_value {val_id; val_loc; val_val; _}
       when not val_loc.Location.loc_ghost ->
-        let stock = DeadCommon.decs in
         let id = Ident.name val_id in
-        export_value ~path ~comp_unit ~stock id val_val
+        export_value ~path id val_val
 
     | Tsig_type (_, type_decls)->
-        let stock = DeadCommon.decs in
         List.iter
           (fun Typedtree.{typ_id; typ_type; _} ->
             let id = Ident.name typ_id in
-            export_type ~path ~comp_unit ~stock id typ_type
+            export_type ~path id typ_type
           )
           type_decls
 
     | Tsig_class class_descs ->
-        let stock = DeadCommon.decs in
         List.iter
           (fun {Typedtree.ci_id_class; ci_decl; _} ->
             let id = Ident.name ci_id_class in
-            export_class ~path ~comp_unit ~stock id ci_decl
+            export_class ~path id ci_decl
           )
           class_descs
 
@@ -131,7 +137,7 @@ let collect_export_from_signature ~path ~comp_unit signature =
   collect_signature path signature
 
 
-let collect_export_from_structure ~path ~comp_unit structure =
+let collect_export_from_structure ~path structure =
   let met = Hashtbl.create 64 in
   let export export_fn ~path id param =
     let path_key = id :: path in
@@ -139,8 +145,7 @@ let collect_export_from_structure ~path ~comp_unit structure =
     | Some _ -> () (* the current path is shadowed *)
     | None ->
         Hashtbl.add met path_key (); (* shadows other occurences of path *)
-        let stock = DeadCommon.decs in
-        export_fn ~path ~comp_unit ~stock id param
+        export_fn ~path id param
   in
   (* Traversal *)
   let open Typedtree in
@@ -223,7 +228,7 @@ let collect_export_from_structure ~path ~comp_unit structure =
     | Tmod_constraint (_, _, Tmodtype_explicit mt, _) ->
         export_module ~path mt.mty_type;
         Utils.typedtree_signature_of_modtype mt
-        |> Option.iter (collect_export_from_signature ~path ~comp_unit)
+        |> Option.iter (collect_export_from_signature ~path)
 
   and collect_module_binding ~path = function
     | {mb_id = Some id; mb_expr; _} ->
@@ -278,7 +283,7 @@ let collect_export_from_structure ~path ~comp_unit structure =
 
 
 let collect_from_include incl_decl =
-  (* Get incl_decl's signature to export classes and objects in DeadCommon.incl.
+  (* Get incl_decl's signature to collect included classes and objects.
      If the incl_decl is an ident, then store the equivalence between its
      types and those of the current compilation unit.
   *)
@@ -316,28 +321,21 @@ let collect_from_include incl_decl =
     get_mod_path_and_signature incl_decl.Typedtree.incl_mod
   in
   (* path to the module where include happens *)
-  let current_path =
+  let rev_curr_path =
     let state = State.get_current () in
     let module_id = State.File_infos.get_modname state.file_infos in
     !DeadCommon.mods @ [module_id]
   in
-  (* comp_unit = DeadCommon._include enables exports from outside the current
-     compilation unit *)
-  let comp_unit = DeadCommon._include in
-  (* exports from include are stored in their dedicated stock*)
-  let stock = DeadCommon.incl in
   let rec collect_from_sig_item ~path sig_item =
     (* [path] is the path within the included module *)
     match (sig_item : Types.signature_item) with
-    | Sig_value (id, ({val_loc; _} as value), _)
+    | Sig_value (id, {val_loc; _}, _)
       when not val_loc.Location.loc_ghost ->
-        let path = path @ current_path in
-        let id = Ident.name id in
-        export_object ~path ~comp_unit ~stock id value
-    | Sig_class (id, cd, _, _) ->
-        let path = path @ current_path in
-        let id = Ident.name id in
-        export_class ~path ~comp_unit ~stock id cd
+        let path = Ident.name id :: path in
+        DeadObj.collect_from_include ?incl_path ~rev_curr_path path
+    | Sig_class (id, _, _, _) ->
+        let path = Ident.name id :: path in
+        DeadObj.collect_from_include ?incl_path ~rev_curr_path path
     | Sig_module (id, _, {Types.md_type; _}, _, _) ->
         let path = Ident.name id :: path in
         Utils.signature_of_modtype md_type
