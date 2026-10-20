@@ -63,11 +63,12 @@ let rec typedtree_signature_of_modtype ?(select_param = false) modtype =
 
 let normalize_mod_path ~rev_curr_path mod_path =
   let path = Path.name mod_path in
-  if Path.head mod_path |> Ident.global then
-    (* External mod_path. Keep as is *)
+  let is_external =
+    Path.heads mod_path |> List.hd |> Ident.global
+  in
+  if is_external then (* External mod_path. Keep as is *)
     path :: []
-  else
-    (* Internal mod_path *)
+  else (* Internal mod_path *)
     path :: rev_curr_path
 
 module StringSet = Set.Make(String)
