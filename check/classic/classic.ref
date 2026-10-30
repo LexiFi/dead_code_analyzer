@@ -223,12 +223,6 @@ Nothing else to report in this section
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
 ./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:8: M.immediate_unused#m
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:10: M.class_externally_used_by_param_requirement#m: Should not be detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:11: M.class_externally_used_by_val_requirement#m: Should not be detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:12: M.class_externally_used_by_val_constraint#m: Should not be detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:13: M.class_internally_used_by_param_requirement#m: Should not be detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:14: M.class_internally_used_by_val_requirement#m: Should not be detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:15: M.class_internally_used_by_val_constraint#m: Should not be detected
 ./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:16: M.class_unused#m
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
@@ -247,12 +241,6 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
 
 ./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:8: M.immediate_unused#m
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:10: M.class_externally_used_by_param_requirement#m: Should not be detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:11: M.class_externally_used_by_val_requirement#m: Should not be detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:12: M.class_externally_used_by_val_constraint#m: Should not be detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:13: M.class_internally_used_by_param_requirement#m: Should not be detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:14: M.class_internally_used_by_val_requirement#m: Should not be detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:15: M.class_internally_used_by_val_constraint#m: Should not be detected
 ./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:16: M.class_unused#m
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_fun
@@ -808,7 +796,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 677
+Total: 665
 Success: 659
-Failed: 18
-Ratio: 97.341211226%
+Failed: 6
+Ratio: 99.0977443609%

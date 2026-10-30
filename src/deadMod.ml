@@ -11,9 +11,21 @@ open Types
 open Typedtree
 
 
-let item maker = function
-  | Sig_value (id, {val_loc = {Location.loc_start= loc; _}; _}, _) ->
-      (`Value (Ident.name id, loc))::[]
+let map_item map_mod_type sig_item =
+  let get_methods path loc obj_type =
+    let res = ref [] in
+    let add_meth meth_name =
+      res := `Method (path, meth_name, loc) :: !res
+    in
+    DeadObj.iter_fields add_meth obj_type;
+    !res
+  in
+  match sig_item with
+  | Sig_value (id, val_desc, _) ->
+    let val_name = Ident.name id in
+    let val_loc = val_desc.val_loc.loc_start in
+    let methods = get_methods val_name val_loc val_desc.val_type in
+    (`Value (val_name, val_loc))::methods
   | Sig_type (id, {type_kind; _}, _, _) ->
       let t = Ident.name id in
       let build_cf cf_id cf_loc =
@@ -32,27 +44,32 @@ let item maker = function
       List.map (fun (id, loc) -> build_cf id loc) ids_locs
   | Sig_module (id, _, {md_type; _}, _, _)
   | Sig_modtype (id, {mtd_type = Some md_type; _}, _) ->
+      let mod_name = Ident.name id in
+      let update_path path = String.concat "." [mod_name; path] in
       List.map
         (fun elt ->
-          let update_path (path, loc) = (Ident.name id ^ "." ^ path, loc) in
           match elt with
-          | `Value v -> `Value (update_path v)
-          | `Ctor_field cf -> `Ctor_field (update_path cf)
-          | `Method m -> `Method (update_path m)
+          | `Value (path, loc) -> `Value (update_path path, loc)
+          | `Ctor_field (path, loc) -> `Ctor_field (update_path path, loc)
+          | `Method (path, m, loc) -> `Method (update_path path, m, loc)
         )
-       (maker md_type)
-  | Sig_class (id, {cty_loc = {Location.loc_start = loc; _}; _}, _, _) ->
-      (* TODO: actually explore the methods in the class_declaration *)
-      `Method (Ident.name id ^ "#", loc) :: []
+       (map_mod_type md_type)
+  | Sig_class (id, class_decl, _, _) ->
+      let class_loc = class_decl.cty_loc.loc_start in
+      let class_name = Ident.name id in
+      let class_type =
+        let rec sig_self = function
+          | Cty_signature sg -> sg.csig_self
+          | Cty_arrow (_, _, t)
+          | Cty_constr (_, _, t)-> sig_self t
+        in
+        sig_self class_decl.cty_type
+      in
+      get_methods class_name class_loc class_type
   | _ -> []
 
-let rec make_content typ =
-  List.map (item make_content) (Utils.signature_of_modtype typ)
-  |> List.flatten
-
-
-let rec make_arg typ =
-  List.map (item make_arg) (Utils.signature_of_modtype ~select_param:true typ)
+let rec get_content ?select_param typ =
+  List.map (map_item get_content) (Utils.signature_of_modtype ?select_param typ)
   |> List.flatten
 
 
@@ -75,25 +92,27 @@ let apply_by_content_requirement mod_expr expected_content actual_content =
       (fun exp ->
         match exp, elt with
         | `Value (path_exp, _), `Value (path_elt, _)
-        | `Ctor_field (path_exp, _), `Ctor_field (path_elt, _)
-        | `Method (path_exp, _), `Method (path_elt, _) ->
+        | `Ctor_field (path_exp, _), `Ctor_field (path_elt, _) ->
             String.equal path_exp path_elt
+        | `Method (path_exp, meth_exp, _), `Method (path_elt, meth_elt, _) ->
+            String.equal path_exp path_elt && String.equal meth_exp meth_elt
         | _ -> false
       )
       expected_content
   in
   let state = State.get_current () in
   let state =
+    let get_kind_and_loc = function
+      | `Value (_, loc) -> `Value, loc
+      | `Ctor_field (_, loc) -> `Ctor_field, loc
+      | `Method (_, meth_name, loc) -> `Method meth_name, loc
+    in
     List.fold_left
       (fun state elt ->
         let use_loc = mod_expr.mod_loc.Location.loc_start in
         if elt_is_expected elt then
-          match elt with
-          | `Value (_, elt_loc) ->
-              State.add_use ~elt_kind:`Value ~elt_loc ~use_loc state
-          | `Ctor_field (_, elt_loc) ->
-              State.add_use ~elt_kind:`Ctor_field ~elt_loc ~use_loc state
-          | `Method _ -> (* TODO *) state
+          let elt_kind, elt_loc = get_kind_and_loc elt in
+          State.add_use ~elt_kind ~elt_loc ~use_loc state
         else state
       )
       state
@@ -107,8 +126,8 @@ let apply_by_requirement mod_expr =
   | Tmod_constraint (me, mt, _, _) ->
     let exp_mt = retrieve_signature mod_expr.mod_env mt in
     let act_mt = retrieve_signature mod_expr.mod_env me.mod_type in
-    let exp_content = make_content exp_mt in
-    let act_content = make_content act_mt in
+    let exp_content = get_content exp_mt in
+    let act_content = get_content act_mt in
     apply_by_content_requirement mod_expr exp_content act_content
   | _ -> ()
 
@@ -117,8 +136,8 @@ let expr mod_expr =
   match mod_expr.mod_desc with
   | Tmod_apply (m1, m2, _) ->
       (* Add a use for each element in [m2] expected by [m1] *)
-      let exp_elts = make_arg m1.mod_type in
-      let arg_elts = make_content m2.mod_type in
+      let exp_elts = get_content ~select_param:true m1.mod_type in
+      let arg_elts = get_content m2.mod_type in
       apply_by_content_requirement mod_expr exp_elts arg_elts
   | _ -> ()
 
