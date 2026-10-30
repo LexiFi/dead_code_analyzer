@@ -470,9 +470,25 @@ let load_file fn state =
     | Neither | Cmti _ -> report_error (fn ^ ": missing structure")
     | Cmt {strc; location_dependencies; _} ->
         regabs state;
-        let prepare (loc1, loc2) state =
+        let prepare (loc1, loc2) (state : State.t) =
           VdNode.merge_locs ~force:true loc2 loc1;
-          DeadObj.add_equal loc1 loc2 state
+          let orig_loc, alias_loc =
+            (* For objects, the orig_loc is the 1st declaration. If a location
+               is outside and the other inside the current file, then the one
+               outside is the original. If both come from the same file, then
+               the first earliest one is the original
+            *)
+            let in_same_file = String.equal loc1.pos_fname loc2.pos_fname in
+            let is_curr_file fn =
+              let curr = State.File_infos.get_sourcepath state.file_infos in
+              String.equal fn curr
+            in
+            if not in_same_file && is_curr_file loc2.pos_fname
+              || in_same_file && loc2 > loc1
+            then loc1, loc2
+            else loc2, loc1
+          in
+          DeadObj.add_equal alias_loc orig_loc state
         in
         let state =
           List.fold_left (fun state locs -> prepare locs state)
