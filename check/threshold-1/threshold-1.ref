@@ -600,12 +600,12 @@ Nothing else to report in this section
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#externally_used
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#internally_used
 
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:2: M.immediate_externally_used_by_param_requirement#m: Not detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:3: M.immediate_externally_used_by_val_requirement#m: Not detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:4: M.immediate_externally_used_by_val_constraint#m: Not detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:5: M.immediate_internally_used_by_param_requirement#m: Not detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:6: M.immediate_internally_used_by_val_requirement#m: Not detected
-./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:7: M.immediate_internally_used_by_val_constraint#m: Not detected
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:2: M.immediate_externally_used_by_param_requirement#m
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:3: M.immediate_externally_used_by_val_requirement#m
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:4: M.immediate_externally_used_by_val_constraint#m
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:5: M.immediate_internally_used_by_param_requirement#m
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:6: M.immediate_internally_used_by_val_requirement#m
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:7: M.immediate_internally_used_by_val_constraint#m
 ./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:10: M.class_externally_used_by_param_requirement#m
 ./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:11: M.class_externally_used_by_val_requirement#m
 ./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:12: M.class_externally_used_by_val_constraint#m
@@ -627,12 +627,12 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#used_fun
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#used_int
 
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:2: M.immediate_externally_used_by_param_requirement#m: Not detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:3: M.immediate_externally_used_by_val_requirement#m: Not detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:4: M.immediate_externally_used_by_val_constraint#m: Not detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:5: M.immediate_internally_used_by_param_requirement#m: Not detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:6: M.immediate_internally_used_by_val_requirement#m: Not detected
-./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:7: M.immediate_internally_used_by_val_constraint#m: Not detected
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:2: M.immediate_externally_used_by_param_requirement#m
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:3: M.immediate_externally_used_by_val_requirement#m
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:4: M.immediate_externally_used_by_val_constraint#m
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:5: M.immediate_internally_used_by_param_requirement#m
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:6: M.immediate_internally_used_by_val_requirement#m
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:7: M.immediate_internally_used_by_val_constraint#m
 ./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:10: M.class_externally_used_by_param_requirement#m
 ./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:11: M.class_externally_used_by_val_requirement#m
 ./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:12: M.class_externally_used_by_val_constraint#m
@@ -1355,6 +1355,6 @@ Nothing else to report in this section
 
 
 Total: 1141
-Success: 1123
-Failed: 18
-Ratio: 98.4224364592%
+Success: 1135
+Failed: 6
+Ratio: 99.4741454864%
