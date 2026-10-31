@@ -42,6 +42,9 @@ val add_equal :
   Lexing.position -> Lexing.position -> State.t -> State.t
 
 
+val iter_fields : (string -> unit) -> Types.type_expr -> unit
+
+
 val tstr :
   class_declaration * string list -> unit
 

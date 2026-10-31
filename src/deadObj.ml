@@ -47,13 +47,13 @@ let add_equal loc1 loc2 state =
 
 
 
-let rec treat_fields action typ = match get_deep_desc typ with
+let rec iter_fields action typ = match get_deep_desc typ with
   | Tobject (t, _)
-  | Tarrow (_, _, t, _) -> treat_fields action t
+  | Tarrow (_, _, t, _) -> iter_fields action t
   | Tfield (s, k, _, t) ->
       if field_kind_repr k <> Fabsent && s.[0] > 'Z' then
         action s;
-      treat_fields action t
+      iter_fields action t
   | _ -> ()
 
 
@@ -148,7 +148,7 @@ let collect_export path ~obj ~cltyp loc =
   in
   match typ with
     | Some typ ->
-        treat_fields save typ
+        iter_fields save typ
     | None -> ()
 
 let correct_export loc =
@@ -372,7 +372,7 @@ let arg typ args =
       | _, None -> ()
       | _, Some exp ->
         let call_site = exp.exp_loc.Location.loc_start in
-        treat_fields
+        iter_fields
           (fun meth -> collect_references ~meth ~call_site exp)
           typ
       )
@@ -397,7 +397,7 @@ let coerce expr typ =
     State.add_use ~elt_kind ~elt_loc:loc ~use_loc state
     |> State.update
   in
-  treat_fields use typ
+  iter_fields use typ
 
 
 let eocb () =

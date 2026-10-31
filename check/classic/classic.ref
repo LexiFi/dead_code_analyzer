@@ -75,6 +75,11 @@
 ./examples/using_dune/reduced_lib/values_in_submodules_no_intf.ml:8: Exported.lib_internal_unused
 ./examples/using_dune/reduced_lib/values_no_intf.ml:11: lib_internal_unused
 
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:5: M.immediate_internally_used_by_param_requirement
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:6: M.immediate_internally_used_by_val_requirement
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:7: M.immediate_internally_used_by_val_constraint
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:8: M.immediate_unused
+
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
 ./examples/using_dune/unwrapped_lib/opt_args/opt_args.mli:10: internally_used_fun_with_single_always_used_opt_arg
@@ -99,6 +104,11 @@
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:13: unused_fun
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:20: unused_alias_fun
 ./examples/using_dune/unwrapped_lib/values/values_no_intf.ml:25: unused_closure
+
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:5: M.immediate_internally_used_by_param_requirement
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:6: M.immediate_internally_used_by_val_requirement
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:7: M.immediate_internally_used_by_val_constraint
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:8: M.immediate_unused
 
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:1: unused_fun_with_single_never_used_opt_arg
 ./examples/using_dune/wrapped_lib/opt_args/opt_args.mli:8: internally_used_fun_with_single_never_used_opt_arg
@@ -212,6 +222,8 @@ Nothing else to report in this section
 ./examples/using_dune/preprocessed_lib/preprocessed.mli:6: immediate#unused
 ./examples/using_dune/preprocessed_lib/preprocessed_no_intf.ml:12: immediate#unused
 
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:8: M.immediate_unused#m
+./examples/using_dune/unwrapped_lib/obj/methods_in_first_class_module.mli:16: M.class_unused#m
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_fun
 ./examples/using_dune/unwrapped_lib/obj/with_class.mli:5: basics#never_used_int
@@ -228,6 +240,8 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_fun
 ./examples/using_dune/unwrapped_lib/obj/without_class.mli:28: _self_used_factory#unused_int
 
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:8: M.immediate_unused#m
+./examples/using_dune/wrapped_lib/obj/methods_in_first_class_module.mli:16: M.class_unused#m
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:1: unused#unused
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_fun
 ./examples/using_dune/wrapped_lib/obj/with_class.mli:5: basics#never_used_int
@@ -782,7 +796,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 653
-Success: 647
+Total: 665
+Success: 659
 Failed: 6
-Ratio: 99.0811638591%
+Ratio: 99.0977443609%
