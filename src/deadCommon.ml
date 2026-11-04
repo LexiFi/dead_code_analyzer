@@ -70,13 +70,6 @@ let rec hashtbl_remove_list hashtbl key =
     hashtbl_remove_list hashtbl key
   end
 
-let hashtbl_replace_list hashtbl key l =
-  hashtbl_remove_list hashtbl key;
-  List.iter (fun elt -> hashtbl_add_to_list hashtbl key elt) l
-
-let hashtbl_merge_unique_list tbl1 key1 tbl2 key2 =
-  List.iter (fun elt -> hashtbl_add_unique_to_list tbl1 key1 elt) (hashtbl_find_list tbl2 key2)
-
 let is_sub_path ~sep sub_path path =
   let len_sub = String.length sub_path in
   let len_path = String.length path in
