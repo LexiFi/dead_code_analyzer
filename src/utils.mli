@@ -81,7 +81,6 @@ module LocHash : sig
   include Hashtbl.S with type key = Lexing.position
   val find_set : LocSet.t t -> key -> LocSet.t
   val add_set : LocSet.t t -> key -> LocSet.elt -> unit
-  val merge_set : LocSet.t t -> key -> LocSet.t t -> key -> unit
 end
 
 module Compat : sig
@@ -141,36 +140,27 @@ val options_of_args :
         in this pattern.
     *)
 
-  val get_var_data_exn : 'k . 'k pattern_desc -> var_data
-    (** same as [get_var_data] but raises instead of returning an Error *)
-
   type 'a exp_getter =
     expression_desc -> ('a, expression_desc invalid_arg) result
 
   type match_data =
     expression * computation case list * value case list * partial
 
-  val get_match_data : match_data exp_getter
-    (** [get_match_data exp] expects a [Texp_match].
-        It returns [Error Unexpected_expression] otherwise.
-        Otherwise it extracts the different components of Texp_match.
+  val get_match_data_exn : expression_desc -> match_data
+    (** [get_match_data_exn exp] expects a [Texp_match].
+        It raises an [Invalid_argument] exception otherwise.
+        It extracts the different components of Texp_match.
         If OCaml < 5.3, the [value case list] field is en empty list.
     *)
 
-  val get_match_data_exn : expression_desc -> match_data
-    (** same as [get_match_data] but raises instead of returning an Error *)
-
   type try_data = expression * value case list * value case list
 
-  val get_try_data : try_data exp_getter
+  val get_try_data_exn : expression_desc -> try_data
     (** [get_try_data exp] expects a [Texp_try].
-        It returns [Error Unexpected_expression] otherwise.
-        Otherwise it extracts the different components of Texp_try.
+        It raises an [Invalid_argument] exception otherwise.
+        It extracts the different components of Texp_try.
         If OCaml < 5.3, the second [value case list] field is en empty list.
     *)
-
-  val get_try_data_exn : expression_desc -> try_data
-    (** same as [get_try_data] but raises instead of returning an Error *)
 
   type function_bodies = expression list
 

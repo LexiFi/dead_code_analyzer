@@ -151,11 +151,6 @@ module LocHash = struct
 
   let add_set h k v =
     let l = find_set h k in replace h k (LocSet.add v l)
-
-  let merge_set h1 k1 h2 k2 =
-    let l1 = find_set h1 k1 in
-    let l2 = find_set h2 k2 in
-    replace h1 k1 (LocSet.union l1 l2)
 end
 
 module Compat = struct
@@ -248,9 +243,6 @@ module Compat = struct
         let msg = "get_var_data expects a Tpat_var or Tpat_alias(Tpat_any)" in
         let err = Unexpected_pattern (msg, pat_desc) in
         Result.Error err
-
-  let get_var_data_exn pat_desc =
-    get_var_data pat_desc |> Result.get_ok
 
   type 'a exp_getter =
     expression_desc -> ('a, expression_desc invalid_arg) result
