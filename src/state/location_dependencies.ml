@@ -73,8 +73,7 @@ let cmt_decl_dep_to_loc_dep ~comp_unit_to_path cmt_decl_dep uid_to_loc =
     let* decl_loc = loc_opt_of_uid uid_decl in
     Some (def_loc, decl_loc)
   in
-  let res = List.filter_map convert_pair cmt_decl_dep in
-  res
+  List.filter_map convert_pair cmt_decl_dep
 
 let init ~comp_unit_to_path cmt_infos cmti_uid_to_decl =
   match cmt_infos.Cmt_format.cmt_annots with
