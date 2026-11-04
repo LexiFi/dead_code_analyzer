@@ -45,12 +45,8 @@ let print_cache_stats () =
 
 
 let read_no_cache filepath =
-  let error ?tip msg =
-    let tip =
-      Option.map (( ^ ) " Tip: ") tip
-      |> Option.value ~default:""
-    in
-    Printf.sprintf "%s: %s. %s" filepath msg tip
+  let error ~tip msg =
+    Printf.sprintf "%s: %s. Tip: %s" filepath msg tip
     |> Result.error
   in
   match Cmt_format.read_cmt filepath with
