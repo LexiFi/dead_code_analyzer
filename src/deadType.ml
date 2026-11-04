@@ -40,27 +40,10 @@ let nb_args ~keep typ =
   loop 0 (get_desc typ)
 
 
+(** [to_string typ] converts [typ] to its string representation in the toplevel *)
 let to_string typ =
   Printtyp.type_expr Format.str_formatter typ;
   Format.flush_str_formatter ()
-
-
-let is_type s =
-  let rec blk s p l acc =
-    try
-      if s.[p] = '.' then
-        let acc = String.sub s (p - l) l :: acc in
-        blk s (p + 1) 0 acc
-      else blk s (p + 1) (l + 1) acc
-    with _ -> String.sub s (p - l) l :: acc
-  in
-  if not (String.contains s '.') then false
-  else
-    match blk s 0 0 [] with
-    | hd :: cont :: _ ->
-      String.capitalize_ascii hd = hd || String.lowercase_ascii cont = cont
-    | _ ->
-      assert false
 
 
 let add_component ~type_loc ~type_path ~cf_loc ~cf_name state =
