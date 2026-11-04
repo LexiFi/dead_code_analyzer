@@ -9,9 +9,6 @@
 
 val dependencies : (Lexing.position * Lexing.position) list ref
 
-val to_string : Types.type_expr -> string
-  (** [to_string typ] converts [typ] to its string representation in the toplevel *)
-
 val check_style : Types.type_expr -> Lexing.position -> unit
   (** Look for bad style typing. (i.e. Argument expecting an optional argument) *)
 
@@ -55,8 +52,6 @@ val tstr : Typedtree.type_declaration -> unit
 val is_unit : Types.type_expr -> bool
 
 val nb_args : keep:[> `All | `Lbl | `Opt | `Reg ] -> Types.type_expr -> int
-
-val is_type : string -> bool
 
 val collect_export :
   string list
