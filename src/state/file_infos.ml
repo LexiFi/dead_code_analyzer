@@ -123,8 +123,6 @@ let change_file ~comp_unit_to_path file_infos cm_file =
       (* invalid extension *)
       Result.error (cm_file ^ ": not a .cmti or .cmt file")
 
-let has_sourcepath file_infos = Option.is_some file_infos.sourcepath
-
 let get_builddir t = t.builddir
 
 let get_sourcepath t =
