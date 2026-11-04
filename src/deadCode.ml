@@ -645,7 +645,7 @@ let report_opt_args s l =
       (if nb_call > 0 then "OPTIONAL ARGUMENTS: ALMOST "
       else "OPTIONAL ARGUMENTS: ") ^ s
     in
-    report s ~opt ~extra:"Except" l continue nb_call pretty_print report_opt_args;
+    report s ~opt l continue nb_call pretty_print report_opt_args;
 
   in report_opt_args 0
 

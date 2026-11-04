@@ -376,17 +376,15 @@ let percent (opt_threshold : Config.Sections.opt_args_threshold) base =
 
 
 (* Base pattern for reports *)
-let report s ~(opt: Config.Sections.opt_args_section) ?(extra = "Called") l
+let report s ~(opt: Config.Sections.opt_args_section) l
            continue nb_call pretty_print reporter
 =
   if nb_call = 0 || l <> [] then begin
     section ~sub:(nb_call <> 0)
     @@ (if nb_call = 0 then s
-        else if String.equal extra "Called" then
-          Printf.sprintf "%s: %s %d time(s)" s extra nb_call
         else match opt with
         | Threshold {threshold = Both _; _} ->
-            Printf.sprintf "%s: %s %d time(s)" s extra nb_call
+            Printf.sprintf "%s: Except %d time(s)" s nb_call
         | Threshold {threshold; _} ->
             let percent = 100. *. percent threshold nb_call in
             Printf.sprintf "%s: at least %3.2f%% of the time" s percent
