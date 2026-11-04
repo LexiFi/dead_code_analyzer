@@ -52,8 +52,6 @@ val change_file :
     [init t].
     [comp_unit_to_path] is used to load external cm files if necessary. *)
 
-val has_sourcepath : t -> bool
-
 val get_builddir : t -> string
 val get_sourcepath : t -> string
 val get_sourceunit : t -> string
