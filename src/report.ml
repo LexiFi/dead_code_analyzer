@@ -89,7 +89,8 @@ let print_uses ~elt state =
       (* TODO: store the use_loc's builddir for better output info *)
       string_of_location ~print_col:true use_loc
       |> Printf.printf "%s\n"
-  )
+  );
+  Printf.printf "\n"
 
 let print_unused ~elts ~nb_uses state section_config =
   let reportable_and_elts =
@@ -138,7 +139,7 @@ let print_unused ~elts ~nb_uses state section_config =
       nb_uses > 0 && Config.must_report_call_sites section_config
     in
     let call_sites_marker =
-      if must_report_call_sites then "    Call sites:\n"
+      if must_report_call_sites then "    Call sites:"
       else ""
     in
     let loc = string_of_location ~filepath loc in
