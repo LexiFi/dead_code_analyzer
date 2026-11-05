@@ -64,35 +64,32 @@ let hashtbl_add_unique_to_list hashtbl key elt =
   if not (List.mem elt (hashtbl_find_list hashtbl key)) then
     Hashtbl.add hashtbl key elt
 
-let rec hashtbl_remove_list hashtbl key =
-  if Hashtbl.mem hashtbl key then begin
-    Hashtbl.remove hashtbl key;
-    hashtbl_remove_list hashtbl key
-  end
-
-let is_sub_path ~sep sub_path path =
-  let len_sub = String.length sub_path in
-  let len_path = String.length path in
-  let diff_len = len_path - len_sub in
-  let len_sep = String.length sep in
-  let compatible_length =
-    (* sub_path is smaller than path and would start right after a separator*)
-    diff_len >= len_sep && String.sub path (diff_len - len_sep) len_sep = sep
-    || diff_len = 0
-  in
-  compatible_length && String.sub path diff_len len_sub = sub_path
-
-let find_path fn l =
-  let sep = Filename.dir_sep in
-  List.find (is_sub_path ~sep fn) l
-
+(** Find a longer path known for fn in abspath or raise Not_found *)
 let find_abspath fn =
-  find_path fn (hashtbl_find_list abspath (Utils.Filepath.unit fn))
-
-let file_exists fn =
-  match find_abspath fn with
-  | exception _ -> Sys.file_exists fn
-  | _ -> true
+  let sep = Filename.dir_sep in
+  let len_sep = String.length sep in
+  let len_fn = String.length fn in
+  let separates_nicely path =
+    (* Checks that fn is the length of path or is directly preceded by
+       a sep in path. This assumes len_path >= len_fn *)
+    let len_path = String.length path in
+    let start_sep = len_path - len_fn - len_sep in
+    let rec is_sep i =
+      (* <=> String.sub path start_sep len_sep = sep
+        without the extra allocation for the substring
+      *)
+      i >= len_sep
+      || (Char.equal path.[start_sep + i] sep.[i] && is_sep (i + 1))
+    in
+    start_sep + len_sep = 0 || is_sep 0
+  in
+  let is_fn_alias path =
+    (* path and fn point to the same file *)
+    String.ends_with ~suffix:fn path
+    && separates_nicely path
+  in
+  let candidates = hashtbl_find_list abspath (Utils.Filepath.unit fn) in
+  List.find is_fn_alias candidates
 
 
 (* We often simply traverse a Tlink to process the linked type *)

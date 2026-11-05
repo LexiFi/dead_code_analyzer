@@ -402,8 +402,12 @@ let process_dependencies elt_kind loc_dep state =
       state
       loc_dep
   in
-  let sourcepath = State.File_infos.get_sourcepath state.State.file_infos in
-  if DeadCommon.file_exists (sourcepath ^ "i") then
+  let has_interface =
+    match state.file_infos.cm_infos with
+    | Cmti _ | Cmt {sign = Some _; _} -> true
+    | _ -> false
+  in
+  if has_interface then
     List.fold_left
       (fun state (loc1, loc2) ->
         clean elt_kind loc1 state
