@@ -23,6 +23,9 @@ jobs:
           - "5.3"
           - "5.4"
           - "5.5"
+        exclude:
+          - os: ubuntu-latest
+            ocaml: "5.0"
 
     runs-on: ${{ matrix.os }}
 
