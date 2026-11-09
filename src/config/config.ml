@@ -88,35 +88,6 @@ let update_cmt_cache_size size config =
   {config with cmt_cache_size = size}
 
 
-let normalize_path path =
-  (* remove redundant "." and consecutive dir_sep in path.
-     E.g. "./foo//bar/./baz" becomes "foo/bar/baz" *)
-  let split_path path =
-    let is_end_of_path path =
-      String.equal path Filename.current_dir_name
-      || String.equal path (Filename.dirname path)
-    in
-    let rec split_path path =
-      if is_end_of_path path then [path]
-      else
-        let splitted_dirpath = split_path (Filename.dirname path) in
-        (Filename.basename path) :: splitted_dirpath
-    in
-    List.rev (split_path path)
-  in
-  let remove_redundancies splitted_path =
-    let reject_empty_and_curr s =
-      not (String.equal s "" || String.equal s Filename.current_dir_name)
-    in
-    List.filter reject_empty_and_curr splitted_path
-  in
-  let concat_path splitted_path =
-    String.concat Filename.dir_sep splitted_path
-  in
-  match path |> split_path |> remove_redundancies |> concat_path with
-  | "" -> Filename.current_dir_name
-  | normalized_path -> normalized_path
-
 let rec add_filepaths acc path =
   match Utils.Filepath.kind ~exclude:(fun _ -> false) path with
   | Cmti | Cmt_without_mli | Cmt_with_mli -> Utils.StringSet.add path acc
@@ -131,19 +102,21 @@ let rec add_filepaths acc path =
   | Ignore -> acc
 
 let exclude path config =
-  let path = normalize_path path in
+  let path = Utils.Filepath.normalize path in
   let excluded_paths = add_filepaths config.excluded_paths path in
   {config with excluded_paths}
 
 let is_excluded path config =
-  let path = normalize_path path in
+  let path = Utils.Filepath.normalize path in
   Utils.StringSet.mem path config.excluded_paths
 
 let add_reference_path path config =
+  let path = Utils.Filepath.normalize path in
   let references_paths = add_filepaths config.references_paths path in
   {config with references_paths}
 
 let add_path_to_analyze path config =
+  let path = Utils.Filepath.normalize path in
   let paths_to_analyze = add_filepaths config.paths_to_analyze path in
   {config with paths_to_analyze}
 
