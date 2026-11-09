@@ -38,7 +38,12 @@ let init_from_all_cm_infos ~cm_file cmt_infos =
   let builddir = cmt_infos.Cmt_format.cmt_builddir in
   let sourcepath =
     Option.map Utils.Filepath.remove_pp cmt_infos.cmt_sourcefile
-    |> Option.map (Utils.Filepath.concat builddir)
+    |> Option.map (Utils.Filepath.raw_concat builddir)
+    (* Using raw_concat because the sourcepath is only compared against filenames
+       found in locations, which are not normalized.
+       Other than those comparisons, sourcepath is only used to retrieve the
+       compilation unit.
+    *)
   in
   let modname = cmt_infos.cmt_modname in
   let cm_infos =

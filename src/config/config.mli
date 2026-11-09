@@ -54,7 +54,9 @@ val update_style : string -> t -> t
 val is_excluded : string -> t -> bool
 (** [is_excluded path config] indicates if [path] is excluded from the analysis
     in [config].
-    Excluding a path is done with the --exclude command line argument. *)
+    Excluding a path is done with the --exclude command line argument.
+    [path] should be normalized (see {Utils.Filepath.normalize})
+*)
 
 val parse_cli : unit -> t
 (** [parse_cli ()] returns a fresh configuration filled up according to the

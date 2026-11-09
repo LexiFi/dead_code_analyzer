@@ -26,6 +26,18 @@ module Filepath : sig
   (** [concat dir file] is similiar to [Filename.concat dir file] if [file]
       is relative.
       If [file] is an absolute path, then [concat] returns it as is.
+      In all cases the result is normalized.
+  *)
+
+  val raw_concat : t -> t -> t
+  (** [raw_concat dir file] is the same as [concat dir file] but the result
+      is not normalized.
+  *)
+
+  val normalize : t -> t
+  (** [normalize filepath] returns a canonical representation of [filepath].
+      It removes redundant "." and ".." components.
+      Ir conserves the path's relativeness.
   *)
 end
 
