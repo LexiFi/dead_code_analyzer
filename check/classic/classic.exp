@@ -166,6 +166,11 @@
 ./examples/using_make/exported.mli:15: M2.five
 ./examples/using_make/exported.mli:16: M2.plus_five
 ./examples/using_make/exported.mli:17: M2.ten
+
+./examples/using_make/filepath/absolute/absolute.ml:1: unused
+
+./examples/using_make/filepath/relative/relative.ml:1: unused
+
 ./examples/using_make/foo.mli:2: y
 ./examples/using_make/fooFn.mli:2: g
 ./examples/using_make/functor.mli:2: M.f

@@ -118,6 +118,11 @@
 
 ./examples/using_make/exported.mli:11: F.times_five
 ./examples/using_make/exported.mli:17: M2.ten
+
+./examples/using_make/filepath/absolute/absolute.ml:1: unused: Not detected
+./examples/using_make/filepath/absolute/home/fantasio/proj/dead_code_analyzer/examples/using_make/filepath/absolute/absolute.ml:1: unused: Should not be detected
+./examples/using_make/filepath/relative/../relative/relative.ml:1: unused: Should not be detected
+./examples/using_make/filepath/relative/relative.ml:1: unused: Not detected
 ./examples/using_make/foo.mli:2: y
 ./examples/using_make/fooFn.mli:2: g
 ./examples/using_make/functor.mli:3: M.none
@@ -1354,7 +1359,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1141
+Total: 1145
 Success: 1135
-Failed: 6
-Ratio: 99.4741454864%
+Failed: 10
+Ratio: 99.1266375546%

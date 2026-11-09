@@ -16,6 +16,7 @@ build: $(CMTI)
 	make -C obj
 	make -C opt
 	make -C advanced
+	make -C filepath
 
 $(CMTI): $(SRC)
 	$(OCAMLC) -c $(SRC)
