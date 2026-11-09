@@ -21,6 +21,12 @@ module Filepath : sig
       If [exclude filepath = true], [filepath] does not exists, or [filepath]
       does not fit in another kind, then its kind is [Ignore].
       Other kinds are self explanatory. *)
+
+  val concat : t -> t -> t
+  (** [concat dir file] is similiar to [Filename.concat dir file] if [file]
+      is relative.
+      If [file] is an absolute path, then [concat] returns it as is.
+  *)
 end
 
 val signature_of_modtype :

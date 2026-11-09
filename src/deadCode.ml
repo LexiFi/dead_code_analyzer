@@ -608,8 +608,8 @@ let report_opt_args s l =
           in (builddir, loc, lab, l, ratio, total))
         l
       |> List.fast_sort (fun (builddir1, loc1, lab1, slot1, _, _) (builddir2, loc2, lab2, slot2, _, _) ->
-          let fn1 = Filename.concat builddir1 loc1.Lexing.pos_fname in
-          let fn2 = Filename.concat builddir2 loc2.Lexing.pos_fname in
+          let fn1 = Utils.Filepath.concat builddir1 loc1.Lexing.pos_fname in
+          let fn2 = Utils.Filepath.concat builddir2 loc2.Lexing.pos_fname in
           compare (fn1, loc1, lab1, slot1) (fn2, loc2, lab2, slot2))
     in
 
@@ -624,7 +624,7 @@ let report_opt_args s l =
 
     let pretty_print = fun (builddir, loc, lab, slot, ratio, total) ->
       if change (DeadCommon.abs loc) then print_newline ();
-      let fn = Filename.concat builddir loc.Lexing.pos_fname in
+      let fn = Utils.Filepath.concat builddir loc.Lexing.pos_fname in
       prloc ~fn loc; print_string ("?" ^ lab);
       if ratio <> 0. then begin
         Printf.printf "   (%d/%d calls)" (total - List.length slot) total;
