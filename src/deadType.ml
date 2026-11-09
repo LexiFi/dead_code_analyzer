@@ -145,7 +145,7 @@ let rec check_style t loc =
           match lab with
             | Optional lab when check_underscore lab ->
                 let builddir = State.File_infos.get_builddir state.file_infos in
-                let fn = Filename.concat builddir loc.Lexing.pos_fname in
+                let fn = Utils.Filepath.concat builddir loc.Lexing.pos_fname in
                 style :=
                   (fn, loc,
                    "val f: ... -> (... -> ?_:_ -> ...) -> ...")

@@ -39,7 +39,7 @@ let _variant = ": variant :"
 let register_style loc msg =
   let state = State.get_current() in
   let builddir = State.File_infos.get_builddir state.file_infos in
-  let fn = Filename.concat builddir loc.Lexing.pos_fname in
+  let fn = Utils.Filepath.concat builddir loc.Lexing.pos_fname in
   style := (fn, loc, msg)::!style
 
 let is_ghost loc =
