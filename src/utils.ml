@@ -43,6 +43,11 @@ module Filepath = struct
       if Sys.file_exists cmti then Cmt_with_mli
       else Cmt_without_mli
     else Ignore
+
+  let concat dir file =
+    if Filename.is_relative file then Filename.concat dir file
+    else file
+
 end
 
 let rec signature_of_modtype ?(select_param = false) modtype =
@@ -109,9 +114,8 @@ module Envaux = struct
   let set_loadpaths builddir paths =
     let reset () =
       let fix_relative_path path =
-        (* relative paths are relative to the builddir, not to the analysis *)
-        if Filename.is_relative path then Filename.concat builddir path
-        else path
+        (* Paths are relative to the builddir, not to the analysis *)
+        Filepath.concat builddir path
       in
       let paths =
         #if OCAML_VERSION >= (5, 2, 0)

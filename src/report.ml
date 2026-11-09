@@ -46,7 +46,7 @@ let get_reportable ~elt (state : State.t) =
   match elt_path with
   | None -> assert false
   | Some elt_path ->
-      let filepath = Filename.concat builddir elt_loc.Lexing.pos_fname in
+      let filepath = Utils.Filepath.concat builddir elt_loc.Lexing.pos_fname in
       (filepath, elt_loc, elt_path)
 
 
