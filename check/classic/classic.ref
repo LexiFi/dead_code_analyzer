@@ -166,6 +166,11 @@
 ./examples/using_make/exported.mli:15: M2.five
 ./examples/using_make/exported.mli:16: M2.plus_five
 ./examples/using_make/exported.mli:17: M2.ten
+
+./examples/using_make/filepath/absolute/absolute.ml:1: unused: Not detected
+./examples/using_make/filepath/absolute/<path_to_proj>/examples/using_make/filepath/absolute/absolute.ml:1: unused: Should not be detected
+./examples/using_make/filepath/relative/../relative/relative.ml:1: unused: Should not be detected
+./examples/using_make/filepath/relative/relative.ml:1: unused: Not detected
 ./examples/using_make/foo.mli:2: y
 ./examples/using_make/fooFn.mli:2: g
 ./examples/using_make/functor.mli:2: M.f
@@ -809,7 +814,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 677
+Total: 681
 Success: 671
-Failed: 6
-Ratio: 99.1137370753%
+Failed: 10
+Ratio: 98.5315712188%
