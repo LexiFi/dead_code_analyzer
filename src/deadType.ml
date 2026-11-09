@@ -144,12 +144,8 @@ let rec check_style t loc =
       | Tarrow (lab, _, t, _) -> begin
           match lab with
             | Optional lab when check_underscore lab ->
-                let builddir = State.File_infos.get_builddir state.file_infos in
-                let fn = Utils.Filepath.concat builddir loc.Lexing.pos_fname in
-                style :=
-                  (fn, loc,
-                   "val f: ... -> (... -> ?_:_ -> ...) -> ...")
-                  :: !style
+                let msg = "val f: ... -> (... -> ?_:_ -> ...) -> ..." in
+                DeadCommon.register_style loc msg
             | _ -> check_style t loc end
       | _ -> ()
 

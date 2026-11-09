@@ -44,9 +44,50 @@ module Filepath = struct
       else Cmt_without_mli
     else Ignore
 
-  let concat dir file =
+  let normalize filepath =
+    let get_parts path =
+      let rec get_parts path acc =
+        let basename = Filename.basename path in
+        let acc = basename::acc in
+        let dirname = Filename.dirname path in
+        let terminals = [Filename.current_dir_name; path] in
+        if List.exists (String.equal dirname) terminals then acc
+        else get_parts dirname acc
+      in
+      let basename = Filename.basename path in
+      let dirname = Filename.dirname path in
+      get_parts dirname [basename]
+    in
+    let rec remove_redundant prev next =
+      match prev, next with
+      | res, [] -> List.rev res
+      | ".."::_, ".."::next (* ../../ prefix cannot be consumed *) ->
+          remove_redundant (".."::prev) next
+      | _::prev, ".."::next (* prev/foo/../next -> prev/next *)
+      | prev, "."::next (* prev/./next -> prev/next *)
+      | prev, ""::next (* prev//next -> prev/next *) ->
+          remove_redundant prev next
+      | prev, curr::next (* regular path *) ->
+          remove_redundant (curr::prev) next
+    in
+    let prepare_for_concat = function
+      | [] -> Filename.current_dir_name::[]
+      | root::(_::_ as parts) when String.equal root Filename.dir_sep ->
+          (* protects against normalized_path = "//path" when concatenating *)
+          ""::parts
+      | parts -> parts
+    in
+    get_parts filepath
+    |> remove_redundant []
+    |> prepare_for_concat
+    |> String.concat Filename.dir_sep
+
+  let raw_concat dir file =
     if Filename.is_relative file then Filename.concat dir file
     else file
+
+  let concat dir file =
+    raw_concat dir file |> normalize
 
 end
 
@@ -115,7 +156,7 @@ module Envaux = struct
     let reset () =
       let fix_relative_path path =
         (* Paths are relative to the builddir, not to the analysis *)
-        Filepath.concat builddir path
+        Filepath.raw_concat builddir path
       in
       let paths =
         #if OCAML_VERSION >= (5, 2, 0)

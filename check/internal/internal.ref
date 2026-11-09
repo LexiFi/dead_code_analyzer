@@ -121,8 +121,8 @@
 
 ./examples/using_make/filepath/absolute/absolute.ml:1: unused
 
-./examples/using_make/filepath/relative/../relative/relative.ml:1: unused: Should not be detected
-./examples/using_make/filepath/relative/relative.ml:1: unused: Not detected
+./examples/using_make/filepath/relative/relative.ml:1: unused
+
 ./examples/using_make/foo.mli:2: y
 ./examples/using_make/fooFn.mli:2: g
 ./examples/using_make/functor.mli:3: M.none
@@ -741,7 +741,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 612
-Success: 604
-Failed: 8
-Ratio: 98.6928104575%
+Total: 611
+Success: 605
+Failed: 6
+Ratio: 99.0180032733%
