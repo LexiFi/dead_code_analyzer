@@ -37,35 +37,36 @@ let normalize path =
 
  (* Relocate a `path` found in a `.got` file as a relative path from the
     project's root.
-    - For files in 'docs' and 'using_make': there is no 'using_make' file or
-   directory in '<project_root>/examples/*'. Therefore, taking everything in the
-   path from the last 'docs' or 'using_make' filename provides the common part
-   for the relocation. Then, adding an extra './iexamples' completes the path as
-   found in the expected reports
- - For files in 'using_dune': the same startegy as for files in 'using_make'
-   can be applied with the removal of '_build/default' on the way.
-   Because those directory names are unique, we can actually share the same
-   logic for both 'using_make' and 'using_dune'. *)
+    The tests directories are 'docs', 'using_make, and 'using_dune', located in
+    '<project_root>'/examples/'.
+    Thus, the relocation is done by extracting the path from the first of those
+    directories and prepending it with './examples/`.
+    This assumes the '<project_root>' does not contain a directory with one of
+    aforementionned name.
+    For files in 'using_dune', the path is 'using_dune/_build/default'.
+    The '_build/default' is removed. *)
 let relocate path =
-  (* retrieve the subpath starting from the last occurence of
-     a valid basename if it exists, and remove "_build" and "default"
-     directories from the path *)
+  (* retrieve the subpath starting from the first occurence of
+     a valid basename if it exists, and remove the "_build/default" part
+     of the path *)
   let valid_basenames = ["docs"; "using_make"; "using_dune"] in
-  let rec extract_subpath acc dirpath =
-    let basename = Filename.basename dirpath in
-    if List.mem basename valid_basenames then
-      basename::acc
-    else if basename = dirpath (* fixpoint *) then
-      path::[] (* TODO: error handling *)
-    else
-      let acc =
-        match basename with
-        | "_build" | "default" -> acc
-        | basename -> basename::acc
-      in
-      extract_subpath acc (Filename.dirname dirpath)
+  let dir_sep =
+    if String.length Filename.dir_sep = 1 then Filename.dir_sep.[0]
+    else invalid_arg ("Unknown dir sep " ^ Filename.dir_sep)
+  in
+  let splitted = String.split_on_char dir_sep path in
+  let rec extract_subpath = function
+    | [] -> splitted
+    | basename::_ as splitted when List.mem basename valid_basenames -> splitted
+    | _::splitted -> extract_subpath splitted
+  in
+  let rec remove_build_default acc = function
+    | [] -> List.rev acc
+    | "_build"::"default"::splitted -> List.rev_append acc splitted
+    | basename::splitted -> remove_build_default (basename::acc) splitted
   in
   let relative_path = (* [valid_basename; <path/to/file>...] *)
-    extract_subpath [] path
+    extract_subpath splitted
+    |> remove_build_default []
   in
   String.concat Filename.dir_sep ("."::"examples"::relative_path)

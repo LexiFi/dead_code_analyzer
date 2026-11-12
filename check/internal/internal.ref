@@ -118,6 +118,11 @@
 
 ./examples/using_make/exported.mli:11: F.times_five
 ./examples/using_make/exported.mli:17: M2.ten
+
+./examples/using_make/filepath/absolute/absolute.ml:1: unused
+
+./examples/using_make/filepath/relative/relative.ml:1: unused
+
 ./examples/using_make/foo.mli:2: y
 ./examples/using_make/fooFn.mli:2: g
 ./examples/using_make/functor.mli:3: M.none
@@ -736,7 +741,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 609
-Success: 603
+Total: 611
+Success: 605
 Failed: 6
-Ratio: 99.0147783251%
+Ratio: 99.0180032733%
