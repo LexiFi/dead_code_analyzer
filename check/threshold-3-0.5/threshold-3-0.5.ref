@@ -232,6 +232,7 @@
 ./examples/using_dune/bin/use_unwrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_constructors.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_first_class_module.mli:1: mark_used
+./examples/using_dune/bin/use_unwrapped_lib/use_functors.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_unwrapped_lib/use_opt_args.mli:1: mark_used
@@ -249,6 +250,7 @@
 ./examples/using_dune/bin/use_wrapped_lib/use_builder_sig_api.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_constructors.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_first_class_module.mli:1: mark_used
+./examples/using_dune/bin/use_wrapped_lib/use_functors.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_include_modtype.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_mixed_args.mli:1: mark_used
 ./examples/using_dune/bin/use_wrapped_lib/use_opt_args.mli:1: mark_used
@@ -828,6 +830,8 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:9: Alias.sum.Unused
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:17: Alias.product.unused
 
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:5: M.record_unused.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:9: M.constructor_unused.C
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
@@ -860,6 +864,8 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:8: M.record_unused.f
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:4: M.record_unused.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:8: M.constructor_unused.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -889,6 +895,8 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:8: M.record_unused.f
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:4: M.record_unused.f
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:8: M.constructor_unused.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -965,6 +973,10 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:15: Alias.product.used_by_module_alias
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:16: Alias.product.used_directly
 
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:3: M.record_externally_used_by_param_requirement.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:4: M.record_internally_used_by_param_requirement.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:7: M.constructor_externally_used_by_param_requirement.C
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:8: M.constructor_internally_used_by_param_requirement.C
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:3: gadt.Int
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:3: t.Both
@@ -1013,6 +1025,10 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:13: M.constructor_internally_used_by_param_requirement.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:14: M.constructor_internally_used_by_val_requirement.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:15: M.constructor_internally_used_by_val_constraint.C
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:2: M.record_externally_used_by_param_requirement.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:3: M.record_internally_used_by_param_requirement.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:6: M.constructor_externally_used_by_param_requirement.C
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:7: M.constructor_internally_used_by_param_requirement.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:22: internally_used_single_unit.internally_used_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:23: internally_used_single_param.internally_used_single_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:25: internally_used_mix.internally_used_unit
@@ -1052,6 +1068,10 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:13: M.constructor_internally_used_by_param_requirement.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:14: M.constructor_internally_used_by_val_requirement.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:15: M.constructor_internally_used_by_val_constraint.C
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:2: M.record_externally_used_by_param_requirement.f
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:3: M.record_internally_used_by_param_requirement.f
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:6: M.constructor_externally_used_by_param_requirement.C
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:7: M.constructor_internally_used_by_param_requirement.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:22: internally_used_single_unit.internally_used_single_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:23: internally_used_single_param.internally_used_single_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:25: internally_used_mix.internally_used_unit
@@ -1710,7 +1730,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1418
-Success: 1412
+Total: 1438
+Success: 1432
 Failed: 6
-Ratio: 99.5768688293%
+Ratio: 99.5827538248%

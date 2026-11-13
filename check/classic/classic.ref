@@ -280,6 +280,8 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:9: Alias.sum.Unused
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:17: Alias.product.unused
 
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:5: M.record_unused.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:9: M.constructor_unused.C
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
@@ -312,6 +314,8 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:8: M.record_unused.f
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:4: M.record_unused.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/functors.mli:8: M.constructor_unused.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -341,6 +345,8 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/constructors_and_records/constructors.mli:54: partially_used_mix_3.Partially_used_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:8: M.record_unused.f
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:4: M.record_unused.f
+./examples/using_dune/wrapped_lib/constructors_and_records/functors.mli:8: M.constructor_unused.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -782,7 +788,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 653
-Success: 647
+Total: 659
+Success: 653
 Failed: 6
-Ratio: 99.0811638591%
+Ratio: 99.0895295903%
