@@ -101,6 +101,8 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:9: Alias.sum.Unused
 ./examples/docs/fields_and_constructors/code_constructs/equal_types/via_module_alias.mli:17: Alias.product.unused
 
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:5: M.record_unused.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:9: M.constructor_unused.C
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
@@ -201,7 +203,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 112
-Success: 112
+Total: 114
+Success: 114
 Failed: 0
 Ratio: 100.%
