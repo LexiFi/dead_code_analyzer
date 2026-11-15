@@ -1,4 +1,5 @@
-module Applied = Functors.ExternalFunctor (Functors.M)
+open Ctors_fields_in_functor
+module Applied = ExternalFunctor (M)
 
 let is_used = ref false
 
