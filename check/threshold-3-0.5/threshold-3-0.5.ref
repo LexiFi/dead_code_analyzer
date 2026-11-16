@@ -914,6 +914,8 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:4: M.record_unused.f
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:8: M.constructor_unused.C
+./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:16: ExternalFunctor.record_unused.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:19: ExternalFunctor.constructor_unused.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -945,6 +947,8 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_first_class_module.mli:16: M.constructor_unused.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:4: M.record_unused.f
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:8: M.constructor_unused.C
+./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:16: ExternalFunctor.record_unused.f
+./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:19: ExternalFunctor.constructor_unused.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:1: unused_single_unit.unused_single_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:2: unused_single_param.unused_single_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:4: unused_mix.unused_unit
@@ -1077,6 +1081,8 @@ Nothing else to report in this section
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:3: M.record_internally_used_by_param_requirement.f
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:6: M.constructor_externally_used_by_param_requirement.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:7: M.constructor_internally_used_by_param_requirement.C
+./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:15: ExternalFunctor.record_externally_used.f
+./examples/using_dune/unwrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:18: ExternalFunctor.constructor_externally_used.C
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:22: internally_used_single_unit.internally_used_single_unit
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:23: internally_used_single_param.internally_used_single_param
 ./examples/using_dune/unwrapped_lib/constructors_and_records/records.mli:25: internally_used_mix.internally_used_unit
@@ -1120,6 +1126,8 @@ Nothing else to report in this section
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:3: M.record_internally_used_by_param_requirement.f
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:6: M.constructor_externally_used_by_param_requirement.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:7: M.constructor_internally_used_by_param_requirement.C
+./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:15: ExternalFunctor.record_externally_used.f
+./examples/using_dune/wrapped_lib/constructors_and_records/ctors_fields_in_functor.mli:18: ExternalFunctor.constructor_externally_used.C
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:22: internally_used_single_unit.internally_used_single_unit
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:23: internally_used_single_param.internally_used_single_param
 ./examples/using_dune/wrapped_lib/constructors_and_records/records.mli:25: internally_used_mix.internally_used_unit
@@ -1778,7 +1786,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1482
-Success: 1476
+Total: 1490
+Success: 1484
 Failed: 6
-Ratio: 99.5951417004%
+Ratio: 99.5973154362%
