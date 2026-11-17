@@ -485,7 +485,7 @@ let load_file fn state =
             let in_same_file = String.equal loc1.pos_fname loc2.pos_fname in
             let is_curr_file fn =
               let curr = State.File_infos.get_sourcepath state.file_infos in
-              String.equal fn curr
+              String.ends_with ~suffix:fn curr
             in
             if not in_same_file && is_curr_file loc2.pos_fname
               || in_same_file && loc2 > loc1
