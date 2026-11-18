@@ -9,16 +9,21 @@ module M = struct
   type constructor_unused = C
 end
 
-module InternalFunctor (_ : sig
+module Internal_functor (_ : sig
   type record_internally_used_by_param_requirement = { f : int }
   type constructor_internally_used_by_param_requirement = C
 end) = struct
 end
 
-module ExternalFunctor (_ : sig
+module External_functor (_ : sig
   type record_externally_used_by_param_requirement = { f : int }
   type constructor_externally_used_by_param_requirement = C
 end) = struct
+  type record_externally_used = { f : int }
+  type record_unused = { f : int }
+
+  type constructor_externally_used = C
+  type constructor_unused = C
 end
 
-module Applied = InternalFunctor (M)
+module _ = Internal_functor (M)

@@ -880,6 +880,9 @@ Nothing else to report in this section
 
 ./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:5: M.record_unused.f
 ./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:9: M.constructor_unused.C
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:17: External_functor.record_unused.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:20: External_functor.constructor_unused.C
+
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:4: gadt.Float
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:4: t.Left
@@ -1029,6 +1032,9 @@ Nothing else to report in this section
 ./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:4: M.record_internally_used_by_param_requirement.f
 ./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:7: M.constructor_externally_used_by_param_requirement.C
 ./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:8: M.constructor_internally_used_by_param_requirement.C
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:16: External_functor.record_externally_used.f
+./examples/docs/fields_and_constructors/code_constructs/functor/functor_lib.mli:19: External_functor.constructor_externally_used.C
+
 ./examples/docs/fields_and_constructors/code_constructs/gadt/gadt_lib.mli:3: gadt.Int
 
 ./examples/docs/fields_and_constructors/code_constructs/inline_record/inline_record_lib.mli:3: t.Both
@@ -1786,7 +1792,7 @@ Nothing else to report in this section
 --------------------------------------------------------------------------------
 
 
-Total: 1490
-Success: 1484
+Total: 1494
+Success: 1488
 Failed: 6
-Ratio: 99.5973154362%
+Ratio: 99.5983935743%
