@@ -9,6 +9,7 @@ build:
 	make -C extensible_variant build
 	make -C inline_record build
 	make -C equal_types build
+	make -C functor build
 
 clean:
 	rm -f *~ *.cm* *.o *.obj
@@ -18,3 +19,4 @@ clean:
 	make -C extensible_variant clean
 	make -C inline_record clean
 	make -C equal_types clean
+	make -C functor clean

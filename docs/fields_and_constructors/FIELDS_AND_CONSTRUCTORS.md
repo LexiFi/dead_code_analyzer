@@ -234,6 +234,7 @@ it from its type's definition.
     - [Extensible variant](./code_constructs/EXTENSIBLE_VARIANT.md)
     - [Inline record](./code_constructs/INLINE_RECORD.md)
     - [Equal types](./code_constructs/EQUAL_TYPES.md)
+    - [Functor](./code_constructs/FUNCTOR.md)
 
 # Limitations
 
